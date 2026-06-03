@@ -1,7 +1,7 @@
 name: Build iOS IPA
 
 on:
-  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -17,22 +17,49 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0' # Use appropriate stable version
+          flutter-version: '3.24.0'
           channel: 'stable'
-          
+          cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - name: Install Dependencies
         run: flutter pub get
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
 
       - name: Disable Code Signing
         run: |
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;//g' ios/Runner.xcodeproj/project.pbxproj
           echo "CODE_SIGNING_ALLOWED=NO" >> ios/Flutter/Release.xcconfig
           echo "CODE_SIGNING_REQUIRED=NO" >> ios/Flutter/Release.xcconfig
           echo "EXPANDED_CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
 
       - name: Build iOS App (Unsigned)
-        run: flutter build ios --release --no-codesign
+        # We add "|| true" so that if Xcode fails at the very last signing step
+        # (which often happens in Xcode 14+ without a team), the workflow continues.
+        # As long as Runner.app is successfully compiled, we can pack it into an IPA.
+        run: flutter build ios --release --no-codesign || true
+
+      - name: Verify Runner.app exists
+        run: |
+          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+            echo "Error: Runner.app was not generated. The build actually failed."
+            exit 1
+          fi
 
       - name: Package IPA
         run: |
