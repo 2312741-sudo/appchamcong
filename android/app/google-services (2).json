@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "476583007511",
+    "project_id": "chamcongtram",
+    "storage_bucket": "chamcongtram.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:476583007511:android:1e6061907be9bb65ce1352",
+        "android_client_info": {
+          "package_name": "com.chamcong.chamCongTram"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_1a4BIdre7YzzWYFv-njolhltMDyeitE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
