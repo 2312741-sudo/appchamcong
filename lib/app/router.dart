@@ -15,6 +15,7 @@ import '../features/store/screens/store_settings_screen.dart';
 import '../features/attendance/screens/check_in_screen.dart';
 import '../features/attendance/screens/attendance_history_screen.dart';
 import '../features/attendance/screens/attendance_table_screen.dart';
+import '../features/attendance/screens/monthly_attendance_screen.dart';
 import '../features/schedule/screens/schedule_register_screen.dart';
 import '../features/schedule/screens/schedule_manager_screen.dart';
 import '../features/salary/screens/salary_detail_screen.dart';
@@ -49,6 +50,7 @@ class AppRoutes {
   static const String checkIn = '/check-in';
   static const String attendanceHistory = '/attendance-history';
   static const String attendanceTable = '/attendance-table';
+  static const String monthlyAttendance = '/monthly-attendance';
 
   static const String scheduleRegister = '/schedule';
   static const String scheduleManager = '/schedule-manager';
@@ -182,6 +184,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.attendanceTable,
         name: 'attendance-table',
         builder: (context, state) => const AttendanceTableScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.monthlyAttendance,
+        name: 'monthly-attendance',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final memberId = extra?['memberId'] as String? ?? '';
+          final memberName = extra?['memberName'] as String? ?? '';
+          return MonthlyAttendanceScreen(
+              memberId: memberId, memberName: memberName);
+        },
       ),
 
       // ── Schedule ──────────────────────────────────────────────────────────

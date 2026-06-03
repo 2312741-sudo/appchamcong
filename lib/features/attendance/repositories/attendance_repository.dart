@@ -183,6 +183,35 @@ class AttendanceRepository {
       throw Exception('Lấy dữ liệu chấm công thất bại: $e');
     }
   }
+
+  Future<void> createManualAttendance(
+    String storeId,
+    String userId,
+    String date,
+    DateTime checkIn,
+    DateTime checkOut,
+    String editNote,
+    String editedBy,
+  ) async {
+    try {
+      final totalHours = checkOut.difference(checkIn).inMinutes / 60.0;
+      await _attendances(storeId).add({
+        'userId': userId,
+        'storeId': storeId,
+        'date': date,
+        'checkIn': Timestamp.fromDate(checkIn),
+        'checkOut': Timestamp.fromDate(checkOut),
+        'checkInMethod': CheckInMethod.manual.value,
+        'totalHours': double.parse(totalHours.toStringAsFixed(2)),
+        'isEdited': true,
+        'editedBy': editedBy,
+        'editNote': editNote.isNotEmpty ? editNote : 'Thêm thủ công',
+        'isOffline': false,
+      });
+    } catch (e) {
+      throw Exception('Tạo chấm công thất bại: $e');
+    }
+  }
 }
 
 // ---------- Provider ----------
