@@ -52,6 +52,7 @@ jobs:
         run: |
           flutter build ios --config-only --release || echo "config-only not supported"
           cd ios
+          pod install
           xcodebuild build -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -derivedDataPath ../build/ios_build
           
       - name: Verify Runner.app exists
