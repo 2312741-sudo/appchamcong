@@ -2,6 +2,33 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import '../../features/store/screens/shift_settings_screen.dart';
 
+class DepartmentDefinition extends Equatable {
+  final String id;
+  final String name;
+  final String shortName;
+
+  const DepartmentDefinition({
+    required this.id,
+    required this.name,
+    required this.shortName,
+  });
+
+  factory DepartmentDefinition.fromJson(Map<String, dynamic> json) => DepartmentDefinition(
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    shortName: json['shortName'] as String? ?? '',
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'shortName': shortName,
+  };
+
+  @override
+  List<Object?> get props => [id, name, shortName];
+}
+
 class StoreModel extends Equatable {
   final String id;
   final String name;
@@ -14,6 +41,9 @@ class StoreModel extends Equatable {
   final int radiusMeters; // default 100
   final DateTime createdAt;
   final List<ShiftDefinition> customShifts;
+  final List<DepartmentDefinition> departments;
+  final num? deliveryAllowance;
+  final String? themeColor;
 
   const StoreModel({
     required this.id,
@@ -27,6 +57,9 @@ class StoreModel extends Equatable {
     this.radiusMeters = 100,
     required this.createdAt,
     this.customShifts = const [],
+    this.departments = const [],
+    this.deliveryAllowance,
+    this.themeColor,
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
@@ -48,6 +81,12 @@ class StoreModel extends Equatable {
               ?.map((e) => ShiftDefinition.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      departments: (json['departments'] as List<dynamic>?)
+              ?.map((e) => DepartmentDefinition.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      deliveryAllowance: json['deliveryAllowance'] as num?,
+      themeColor: json['themeColor'] as String?,
     );
   }
 
@@ -68,6 +107,9 @@ class StoreModel extends Equatable {
       'radiusMeters': radiusMeters,
       'createdAt': Timestamp.fromDate(createdAt),
       'customShifts': customShifts.map((s) => s.toJson()).toList(),
+      'departments': departments.map((d) => d.toJson()).toList(),
+      'deliveryAllowance': deliveryAllowance,
+      'themeColor': themeColor,
     };
   }
 
@@ -83,6 +125,9 @@ class StoreModel extends Equatable {
     int? radiusMeters,
     DateTime? createdAt,
     List<ShiftDefinition>? customShifts,
+    List<DepartmentDefinition>? departments,
+    num? deliveryAllowance,
+    String? themeColor,
     bool clearAddress = false,
     bool clearNetworkIP = false,
     bool clearLocation = false,
@@ -99,6 +144,9 @@ class StoreModel extends Equatable {
       radiusMeters: radiusMeters ?? this.radiusMeters,
       createdAt: createdAt ?? this.createdAt,
       customShifts: customShifts ?? this.customShifts,
+      departments: departments ?? this.departments,
+      deliveryAllowance: deliveryAllowance ?? this.deliveryAllowance,
+      themeColor: themeColor ?? this.themeColor,
     );
   }
 
@@ -117,6 +165,10 @@ class StoreModel extends Equatable {
         longitude,
         radiusMeters,
         createdAt,
+        customShifts,
+        departments,
+        deliveryAllowance,
+        themeColor,
       ];
 
   @override

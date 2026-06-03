@@ -59,80 +59,81 @@ extension ShiftTypeExtension on ShiftType {
 }
 
 class DaySchedule {
-  final ShiftType monday;
-  final ShiftType tuesday;
-  final ShiftType wednesday;
-  final ShiftType thursday;
-  final ShiftType friday;
-  final ShiftType saturday;
-  final ShiftType sunday;
+  final List<String> monday;
+  final List<String> tuesday;
+  final List<String> wednesday;
+  final List<String> thursday;
+  final List<String> friday;
+  final List<String> saturday;
+  final List<String> sunday;
 
   const DaySchedule({
-    this.monday = ShiftType.off,
-    this.tuesday = ShiftType.off,
-    this.wednesday = ShiftType.off,
-    this.thursday = ShiftType.off,
-    this.friday = ShiftType.off,
-    this.saturday = ShiftType.off,
-    this.sunday = ShiftType.off,
+    this.monday = const [],
+    this.tuesday = const [],
+    this.wednesday = const [],
+    this.thursday = const [],
+    this.friday = const [],
+    this.saturday = const [],
+    this.sunday = const [],
   });
 
   factory DaySchedule.allOff() => const DaySchedule();
 
+  static List<String> _parseList(dynamic data) {
+    if (data == null) return [];
+    if (data is List) return data.map((e) => e.toString()).toList();
+    if (data is String) {
+      if (data == 'off' || data.isEmpty) return [];
+      return [data];
+    }
+    return [];
+  }
+
   factory DaySchedule.fromJson(Map<String, dynamic> json) {
     return DaySchedule(
-      monday: ShiftTypeExtension.fromString(json['monday'] as String?),
-      tuesday: ShiftTypeExtension.fromString(json['tuesday'] as String?),
-      wednesday: ShiftTypeExtension.fromString(json['wednesday'] as String?),
-      thursday: ShiftTypeExtension.fromString(json['thursday'] as String?),
-      friday: ShiftTypeExtension.fromString(json['friday'] as String?),
-      saturday: ShiftTypeExtension.fromString(json['saturday'] as String?),
-      sunday: ShiftTypeExtension.fromString(json['sunday'] as String?),
+      monday: _parseList(json['monday']),
+      tuesday: _parseList(json['tuesday']),
+      wednesday: _parseList(json['wednesday']),
+      thursday: _parseList(json['thursday']),
+      friday: _parseList(json['friday']),
+      saturday: _parseList(json['saturday']),
+      sunday: _parseList(json['sunday']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'monday': monday.value,
-      'tuesday': tuesday.value,
-      'wednesday': wednesday.value,
-      'thursday': thursday.value,
-      'friday': friday.value,
-      'saturday': saturday.value,
-      'sunday': sunday.value,
+      'monday': monday,
+      'tuesday': tuesday,
+      'wednesday': wednesday,
+      'thursday': thursday,
+      'friday': friday,
+      'saturday': saturday,
+      'sunday': sunday,
     };
   }
 
-  ShiftType shiftForDay(int weekday) {
-    // weekday: 1 = Monday, 7 = Sunday
+  List<String> shiftForDay(int weekday) {
     switch (weekday) {
-      case 1:
-        return monday;
-      case 2:
-        return tuesday;
-      case 3:
-        return wednesday;
-      case 4:
-        return thursday;
-      case 5:
-        return friday;
-      case 6:
-        return saturday;
-      case 7:
-        return sunday;
-      default:
-        return ShiftType.off;
+      case 1: return monday;
+      case 2: return tuesday;
+      case 3: return wednesday;
+      case 4: return thursday;
+      case 5: return friday;
+      case 6: return saturday;
+      case 7: return sunday;
+      default: return [];
     }
   }
 
   DaySchedule copyWith({
-    ShiftType? monday,
-    ShiftType? tuesday,
-    ShiftType? wednesday,
-    ShiftType? thursday,
-    ShiftType? friday,
-    ShiftType? saturday,
-    ShiftType? sunday,
+    List<String>? monday,
+    List<String>? tuesday,
+    List<String>? wednesday,
+    List<String>? thursday,
+    List<String>? friday,
+    List<String>? saturday,
+    List<String>? sunday,
   }) {
     return DaySchedule(
       monday: monday ?? this.monday,
@@ -146,16 +147,8 @@ class DaySchedule {
   }
 
   int get workingDays {
-    final days = [
-      monday,
-      tuesday,
-      wednesday,
-      thursday,
-      friday,
-      saturday,
-      sunday
-    ];
-    return days.where((s) => s != ShiftType.off).length;
+    final days = [monday, tuesday, wednesday, thursday, friday, saturday, sunday];
+    return days.where((s) => s.isNotEmpty).length;
   }
 }
 

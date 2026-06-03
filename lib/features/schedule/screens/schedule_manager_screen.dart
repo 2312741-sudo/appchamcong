@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/export_utils.dart';
 import '../../../models/member_model.dart';
 import '../../../models/schedule_model.dart';
+import '../../../models/store_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
@@ -73,17 +74,17 @@ class _ScheduleManagerScreenState
     _draftLoaded = true;
   }
 
-  void _setShift(String userId, int dayIndex, ShiftType shift) {
+  void _setShift(String userId, int dayIndex, List<String> shifts) {
     final current = _draft[userId] ?? DaySchedule.allOff();
     setState(() {
       _draft[userId] = switch (dayIndex) {
-        0 => current.copyWith(monday: shift),
-        1 => current.copyWith(tuesday: shift),
-        2 => current.copyWith(wednesday: shift),
-        3 => current.copyWith(thursday: shift),
-        4 => current.copyWith(friday: shift),
-        5 => current.copyWith(saturday: shift),
-        6 => current.copyWith(sunday: shift),
+        0 => current.copyWith(monday: shifts),
+        1 => current.copyWith(tuesday: shifts),
+        2 => current.copyWith(wednesday: shifts),
+        3 => current.copyWith(thursday: shifts),
+        4 => current.copyWith(friday: shifts),
+        5 => current.copyWith(saturday: shifts),
+        6 => current.copyWith(sunday: shifts),
         _ => current,
       };
     });
@@ -114,96 +115,112 @@ class _ScheduleManagerScreenState
     }
   }
 
-  void _showShiftPicker(String userId, int dayIndex) {
+  void _showShiftPicker(String userId, int dayIndex, StoreModel store) {
+    var selectedShifts = List<String>.from(_draft[userId]?.shiftForDay(dayIndex + 1) ?? []);
+    
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        final currentShift =
-            _draft[userId]?.shiftForDay(dayIndex + 1) ?? ShiftType.off;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${_dayFullNames[dayIndex]} — Chọn ca',
-                  style: GoogleFonts.beVietnamPro(
-                      fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-                const SizedBox(height: 16),
-                ...ShiftType.values.map((shift) {
-                  final isSelected = shift == currentShift;
-                  return ListTile(
-                    leading: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _shiftColor(shift),
-                      ),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final hasDelivery = selectedShifts.contains('delivery');
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Chọn ca làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
+                  const SizedBox(height: 16),
+                  if (store.customShifts.isEmpty)
+                    const Text('Chưa có ca làm nào được thiết lập. Vui lòng tạo trên Web hoặc trong Cài đặt.'),
+                  ...store.customShifts.map((shift) {
+                    final currentSelected = selectedShifts.where((s) => s.startsWith('${shift.id}|') || s == shift.id).firstOrNull ?? '';
+                    final isSelected = currentSelected.isNotEmpty;
+                    String selectedDeptId = (isSelected && currentSelected.contains('|')) ? currentSelected.split('|')[1] : '';
+                    return Column(
+                      children: [
+                        CheckboxListTile(
+                          title: Text('${shift.name} (${shift.timeRange})', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+                          value: isSelected,
+                          onChanged: (val) {
+                            setModalState(() {
+                              if (val == true) {
+                                selectedShifts.add(shift.id);
+                              } else {
+                                selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
+                              }
+                            });
+                          },
+                        ),
+                        if (isSelected && store.departments.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: DropdownButtonFormField<String>(
+                              value: selectedDeptId.isEmpty ? null : selectedDeptId,
+                              hint: const Text('Chọn bộ phận'),
+                              items: store.departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() {
+                                    selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
+                                    selectedShifts.add('${shift.id}|$val');
+                                  });
+                                }
+                              }
+                            ),
+                          ),
+                        const Divider(),
+                      ],
+                    );
+                  }),
+                  CheckboxListTile(
+                    title: Text('Ca chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    value: hasDelivery,
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) selectedShifts.add('delivery');
+                        else selectedShifts.remove('delivery');
+                      });
+                    }
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () { _setShift(userId, dayIndex, selectedShifts); Navigator.pop(ctx); },
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                      child: const Text('Xác nhận'),
                     ),
-                    title: Text(
-                      shift.label,
-                      style: GoogleFonts.beVietnamPro(
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w400),
-                    ),
-                    subtitle: shift.timeRange.isNotEmpty
-                        ? Text(shift.timeRange,
-                            style: GoogleFonts.beVietnamPro(fontSize: 12))
-                        : null,
-                    trailing: isSelected
-                        ? const Icon(Icons.check, color: AppColors.success)
-                        : null,
-                    onTap: () {
-                      _setShift(userId, dayIndex, shift);
-                      Navigator.pop(ctx);
-                    },
-                  );
-                }),
-              ],
+                  )
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        }
+      ),
     );
   }
 
-  Color _shiftColor(ShiftType shift) {
-    switch (shift) {
-      case ShiftType.morning:
-        return AppColors.primary;
-      case ShiftType.afternoon:
-        return AppColors.success;
-      case ShiftType.evening:
-        return AppColors.info;
-      case ShiftType.off:
-        return const Color(0xFFCCCCCC);
-    }
+  Color _shiftColor(List<String> shifts) {
+    if (shifts.isEmpty) return const Color(0xFFCCCCCC);
+    return AppColors.primary;
   }
 
-  String _shiftAbbr(ShiftType shift) {
-    switch (shift) {
-      case ShiftType.morning:
-        return 'S';
-      case ShiftType.afternoon:
-        return 'C';
-      case ShiftType.evening:
-        return 'T';
-      case ShiftType.off:
-        return '—';
-    }
+  String _shiftAbbr(List<String> shifts) {
+    if (shifts.isEmpty) return '—';
+    return '${shifts.length} ca';
   }
 
   @override
   Widget build(BuildContext context) {
+    final storeAsync = ref.watch(currentStoreProvider);
     final scheduleAsync = ref.watch(weekScheduleProvider(_currentWeek));
     final members = ref.watch(activeMembersProvider);
+    final store = storeAsync.valueOrNull;
+    if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     scheduleAsync.whenData((schedule) {
       _loadDraft(schedule, members);
@@ -265,8 +282,8 @@ class _ScheduleManagerScreenState
           Expanded(
             child: scheduleAsync.when(
               data: (_) => _viewMode == _ViewMode.byDay
-                  ? _buildByDayView(members)
-                  : _buildByEmployeeView(members),
+                  ? _buildByDayView(members, store!)
+                  : _buildByEmployeeView(members, store!),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -356,7 +373,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByDayView(List<MemberModel> members) {
+  Widget _buildByDayView(List<MemberModel> members, StoreModel store) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -396,8 +413,7 @@ class _ScheduleManagerScreenState
               ),
               ...members.map((m) {
                 final shift =
-                    _draft[m.userId]?.shiftForDay(dayIndex + 1) ??
-                        ShiftType.off;
+                    _draft[m.userId]?.shiftForDay(dayIndex + 1) ?? [];
                 return ListTile(
                   dense: true,
                   leading: _Avatar(member: m, size: 32),
@@ -405,8 +421,8 @@ class _ScheduleManagerScreenState
                       style: GoogleFonts.beVietnamPro(
                           fontWeight: FontWeight.w500, fontSize: 13)),
                   trailing: GestureDetector(
-                    onTap: () => _showShiftPicker(m.userId, dayIndex),
-                    child: _ShiftChip(shift: shift, color: _shiftColor(shift)),
+                    onTap: () => _showShiftPicker(m.userId, dayIndex, store),
+                    child: _ShiftChip(shifts: shift, store: store),
                   ),
                 );
               }),
@@ -417,7 +433,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByEmployeeView(List<MemberModel> members) {
+  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -456,7 +472,7 @@ class _ScheduleManagerScreenState
                     return Expanded(
                       child: GestureDetector(
                         onTap: () =>
-                            _showShiftPicker(m.userId, dayIndex),
+                            _showShiftPicker(m.userId, dayIndex, store),
                         child: Column(
                           children: [
                             Text(
@@ -469,20 +485,11 @@ class _ScheduleManagerScreenState
                             Container(
                               height: 34,
                               decoration: BoxDecoration(
-                                color: _shiftColor(shift),
+                                color: shift.isEmpty ? const Color(0xFFCCCCCC) : AppColors.primary.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Center(
-                                child: Text(
-                                  _shiftAbbr(shift),
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: shift == ShiftType.off
-                                        ? AppColors.textSecondary
-                                        : Colors.white,
-                                  ),
-                                ),
+                                child: _ShiftChip(shifts: shift, store: store, isCompact: true),
                               ),
                             ),
                           ],
@@ -545,25 +552,43 @@ class _ViewToggleButton extends StatelessWidget {
 }
 
 class _ShiftChip extends StatelessWidget {
-  final ShiftType shift;
-  final Color color;
+  final List<String> shifts;
+  final StoreModel store;
+  final bool isCompact;
 
-  const _ShiftChip({required this.shift, required this.color});
+  const _ShiftChip({required this.shifts, required this.store, this.isCompact = false});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Text(
-        shift.label,
-        style: GoogleFonts.beVietnamPro(
-            fontSize: 12, fontWeight: FontWeight.w600, color: color),
-      ),
+    if (shifts.isEmpty) {
+      return Text('—', style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary));
+    }
+    
+    if (isCompact) {
+      return Text('${shifts.length} ca', style: GoogleFonts.beVietnamPro(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary));
+    }
+
+    return Wrap(
+      spacing: 4,
+      children: shifts.map((s) {
+        if (s == 'delivery') {
+          return const Icon(Icons.local_shipping, color: AppColors.primary, size: 16);
+        }
+        final baseId = s.split('|')[0];
+        final shiftDef = store.customShifts.where((x) => x.id == baseId).firstOrNull;
+        if (shiftDef == null) return const SizedBox();
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            shiftDef.name,
+            style: GoogleFonts.beVietnamPro(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
+          ),
+        );
+      }).toList(),
     );
   }
 }

@@ -113,8 +113,8 @@ class ExportUtils {
         final daySchedule = schedule?.getScheduleForUser(member.userId);
         final row = <CellValue>[TextCellValue(member.name)];
         for (int i = 0; i < 7; i++) {
-          final shift = daySchedule?.shiftForDay(i + 1) ?? ShiftType.off;
-          final cellText = shift == ShiftType.off ? 'Nghỉ' : '${shift.label}\n${shift.timeRange}';
+          final shifts = daySchedule?.shiftForDay(i + 1) ?? [];
+          final cellText = shifts.isEmpty ? 'Nghỉ' : '${shifts.length} ca';
           row.add(TextCellValue(cellText));
         }
         sheet.appendRow(row);

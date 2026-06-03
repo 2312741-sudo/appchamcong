@@ -18,7 +18,7 @@ class CurrencyText extends StatelessWidget {
   /// Format amount (in full VND) as Vietnamese currency string
   /// e.g., 7680000 → '7.680.000 ₫'
   static String format(double amountInVnd) {
-    if (amountInVnd == 0) return '0 ₫';
+    if (amountInVnd == 0) return '0 vnđ';
     final rounded = amountInVnd.round();
     final isNegative = rounded < 0;
     final absValue = rounded.abs();
@@ -31,7 +31,7 @@ class CurrencyText extends StatelessWidget {
       }
       buffer.write(str[i]);
     }
-    return '${isNegative ? '-' : ''}${buffer.toString()} ₫';
+    return '${isNegative ? '-' : ''}${buffer.toString()} vnđ';
   }
 
   /// Format amount in thousands (k VND)
@@ -42,19 +42,19 @@ class CurrencyText extends StatelessWidget {
 
   /// Compact format: 7680000 → '7.680 tr.'
   static String formatCompact(double amountInVnd) {
-    if (amountInVnd == 0) return '0 ₫';
+    if (amountInVnd == 0) return '0 vnđ';
     if (amountInVnd >= 1000000) {
       final million = amountInVnd / 1000000;
       if (million == million.roundToDouble()) {
-        return '${million.round()} tr. ₫';
+        return '${million.round()} tr. vnđ';
       }
-      return '${million.toStringAsFixed(1)} tr. ₫';
+      return '${million.toStringAsFixed(1)} tr. vnđ';
     }
     if (amountInVnd >= 1000) {
       final thousand = amountInVnd / 1000;
-      return '${thousand.round()}k ₫';
+      return '${thousand.round()}k vnđ';
     }
-    return '${amountInVnd.round()} ₫';
+    return '${amountInVnd.round()} vnđ';
   }
 
   @override
@@ -88,7 +88,7 @@ class SalaryText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CurrencyText(
-      amountInVnd: amountInThousands * 1000,
+      amountInVnd: amountInThousands,
       style: style,
       textAlign: textAlign,
     );
