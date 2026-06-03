@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/export_utils.dart';
 import '../../../models/member_model.dart';
 import '../../../models/schedule_model.dart';
 import '../../store/providers/store_provider.dart';
@@ -219,6 +220,29 @@ class _ScheduleManagerScreenState
               fontWeight: FontWeight.w600, color: Colors.white),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded, color: Colors.white),
+            tooltip: 'Xuất Excel tuần',
+            onPressed: () async {
+              try {
+                final schedule = scheduleAsync.valueOrNull;
+                await ExportUtils.exportWeeklyScheduleToExcel(
+                  weekStart: _currentWeek,
+                  members: members,
+                  schedule: schedule,
+                );
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lỗi xuất: $e'),
+                      backgroundColor: AppColors.primary,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
           TextButton.icon(
             onPressed: _saving ? null : _saveAll,
             icon: _saving

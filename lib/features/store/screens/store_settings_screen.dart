@@ -488,9 +488,63 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+
+                  // Shift Settings
+                  const _SectionHeader(title: 'Quản lý ca làm'),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () => context.push('/shift-settings'),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.schedule_rounded,
+                                color: AppColors.primary, size: 20),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Cài đặt ca làm',
+                                    style: TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.neutral)),
+                                SizedBox(height: 2),
+                                Text('Thêm, sửa, xóa ca và giờ làm',
+                                    style: TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded,
+                              color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 32),
 
                   // Save button
+
                   SizedBox(
                     width: double.infinity,
                     height: 56,

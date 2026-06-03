@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../../models/attendance_model.dart';
 import '../../models/member_model.dart';
+import '../../models/schedule_model.dart';
 import '../../features/salary/providers/salary_provider.dart';
 
 class ExportUtils {
@@ -49,7 +50,6 @@ class ExportUtils {
 
         for (int day = 1; day <= daysInMonth; day++) {
           final dayStr = '$monthStr-${day.toString().padLeft(2, '0')}';
-          // Calculate total hours for this day
           final dayAttendances = attendances.where((a) => a.date == dayStr);
           final dayHours = dayAttendances.fold(0.0, (sum, a) => sum + a.totalHours);
           
@@ -73,12 +73,66 @@ class ExportUtils {
         final file = File('${dir.path}/BangCong_Thang_$monthStr.xlsx');
         
         await file.writeAsBytes(fileBytes);
-        
-        // Share file
         await Share.shareXFiles([XFile(file.path)], text: 'Bảng công tháng $monthStr');
       }
     } catch (e) {
       throw Exception('Lỗi xuất file: $e');
+    }
+  }
+
+  static Future<void> exportWeeklyScheduleToExcel({
+    required String weekStart,
+    required List<MemberModel> members,
+    required ScheduleModel? schedule,
+  }) async {
+    try {
+      final monday = DateTime.parse(weekStart);
+      final days = List.generate(7, (i) => monday.add(Duration(days: i)));
+      final dayLabels = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+
+      final excel = Excel.createExcel();
+      final sheetName = 'LichLam';
+      excel.rename('Sheet1', sheetName);
+      final sheet = excel[sheetName];
+
+      // Header row: week label
+      final sundayDate = days.last;
+      final weekLabel =
+          'Tuần: ${DateFormat('dd/MM').format(monday)} - ${DateFormat('dd/MM/yyyy').format(sundayDate)}';
+      sheet.appendRow([TextCellValue(weekLabel)]);
+
+      // Column headers: Nhân viên + 7 days
+      final headers = <CellValue>[TextCellValue('Nhân viên')];
+      for (int i = 0; i < 7; i++) {
+        headers.add(TextCellValue('${dayLabels[i]}\n${DateFormat('dd/MM').format(days[i])}'));
+      }
+      sheet.appendRow(headers);
+
+      // Data rows
+      for (final member in members) {
+        final daySchedule = schedule?.getScheduleForUser(member.userId);
+        final row = <CellValue>[TextCellValue(member.name)];
+        for (int i = 0; i < 7; i++) {
+          final shift = daySchedule?.shiftForDay(i + 1) ?? ShiftType.off;
+          final cellText = shift == ShiftType.off ? 'Nghỉ' : '${shift.label}\n${shift.timeRange}';
+          row.add(TextCellValue(cellText));
+        }
+        sheet.appendRow(row);
+      }
+
+      // Save and share
+      final fileBytes = excel.save();
+      if (fileBytes != null) {
+        final dir = await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/LichLam_Tuan_$weekStart.xlsx');
+        await file.writeAsBytes(fileBytes);
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Lịch làm tuần $weekLabel',
+        );
+      }
+    } catch (e) {
+      throw Exception('Lỗi xuất lịch: $e');
     }
   }
 }

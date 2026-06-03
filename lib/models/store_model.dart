@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
+import '../../features/store/screens/shift_settings_screen.dart';
 
 class StoreModel extends Equatable {
   final String id;
@@ -12,6 +13,7 @@ class StoreModel extends Equatable {
   final double? longitude;
   final int radiusMeters; // default 100
   final DateTime createdAt;
+  final List<ShiftDefinition> customShifts;
 
   const StoreModel({
     required this.id,
@@ -24,6 +26,7 @@ class StoreModel extends Equatable {
     this.longitude,
     this.radiusMeters = 100,
     required this.createdAt,
+    this.customShifts = const [],
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
@@ -41,6 +44,10 @@ class StoreModel extends Equatable {
           ? (json['createdAt'] as Timestamp).toDate().toUtc()
           : DateTime.tryParse(json['createdAt'] as String? ?? '') ??
               DateTime.now().toUtc(),
+      customShifts: (json['customShifts'] as List<dynamic>?)
+              ?.map((e) => ShiftDefinition.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -60,6 +67,7 @@ class StoreModel extends Equatable {
       'longitude': longitude,
       'radiusMeters': radiusMeters,
       'createdAt': Timestamp.fromDate(createdAt),
+      'customShifts': customShifts.map((s) => s.toJson()).toList(),
     };
   }
 
@@ -74,6 +82,7 @@ class StoreModel extends Equatable {
     double? longitude,
     int? radiusMeters,
     DateTime? createdAt,
+    List<ShiftDefinition>? customShifts,
     bool clearAddress = false,
     bool clearNetworkIP = false,
     bool clearLocation = false,
@@ -89,6 +98,7 @@ class StoreModel extends Equatable {
       longitude: clearLocation ? null : (longitude ?? this.longitude),
       radiusMeters: radiusMeters ?? this.radiusMeters,
       createdAt: createdAt ?? this.createdAt,
+      customShifts: customShifts ?? this.customShifts,
     );
   }
 

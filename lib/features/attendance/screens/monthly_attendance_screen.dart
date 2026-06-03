@@ -835,11 +835,9 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
                           child: ElevatedButton.icon(
                             onPressed: () => setState(() => _editing = true),
                             icon: const Icon(Icons.edit_rounded, size: 18),
-                            label: const Text(
-                              hasCheckIn
-                                  ? 'Sửa giờ vào/ra'
-                                  : 'Thêm chấm công',
-                              style: TextStyle(
+                            label: Text(
+                              hasCheckIn ? 'Sửa giờ vào/ra' : 'Thêm chấm công',
+                              style: const TextStyle(
                                   fontFamily: 'BeVietnamPro',
                                   fontWeight: FontWeight.bold),
                             ),
