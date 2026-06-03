@@ -49,28 +49,28 @@ jobs:
           echo "EXPANDED_CODE_SIGN_IDENTITY=" >> ios/Flutter/Release.xcconfig
 
       - name: Build iOS App (Unsigned)
-        # We add "|| true" so that if Xcode fails at the very last signing step
-        # (which often happens in Xcode 14+ without a team), the workflow continues.
-        # As long as Runner.app is successfully compiled, we can pack it into an IPA.
-        run: flutter build ios --release --no-codesign || true
-
+        run: |
+          flutter build ios --config-only --release || echo "config-only not supported"
+          cd ios
+          xcodebuild build -workspace Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" -derivedDataPath ../build/ios_build
+          
       - name: Verify Runner.app exists
         run: |
-          if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+          if [ ! -d "build/ios_build/Build/Products/Release-iphoneos/Runner.app" ]; then
             echo "Error: Runner.app was not generated. The build actually failed."
             exit 1
           fi
 
       - name: Package IPA
         run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
+          mkdir -p build/ios_build/Build/Products/Release-iphoneos/Payload
+          cp -r build/ios_build/Build/Products/Release-iphoneos/Runner.app build/ios_build/Build/Products/Release-iphoneos/Payload/
+          cd build/ios_build/Build/Products/Release-iphoneos
           zip -r appchamcong_ios.ipa Payload
           
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: appchamcong-ios-ipa
-          path: build/ios/iphoneos/appchamcong_ios.ipa
+          path: build/ios_build/Build/Products/Release-iphoneos/appchamcong_ios.ipa
           retention-days: 7
