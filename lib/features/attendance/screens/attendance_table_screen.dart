@@ -184,7 +184,7 @@ class _MemberCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: Colors.black.withOpacity(0.04),
                 blurRadius: 10,
                 offset: const Offset(0, 3))
           ],
@@ -194,7 +194,7 @@ class _MemberCard extends StatelessWidget {
             // Avatar
             CircleAvatar(
               radius: 24,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+              backgroundColor: AppColors.primary.withOpacity(0.12),
               backgroundImage: member.hasAvatar
                   ? NetworkImage(member.avatarUrl!)
                   : null,
@@ -227,7 +227,7 @@ class _MemberCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: roleColor.withValues(alpha: 0.1),
+                          color: roleColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(member.role.label,

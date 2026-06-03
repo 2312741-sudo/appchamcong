@@ -451,7 +451,7 @@ class _ShiftCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withOpacity(0.04),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
@@ -462,7 +462,7 @@ class _ShiftCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: _color.withValues(alpha: 0.12),
+              color: _color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(Icons.schedule_rounded, color: _color, size: 22),
@@ -540,9 +540,9 @@ class _TimePickerTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+          color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+          border: Border.all(color: color.withOpacity(0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
