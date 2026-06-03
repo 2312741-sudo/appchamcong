@@ -2,6 +2,8 @@ name: Build iOS IPA
 
 on:
   workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+  push:
+    branches: [ main ]
 
 jobs:
   build-ios:
