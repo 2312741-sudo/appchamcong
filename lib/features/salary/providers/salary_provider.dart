@@ -64,21 +64,71 @@ class SalaryRepository {
     return snap.docs.map(MemberModel.fromFirestore).toList();
   }
 
+  /// Calculates number of delivery shifts for a user in a specific month
+  Future<int> getMonthlyDeliveryCount(String storeId, String userId, String month) async {
+    // Fetch all schedules for this store
+    final snap = await _firestore.collection('stores').doc(storeId).collection('schedules').get();
+    int count = 0;
+    
+    for (final doc in snap.docs) {
+      final data = doc.data();
+      final shifts = data['shifts'] as Map<String, dynamic>? ?? {};
+      final userShifts = shifts[userId] as Map<String, dynamic>?;
+      
+      if (userShifts != null) {
+        // userShifts is DaySchedule json
+        final weekStartStr = data['weekStart'] as String? ?? doc.id;
+        final weekStartDate = DateTime.tryParse(weekStartStr);
+        if (weekStartDate == null) continue;
+
+        // Check all 7 days
+        final daysMap = {
+          0: userShifts['monday'],
+          1: userShifts['tuesday'],
+          2: userShifts['wednesday'],
+          3: userShifts['thursday'],
+          4: userShifts['friday'],
+          5: userShifts['saturday'],
+          6: userShifts['sunday'],
+        };
+
+        for (int i = 0; i < 7; i++) {
+          final dayDate = weekStartDate.add(Duration(days: i));
+          final y = dayDate.year.toString().padLeft(4, '0');
+          final m = dayDate.month.toString().padLeft(2, '0');
+          final dateStr = '$y-$m'; // e.g., '2026-06'
+          
+          if (dateStr == month) {
+            final shiftsForDay = daysMap[i];
+            if (shiftsForDay is List) {
+              if (shiftsForDay.contains('delivery')) {
+                count++;
+              }
+            }
+          }
+        }
+      }
+    }
+    return count;
+  }
+
   /// Calculates total worked hours for [attendances].
   double calculateTotalHours(List<AttendanceModel> attendances) {
     return attendances.fold(0.0, (sum, a) => sum + a.totalHours);
   }
 
   /// Calculates salary for given hours + member config.
-  double calculateSalary(MemberModel member, double totalHours) {
+  double calculateSalary(MemberModel member, double totalHours, {int deliveryCount = 0, double deliveryAllowance = 0}) {
+    double base = 0.0;
     if (member.isFulltime) {
       final ratio = member.standardHoursPerMonth > 0
           ? (totalHours / member.standardHoursPerMonth).clamp(0.0, 1.5)
           : 0.0;
-      return member.baseMonthlySalary * ratio;
+      base = member.baseMonthlySalary * ratio;
     } else {
-      return totalHours * member.baseHourlyRate;
+      base = totalHours * member.baseHourlyRate;
     }
+    return base + (deliveryCount * deliveryAllowance);
   }
 }
 
@@ -104,7 +154,12 @@ final myMonthlySalaryProvider =
   if (member == null) return 0.0;
   final attendances = await repo.getMonthAttendances(storeId, uid, month);
   final totalHours = repo.calculateTotalHours(attendances);
-  return repo.calculateSalary(member, totalHours);
+  final deliveryCount = await repo.getMonthlyDeliveryCount(storeId, uid, month);
+  
+  final storeSnap = await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
+  final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
+
+  return repo.calculateSalary(member, totalHours, deliveryCount: deliveryCount, deliveryAllowance: deliveryAllowance);
 });
 
 // All salaries for owner view
@@ -115,11 +170,16 @@ final allSalariesProvider =
   final repo = ref.read(salaryRepositoryProvider);
   final members = await repo.getActiveMembers(storeId);
   final allAttendances = await repo.getAllMonthAttendances(storeId, month);
+  
+  final storeSnap = await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
+  final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
+
   final result = <String, double>{};
   for (final member in members) {
     final attendances = allAttendances[member.userId] ?? [];
     final totalHours = repo.calculateTotalHours(attendances);
-    result[member.userId] = repo.calculateSalary(member, totalHours);
+    final deliveryCount = await repo.getMonthlyDeliveryCount(storeId, member.userId, month);
+    result[member.userId] = repo.calculateSalary(member, totalHours, deliveryCount: deliveryCount, deliveryAllowance: deliveryAllowance);
   }
   return result;
 });
@@ -172,4 +232,27 @@ final allActiveMembersProvider =
 final selectedSalaryMonthProvider = StateProvider<String>((ref) {
   final now = DateTime.now();
   return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+});
+
+// ---------- Delivery Count Providers ----------
+
+final myMonthlyDeliveryCountProvider = FutureProvider.family<int, String>((ref, month) async {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return 0;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return 0;
+  final repo = ref.read(salaryRepositoryProvider);
+  return repo.getMonthlyDeliveryCount(storeId, uid, month);
+});
+
+final allMonthlyDeliveryCountsProvider = FutureProvider.family<Map<String, int>, String>((ref, month) async {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return {};
+  final repo = ref.read(salaryRepositoryProvider);
+  final members = await repo.getActiveMembers(storeId);
+  final result = <String, int>{};
+  for (final member in members) {
+    result[member.userId] = await repo.getMonthlyDeliveryCount(storeId, member.userId, month);
+  }
+  return result;
 });
