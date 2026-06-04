@@ -68,10 +68,13 @@ class AppRoutes {
   static const String profileSettings = '/profile-settings';
 }
 
+final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
 
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     redirect: (BuildContext context, GoRouterState state) {
