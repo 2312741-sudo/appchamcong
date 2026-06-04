@@ -115,7 +115,7 @@ class _ScheduleManagerScreenState
     }
   }
 
-  void _showShiftPicker(String userId, int dayIndex, StoreModel store) {
+  void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner) {
     var selectedShifts = List<String>.from(_draft[userId]?.shiftForDay(dayIndex + 1) ?? []);
     
     showModalBottomSheet(
@@ -156,7 +156,7 @@ class _ScheduleManagerScreenState
                             });
                           },
                         ),
-                        if (isSelected && store.departments.isNotEmpty && store.departmentSelectionEnabled)
+                        if (isSelected && store.departments.isNotEmpty && (isOwner || store.departmentSelectionEnabled))
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: DropdownButtonFormField<String>(
@@ -232,6 +232,8 @@ class _ScheduleManagerScreenState
     final storeAsync = ref.watch(currentStoreProvider);
     final scheduleAsync = ref.watch(weekScheduleProvider(_currentWeek));
     final members = ref.watch(activeMembersProvider);
+    final currentMember = ref.watch(currentMemberProvider);
+    final isOwner = currentMember?.role == UserRole.owner;
     final store = storeAsync.valueOrNull;
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
@@ -295,8 +297,8 @@ class _ScheduleManagerScreenState
           Expanded(
             child: scheduleAsync.when(
               data: (_) => _viewMode == _ViewMode.byDay
-                  ? _buildByDayView(members, store!)
-                  : _buildByEmployeeView(members, store!),
+                  ? _buildByDayView(members, store!, isOwner)
+                  : _buildByEmployeeView(members, store!, isOwner),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -386,7 +388,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByDayView(List<MemberModel> members, StoreModel store) {
+  Widget _buildByDayView(List<MemberModel> members, StoreModel store, bool isOwner) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -434,7 +436,7 @@ class _ScheduleManagerScreenState
                       style: GoogleFonts.beVietnamPro(
                           fontWeight: FontWeight.w500, fontSize: 13)),
                   trailing: GestureDetector(
-                    onTap: () => _showShiftPicker(m.userId, dayIndex, store),
+                    onTap: () => _showShiftPicker(m.userId, dayIndex, store, isOwner),
                     child: _ShiftChip(shifts: shift, store: store),
                   ),
                 );
@@ -446,7 +448,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store) {
+  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store, bool isOwner) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -485,7 +487,7 @@ class _ScheduleManagerScreenState
                     return Expanded(
                       child: GestureDetector(
                         onTap: () =>
-                            _showShiftPicker(m.userId, dayIndex, store),
+                            _showShiftPicker(m.userId, dayIndex, store, isOwner),
                         child: Column(
                           children: [
                             Text(

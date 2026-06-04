@@ -123,7 +123,7 @@ class _ScheduleRegisterScreenState
     }
   }
 
-  void _showShiftPicker(int dayIndex, StoreModel store) {
+  void _showShiftPicker(int dayIndex, StoreModel store, bool isOwner) {
     var selectedShifts = List<String>.from(_draft[dayIndex] ?? []);
     
     showModalBottomSheet(
@@ -163,7 +163,7 @@ class _ScheduleRegisterScreenState
                             });
                           },
                         ),
-                        if (isSelected && store.departments.isNotEmpty && store.departmentSelectionEnabled)
+                        if (isSelected && store.departments.isNotEmpty && (isOwner || store.departmentSelectionEnabled))
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: DropdownButtonFormField<String>(
@@ -221,6 +221,8 @@ class _ScheduleRegisterScreenState
     final scheduleAsync = ref.watch(weekScheduleProvider(_currentWeek));
     final storeAsync = ref.watch(currentStoreProvider);
     final store = storeAsync.valueOrNull;
+    final currentMember = ref.watch(currentMemberProvider);
+    final isOwner = currentMember?.role == UserRole.owner;
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -252,7 +254,7 @@ class _ScheduleRegisterScreenState
           if (pastDeadline) _buildDeadlineWarning(),
           Expanded(
             child: scheduleAsync.when(
-              data: (_) => _buildScheduleList(store, pastDeadline),
+              data: (_) => _buildScheduleList(store, pastDeadline, isOwner),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -340,7 +342,7 @@ class _ScheduleRegisterScreenState
     );
   }
 
-  Widget _buildScheduleList(StoreModel store, bool pastDeadline) {
+  Widget _buildScheduleList(StoreModel store, bool pastDeadline, bool isOwner) {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: 7,
@@ -354,7 +356,7 @@ class _ScheduleRegisterScreenState
           selectedShifts: _draft[dayIndex] ?? [],
           store: store,
           onTap: () {
-            if (!pastDeadline) _showShiftPicker(dayIndex, store);
+            if (!pastDeadline) _showShiftPicker(dayIndex, store, isOwner);
           }
         );
       },
