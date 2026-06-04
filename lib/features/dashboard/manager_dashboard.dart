@@ -19,7 +19,9 @@ class ManagerDashboard extends ConsumerWidget {
         final uid = FirebaseAuth.instance.currentUser?.uid;
         final member = members.where((m) => m.userId == uid).firstOrNull;
         if (member == null) {
-          context.go(AppRoutes.welcome);
+          ref.invalidate(userStoresProvider);
+          ref.invalidate(currentUserProvider);
+          context.go(AppRoutes.splash);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Bạn đã bị xóa khỏi cửa hàng.'),

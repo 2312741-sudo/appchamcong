@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
@@ -184,10 +183,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     ),
                   ],
                 ),
-              )
-                  .animate()
-                  .fadeIn(duration: 600.ms)
-                  .scale(begin: const Offset(0.6, 0.6), duration: 600.ms),
+              ),
 
               const SizedBox(height: 32),
 
@@ -201,10 +197,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   letterSpacing: 0.5,
                 ),
                 textAlign: TextAlign.center,
-              )
-                  .animate()
-                  .fadeIn(delay: 300.ms, duration: 600.ms)
-                  .slideY(begin: 0.3, delay: 300.ms, duration: 600.ms),
+              ),
 
               const SizedBox(height: 12),
 
@@ -218,10 +211,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   letterSpacing: 0.3,
                 ),
                 textAlign: TextAlign.center,
-              )
-                  .animate()
-                  .fadeIn(delay: 500.ms, duration: 600.ms)
-                  .slideY(begin: 0.3, delay: 500.ms, duration: 600.ms),
+              ),
 
               const SizedBox(height: 64),
 

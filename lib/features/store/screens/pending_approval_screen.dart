@@ -29,7 +29,9 @@ class _PendingApprovalScreenState
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (member == null) {
-          context.go(AppRoutes.welcome);
+          ref.invalidate(userStoresProvider);
+          ref.invalidate(currentUserProvider);
+          context.go(AppRoutes.splash);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Yêu cầu tham gia đã bị từ chối hoặc bạn đã bị xóa.'),

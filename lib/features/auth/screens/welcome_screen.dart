@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/auth_notifier.dart';
 
@@ -128,9 +129,8 @@ class WelcomeScreen extends ConsumerWidget {
                             // Create Store Button
                             ElevatedButton.icon(
                               onPressed: () {
-                                final authState =
-                                    ref.read(authStateChangesProvider).value;
-                                if (authState != null) {
+                                final user = FirebaseAuth.instance.currentUser;
+                                if (user != null) {
                                   context.push(AppRoutes.createStore);
                                 } else {
                                   context.push(AppRoutes.login,
@@ -174,9 +174,8 @@ class WelcomeScreen extends ConsumerWidget {
                             // Join Store Button
                             OutlinedButton.icon(
                               onPressed: () {
-                                final authState =
-                                    ref.read(authStateChangesProvider).value;
-                                if (authState != null) {
+                                final user = FirebaseAuth.instance.currentUser;
+                                if (user != null) {
                                   context.push(AppRoutes.joinStore);
                                 } else {
                                   context.push(AppRoutes.login,
