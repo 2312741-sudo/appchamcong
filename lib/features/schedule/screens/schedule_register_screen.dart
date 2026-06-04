@@ -163,7 +163,7 @@ class _ScheduleRegisterScreenState
                             });
                           },
                         ),
-                        if (isSelected && store.departments.isNotEmpty)
+                        if (isSelected && store.departments.isNotEmpty && store.departmentSelectionEnabled)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: DropdownButtonFormField<String>(

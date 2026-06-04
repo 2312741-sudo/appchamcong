@@ -44,6 +44,7 @@ class StoreModel extends Equatable {
   final List<DepartmentDefinition> departments;
   final num? deliveryAllowance;
   final String? themeColor;
+  final bool departmentSelectionEnabled; // cho phép NV/QL chọn bộ phận khi đăng ký ca
 
   const StoreModel({
     required this.id,
@@ -60,6 +61,7 @@ class StoreModel extends Equatable {
     this.departments = const [],
     this.deliveryAllowance,
     this.themeColor,
+    this.departmentSelectionEnabled = true,
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
@@ -87,6 +89,7 @@ class StoreModel extends Equatable {
           [],
       deliveryAllowance: json['deliveryAllowance'] as num?,
       themeColor: json['themeColor'] as String?,
+      departmentSelectionEnabled: json['departmentSelectionEnabled'] as bool? ?? true,
     );
   }
 
@@ -110,6 +113,7 @@ class StoreModel extends Equatable {
       'departments': departments.map((d) => d.toJson()).toList(),
       'deliveryAllowance': deliveryAllowance,
       'themeColor': themeColor,
+      'departmentSelectionEnabled': departmentSelectionEnabled,
     };
   }
 
@@ -128,6 +132,7 @@ class StoreModel extends Equatable {
     List<DepartmentDefinition>? departments,
     num? deliveryAllowance,
     String? themeColor,
+    bool? departmentSelectionEnabled,
     bool clearAddress = false,
     bool clearNetworkIP = false,
     bool clearLocation = false,
@@ -147,6 +152,7 @@ class StoreModel extends Equatable {
       departments: departments ?? this.departments,
       deliveryAllowance: deliveryAllowance ?? this.deliveryAllowance,
       themeColor: themeColor ?? this.themeColor,
+      departmentSelectionEnabled: departmentSelectionEnabled ?? this.departmentSelectionEnabled,
     );
   }
 
@@ -169,6 +175,7 @@ class StoreModel extends Equatable {
         departments,
         deliveryAllowance,
         themeColor,
+        departmentSelectionEnabled,
       ];
 
   @override

@@ -36,6 +36,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   bool _isRegeneratingCode = false;
   bool _initialized = false;
   List<DepartmentDefinition> _departments = [];
+  bool _deptSelectionEnabled = true;
 
   @override
   void dispose() {
@@ -56,6 +57,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _lat = storeModel.latitude;
     _lng = storeModel.longitude;
     _departments = List.from(storeModel.departments);
+    _deptSelectionEnabled = storeModel.departmentSelectionEnabled;
   }
 
   Future<void> _fetchNetworkIP() async {
@@ -129,6 +131,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         'longitude': _lng,
         'radiusMeters': _radius.round(),
         'departments': _departments.map((d) => d.toJson()).toList(),
+        'departmentSelectionEnabled': _deptSelectionEnabled,
       });
       _showSuccess('Đã lưu thay đổi');
     } catch (e) {
@@ -603,6 +606,27 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   const Text(
                     'Định nghĩa các bộ phận để NV/QL chọn khi đăng ký ca làm.',
                     style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  // Toggle bật/tắt chọn bộ phận
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Cho phép NV/QL chọn bộ phận', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: Text(
+                        _deptSelectionEnabled ? 'Đang bật – NV/QL thấy danh sách bộ phận khi đăng ký ca' : 'Đang tắt – NV/QL không thấy tùy chọn bộ phận',
+                        style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12),
+                      ),
+                      value: _deptSelectionEnabled,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) => setState(() => _deptSelectionEnabled = val),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (_departments.isEmpty)
