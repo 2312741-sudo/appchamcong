@@ -109,10 +109,7 @@ class StoreRepository {
 
   Future<StoreModel?> findStoreByCode(String code) async {
     try {
-      final query = await _stores
-          .where('code', isEqualTo: code)
-          .limit(1)
-          .get();
+      final query = await _stores.where('code', isEqualTo: code).limit(1).get();
       if (query.docs.isEmpty) return null;
       return StoreModel.fromFirestore(query.docs.first);
     } catch (e) {
@@ -124,23 +121,57 @@ class StoreRepository {
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
       if (!userDoc.exists) return [];
-      
+
       final storeIds = List<String>.from(userDoc.data()?['storeIds'] ?? []);
 
       if (storeIds.isEmpty) return [];
 
-      // Fetch all store models for these IDs (Firestore allows up to 10 in whereIn, 
-      // but we can just fetch them individually or chunk them if needed. 
+      // Fetch all store models for these IDs (Firestore allows up to 10 in whereIn,
+      // but we can just fetch them individually or chunk them if needed.
       // Since it's usually < 10 stores per user, whereIn is fine).
       final stores = <StoreModel>[];
       for (var i = 0; i < storeIds.length; i += 10) {
         final chunk = storeIds.sublist(
             i, i + 10 > storeIds.length ? storeIds.length : i + 10);
-        final storesQuery = await _stores.where(FieldPath.documentId, whereIn: chunk).get();
+        final storesQuery =
+            await _stores.where(FieldPath.documentId, whereIn: chunk).get();
         stores.addAll(storesQuery.docs.map((d) => StoreModel.fromFirestore(d)));
       }
 
-      return stores;
+      // Verify member status to handle legacy kicked users
+      final validStores = <StoreModel>[];
+      final invalidStoreIds = <String>[];
+
+      for (final store in stores) {
+        final memberDoc = await _members(store.id).doc(userId).get();
+        if (memberDoc.exists && memberDoc.data()?['status'] != 'kicked') {
+          validStores.add(store);
+        } else {
+          invalidStoreIds.add(store.id);
+        }
+      }
+
+      // Self-heal: remove invalid stores from user's storeIds array
+      if (invalidStoreIds.isNotEmpty) {
+        try {
+          await _firestore
+              .collection('users')
+              .doc(userId)
+              .update({'storeIds': FieldValue.arrayRemove(invalidStoreIds)});
+
+          // Also clear currentStoreId if it's one of the invalid stores
+          final currentStoreId = userDoc.data()?['currentStoreId'] as String?;
+          if (currentStoreId != null &&
+              invalidStoreIds.contains(currentStoreId)) {
+            await _firestore
+                .collection('users')
+                .doc(userId)
+                .update({'currentStoreId': null});
+          }
+        } catch (_) {}
+      }
+
+      return validStores;
     } catch (e) {
       throw Exception('Lỗi lấy danh sách cửa hàng: $e');
     }
@@ -195,7 +226,7 @@ class StoreRepository {
       String storeId, String userId, bool approve) async {
     try {
       final batch = _firestore.batch();
-      
+
       batch.update(_members(storeId).doc(userId), {
         'status': approve ? 'active' : 'kicked',
       });
@@ -215,11 +246,9 @@ class StoreRepository {
   Future<void> kickMember(String storeId, String userId) async {
     try {
       final batch = _firestore.batch();
-      
-      batch.update(_members(storeId).doc(userId), {
-        'status': 'kicked'
-      });
-      
+
+      batch.update(_members(storeId).doc(userId), {'status': 'kicked'});
+
       batch.update(_firestore.collection('users').doc(userId), {
         'storeIds': FieldValue.arrayRemove([storeId])
       });
@@ -313,8 +342,8 @@ class StoreRepository {
     }
   }
 
-  Future<void> updateMemberInfo(
-      String storeId, String userId, String? employeeCode, DateTime joinedAt) async {
+  Future<void> updateMemberInfo(String storeId, String userId,
+      String? employeeCode, DateTime joinedAt) async {
     try {
       await _members(storeId).doc(userId).update({
         'employeeCode': employeeCode,
@@ -327,19 +356,20 @@ class StoreRepository {
 
   // ---------- Advances ----------
 
-  Stream<List<AdvanceRequestModel>> watchAdvances(String storeId, String month) {
+  Stream<List<AdvanceRequestModel>> watchAdvances(
+      String storeId, String month) {
     return _stores
         .doc(storeId)
         .collection('advances')
         .where('month', isEqualTo: month)
         .snapshots()
         .map((snap) {
-          final list = snap.docs
-              .map((doc) => AdvanceRequestModel.fromFirestore(doc))
-              .toList();
-          list.sort((a, b) => b.requestDate.compareTo(a.requestDate));
-          return list;
-        });
+      final list = snap.docs
+          .map((doc) => AdvanceRequestModel.fromFirestore(doc))
+          .toList();
+      list.sort((a, b) => b.requestDate.compareTo(a.requestDate));
+      return list;
+    });
   }
 
   Future<void> createAdvanceRequest(AdvanceRequestModel request) async {
@@ -353,7 +383,9 @@ class StoreRepository {
     }
   }
 
-  Future<void> updateAdvanceRequestStatus(String storeId, String advanceId, AdvanceStatus status, [DateTime? approvedDate]) async {
+  Future<void> updateAdvanceRequestStatus(
+      String storeId, String advanceId, AdvanceStatus status,
+      [DateTime? approvedDate]) async {
     try {
       final updateData = <String, dynamic>{
         'status': status.name,
