@@ -280,4 +280,15 @@ class StoreRepository {
       throw Exception('Tạo mã mới thất bại: $e');
     }
   }
+
+  Future<void> updateMemberDepartment(
+      String storeId, String userId, String? departmentId) async {
+    try {
+      await _members(storeId).doc(userId).update({
+        'department': departmentId,
+      });
+    } catch (e) {
+      throw Exception('Cập nhật bộ phận thất bại: $e');
+    }
+  }
 }

@@ -130,6 +130,7 @@ class MemberModel extends Equatable {
   final double baseHourlyRate; // parttime: per hour in VND (thousands)
   final double standardHoursPerMonth; // default 208
   final DateTime joinedAt;
+  final String? department; // Department ID (from store.departments)
 
   const MemberModel({
     required this.userId,
@@ -143,6 +144,7 @@ class MemberModel extends Equatable {
     this.baseHourlyRate = 0,
     this.standardHoursPerMonth = 208,
     required this.joinedAt,
+    this.department,
   });
 
   // Convenience getters
@@ -182,6 +184,7 @@ class MemberModel extends Equatable {
           ? (json['joinedAt'] as Timestamp).toDate().toUtc()
           : DateTime.tryParse(json['joinedAt'] as String? ?? '') ??
               DateTime.now().toUtc(),
+      department: json['department'] as String?,
     );
   }
 
@@ -203,6 +206,7 @@ class MemberModel extends Equatable {
       'baseHourlyRate': baseHourlyRate,
       'standardHoursPerMonth': standardHoursPerMonth,
       'joinedAt': Timestamp.fromDate(joinedAt),
+      'department': department,
     };
   }
 
@@ -218,8 +222,10 @@ class MemberModel extends Equatable {
     double? baseHourlyRate,
     double? standardHoursPerMonth,
     DateTime? joinedAt,
+    String? department,
     bool clearPhone = false,
     bool clearAvatarUrl = false,
+    bool clearDepartment = false,
   }) {
     return MemberModel(
       userId: userId ?? this.userId,
@@ -234,6 +240,7 @@ class MemberModel extends Equatable {
       standardHoursPerMonth:
           standardHoursPerMonth ?? this.standardHoursPerMonth,
       joinedAt: joinedAt ?? this.joinedAt,
+      department: clearDepartment ? null : (department ?? this.department),
     );
   }
 
@@ -250,6 +257,7 @@ class MemberModel extends Equatable {
         baseHourlyRate,
         standardHoursPerMonth,
         joinedAt,
+        department,
       ];
 
   @override

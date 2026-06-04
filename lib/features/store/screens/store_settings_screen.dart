@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../models/store_model.dart';
 import '../providers/store_provider.dart';
 
 class StoreSettingsScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _deptNameCtrl = TextEditingController();
+  final _deptShortCtrl = TextEditingController();
   
   String? _networkIP;
   bool _isFetchingIP = false;
@@ -32,11 +35,14 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   bool _isFetchingLocation = false;
   bool _isRegeneratingCode = false;
   bool _initialized = false;
+  List<DepartmentDefinition> _departments = [];
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _addressCtrl.dispose();
+    _deptNameCtrl.dispose();
+    _deptShortCtrl.dispose();
     super.dispose();
   }
 
@@ -49,6 +55,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _radius = storeModel.radiusMeters.toDouble();
     _lat = storeModel.latitude;
     _lng = storeModel.longitude;
+    _departments = List.from(storeModel.departments);
   }
 
   Future<void> _fetchNetworkIP() async {
@@ -121,6 +128,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         'latitude': _lat,
         'longitude': _lng,
         'radiusMeters': _radius.round(),
+        'departments': _departments.map((d) => d.toJson()).toList(),
       });
       _showSuccess('Đã lưu thay đổi');
     } catch (e) {
@@ -128,6 +136,52 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _showAddDepartmentDialog() {
+    _deptNameCtrl.clear();
+    _deptShortCtrl.clear();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Thêm bộ phận', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _deptNameCtrl,
+              decoration: const InputDecoration(labelText: 'Tên bộ phận *', border: OutlineInputBorder()),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _deptShortCtrl,
+              decoration: const InputDecoration(labelText: 'Tên viết tắt (VD: KD, KT)', border: OutlineInputBorder()),
+              textCapitalization: TextCapitalization.characters,
+              maxLength: 5,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            onPressed: () {
+              final name = _deptNameCtrl.text.trim();
+              if (name.isEmpty) return;
+              final shortName = _deptShortCtrl.text.trim().toUpperCase();
+              final id = name.toLowerCase().replaceAll(' ', '_') + '_' + DateTime.now().millisecondsSinceEpoch.toString();
+              setState(() {
+                _departments.add(DepartmentDefinition(id: id, name: name, shortName: shortName.isEmpty ? name.substring(0, name.length > 3 ? 3 : name.length).toUpperCase() : shortName));
+              });
+              Navigator.pop(ctx);
+            },
+            child: const Text('Thêm'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _regenerateCode(String storeId) async {
@@ -539,6 +593,72 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                               color: AppColors.textSecondary),
                         ],
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Department Management
+                  const _SectionHeader(title: 'Quản lý bộ phận'),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Định nghĩa các bộ phận để NV/QL chọn khi đăng ký ca làm.',
+                    style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_departments.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Center(
+                        child: Text('Chưa có bộ phận nào. Bấm + để thêm.', style: TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary)),
+                      ),
+                    )
+                  else
+                    ...List.generate(_departments.length, (i) {
+                      final dept = _departments[i];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(dept.shortName, style: const TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.primary)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(dept.name, style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 14, fontWeight: FontWeight.w600))),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                              onPressed: () => setState(() => _departments.removeAt(i)),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _showAddDepartmentDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Thêm bộ phận', style: TextStyle(fontFamily: 'BeVietnamPro')),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 32),

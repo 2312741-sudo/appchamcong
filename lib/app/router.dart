@@ -24,6 +24,7 @@ import '../features/salary/screens/salary_overview_screen.dart';
 import '../features/members/screens/members_list_screen.dart';
 import '../features/members/screens/member_detail_screen.dart';
 import '../features/members/screens/pending_members_screen.dart';
+import '../features/auth/screens/profile_settings_screen.dart';
 import '../features/dashboard/owner_dashboard.dart';
 import '../features/dashboard/manager_dashboard.dart';
 import '../features/dashboard/employee_dashboard.dart';
@@ -62,6 +63,7 @@ class AppRoutes {
   static const String pendingMembers = '/pending-members';
   static const String storeSettings = '/store-settings';
   static const String shiftSettings = '/shift-settings';
+  static const String profileSettings = '/profile-settings';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -254,6 +256,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.shiftSettings,
         name: 'shift-settings',
         builder: (context, state) => const ShiftSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profileSettings,
+        name: 'profile-settings',
+        builder: (context, state) => const ProfileSettingsScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
