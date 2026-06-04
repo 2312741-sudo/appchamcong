@@ -110,7 +110,7 @@ class StoreRepository {
   Future<StoreModel?> findStoreByCode(String code) async {
     try {
       final query = await _stores
-          .where('code', isEqualTo: code.trim().toUpperCase())
+          .where('code', isEqualTo: code)
           .limit(1)
           .get();
       if (query.docs.isEmpty) return null;
@@ -194,9 +194,19 @@ class StoreRepository {
   Future<void> approveOrRejectMember(
       String storeId, String userId, bool approve) async {
     try {
-      await _members(storeId).doc(userId).update({
+      final batch = _firestore.batch();
+      
+      batch.update(_members(storeId).doc(userId), {
         'status': approve ? 'active' : 'kicked',
       });
+
+      if (!approve) {
+        batch.update(_firestore.collection('users').doc(userId), {
+          'storeIds': FieldValue.arrayRemove([storeId])
+        });
+      }
+
+      await batch.commit();
     } catch (e) {
       throw Exception('Cập nhật trạng thái thành viên thất bại: $e');
     }
@@ -204,7 +214,17 @@ class StoreRepository {
 
   Future<void> kickMember(String storeId, String userId) async {
     try {
-      await _members(storeId).doc(userId).update({'status': 'kicked'});
+      final batch = _firestore.batch();
+      
+      batch.update(_members(storeId).doc(userId), {
+        'status': 'kicked'
+      });
+      
+      batch.update(_firestore.collection('users').doc(userId), {
+        'storeIds': FieldValue.arrayRemove([storeId])
+      });
+
+      await batch.commit();
     } catch (e) {
       throw Exception('Xóa thành viên thất bại: $e');
     }

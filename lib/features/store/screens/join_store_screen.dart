@@ -29,7 +29,11 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final code = _codeCtrl.text.trim().toUpperCase();
+      final code = _codeCtrl.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      if (code.isEmpty) {
+        _showError('Vui lòng nhập mã hợp lệ');
+        return;
+      }
       final repo = ref.read(storeRepositoryProvider);
       final userRepo = ref.read(userRepositoryProvider);
       final user = ref.read(userProvider).value;

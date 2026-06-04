@@ -27,7 +27,7 @@ class _PendingApprovalScreenState
     // Auto-navigate when approved
     if (member != null && member.status == MemberStatus.active) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/dashboard');
+        if (mounted) context.go(AppRoutes.splash);
       });
     }
 
@@ -238,7 +238,7 @@ class _PendingApprovalScreenState
         await repo.kickMember(storeId, user.id);
         await userRepo.updateCurrentStoreId(user.id, null);
       }
-      if (mounted) context.go('/choose-store');
+      if (mounted) context.go(AppRoutes.welcome);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
