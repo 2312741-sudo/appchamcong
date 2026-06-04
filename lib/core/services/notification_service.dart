@@ -71,6 +71,15 @@ class NotificationService {
     }
   }
 
+  Future<void> updateToken() async {
+    try {
+      final token = await _fcm.getToken();
+      _saveTokenToFirestore(token);
+    } catch (e) {
+      debugPrint('Failed to fetch/save FCM token on login: $e');
+    }
+  }
+
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;

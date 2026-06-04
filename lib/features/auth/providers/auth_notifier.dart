@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/auth_repository.dart';
 import '../../../models/user_model.dart';
+import '../../../core/services/notification_service.dart';
 import 'auth_provider.dart';
 
 // ── Auth Action State ─────────────────────────────────────────────────────────
@@ -55,6 +56,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email,
         password: password,
       );
+      
+      // Update FCM token after successful login
+      await NotificationService().updateToken();
+
       state = state.copyWith(
         isLoading: false,
         successMessage: 'Đăng nhập thành công',
@@ -108,6 +113,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         createdAt: DateTime.now().toUtc(),
       );
       await _repository.createUserDocument(userModel);
+
+      // Update FCM token after successful register
+      await NotificationService().updateToken();
 
       state = state.copyWith(
         isLoading: false,

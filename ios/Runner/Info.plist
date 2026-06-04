@@ -51,5 +51,10 @@
 	<string>Ứng dụng cần quyền truy cập vị trí của bạn để xác thực việc chấm công.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập camera để quét mã QR tham gia cửa hàng.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
