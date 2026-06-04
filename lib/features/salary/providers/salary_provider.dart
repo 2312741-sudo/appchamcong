@@ -64,11 +64,12 @@ class SalaryRepository {
     return snap.docs.map(MemberModel.fromFirestore).toList();
   }
 
-  /// Calculates number of delivery shifts for a user in a specific month
-  Future<int> getMonthlyDeliveryCount(String storeId, String userId, String month) async {
+  /// Calculates number of delivery and giaoHang shifts for a user in a specific month
+  Future<({int delivery, int giaoHang})> getMonthlySpecialCounts(String storeId, String userId, String month) async {
     // Fetch all schedules for this store
     final snap = await _firestore.collection('stores').doc(storeId).collection('schedules').get();
-    int count = 0;
+    int deliveryCount = 0;
+    int giaoHangCount = 0;
     
     for (final doc in snap.docs) {
       final data = doc.data();
@@ -102,14 +103,17 @@ class SalaryRepository {
             final shiftsForDay = daysMap[i];
             if (shiftsForDay is List) {
               if (shiftsForDay.contains('delivery')) {
-                count++;
+                deliveryCount++;
+              }
+              if (shiftsForDay.contains('giaohang')) {
+                giaoHangCount++;
               }
             }
           }
         }
       }
     }
-    return count;
+    return (delivery: deliveryCount, giaoHang: giaoHangCount);
   }
 
   /// Calculates total worked hours for [attendances].
@@ -118,7 +122,7 @@ class SalaryRepository {
   }
 
   /// Calculates salary for given hours + member config.
-  double calculateSalary(MemberModel member, double totalHours, {int deliveryCount = 0, double deliveryAllowance = 0}) {
+  double calculateSalary(MemberModel member, double totalHours, {int deliveryCount = 0, double deliveryAllowance = 0, int giaoHangCount = 0, double giaoHangAllowance = 0}) {
     double base = 0.0;
     if (member.isFulltime) {
       final ratio = member.standardHoursPerMonth > 0
@@ -128,7 +132,7 @@ class SalaryRepository {
     } else {
       base = totalHours * member.baseHourlyRate;
     }
-    return base + (deliveryCount * deliveryAllowance);
+    return base + (deliveryCount * deliveryAllowance) + (giaoHangCount * giaoHangAllowance);
   }
 }
 
@@ -154,12 +158,13 @@ final myMonthlySalaryProvider =
   if (member == null) return 0.0;
   final attendances = await repo.getMonthAttendances(storeId, uid, month);
   final totalHours = repo.calculateTotalHours(attendances);
-  final deliveryCount = await repo.getMonthlyDeliveryCount(storeId, uid, month);
+  final specialCounts = await repo.getMonthlySpecialCounts(storeId, uid, month);
   
   final storeSnap = await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
   final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
+  final giaoHangAllowance = (storeSnap.data()?['giaoHangAllowance'] as num?)?.toDouble() ?? 0.0;
 
-  return repo.calculateSalary(member, totalHours, deliveryCount: deliveryCount, deliveryAllowance: deliveryAllowance);
+  return repo.calculateSalary(member, totalHours, deliveryCount: specialCounts.delivery, deliveryAllowance: deliveryAllowance, giaoHangCount: specialCounts.giaoHang, giaoHangAllowance: giaoHangAllowance);
 });
 
 // All salaries for owner view
@@ -170,17 +175,17 @@ final allSalariesProvider =
   final repo = ref.read(salaryRepositoryProvider);
   final members = await repo.getActiveMembers(storeId);
   final allAttendances = await repo.getAllMonthAttendances(storeId, month);
+    final storeSnap = await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
+    final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
+    final giaoHangAllowance = (storeSnap.data()?['giaoHangAllowance'] as num?)?.toDouble() ?? 0.0;
   
-  final storeSnap = await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
-  final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
-
-  final result = <String, double>{};
-  for (final member in members) {
-    final attendances = allAttendances[member.userId] ?? [];
-    final totalHours = repo.calculateTotalHours(attendances);
-    final deliveryCount = await repo.getMonthlyDeliveryCount(storeId, member.userId, month);
-    result[member.userId] = repo.calculateSalary(member, totalHours, deliveryCount: deliveryCount, deliveryAllowance: deliveryAllowance);
-  }
+    final result = <String, double>{};
+    for (final member in members) {
+      final attendances = allAttendances[member.userId] ?? [];
+      final totalHours = repo.calculateTotalHours(attendances);
+      final specialCounts = await repo.getMonthlySpecialCounts(storeId, member.userId, month);
+      result[member.userId] = repo.calculateSalary(member, totalHours, deliveryCount: specialCounts.delivery, deliveryAllowance: deliveryAllowance, giaoHangCount: specialCounts.giaoHang, giaoHangAllowance: giaoHangAllowance);
+    }
   return result;
 });
 
@@ -234,25 +239,24 @@ final selectedSalaryMonthProvider = StateProvider<String>((ref) {
   return '${now.year}-${now.month.toString().padLeft(2, '0')}';
 });
 
-// ---------- Delivery Count Providers ----------
-
-final myMonthlyDeliveryCountProvider = FutureProvider.family<int, String>((ref, month) async {
+// ----------// Total special counts for current user in a month
+final myMonthSpecialCountsProvider = FutureProvider.family<({int delivery, int giaoHang}), String>((ref, month) async {
   final storeId = ref.watch(currentStoreIdProvider);
-  if (storeId == null || storeId.isEmpty) return 0;
+  if (storeId == null || storeId.isEmpty) return (delivery: 0, giaoHang: 0);
   final uid = FirebaseAuth.instance.currentUser?.uid;
-  if (uid == null) return 0;
+  if (uid == null) return (delivery: 0, giaoHang: 0);
   final repo = ref.read(salaryRepositoryProvider);
-  return repo.getMonthlyDeliveryCount(storeId, uid, month);
+  return repo.getMonthlySpecialCounts(storeId, uid, month);
 });
 
-final allMonthlyDeliveryCountsProvider = FutureProvider.family<Map<String, int>, String>((ref, month) async {
+final allMonthlySpecialCountsProvider = FutureProvider.family<Map<String, ({int delivery, int giaoHang})>, String>((ref, month) async {
   final storeId = ref.watch(currentStoreIdProvider);
   if (storeId == null || storeId.isEmpty) return {};
   final repo = ref.read(salaryRepositoryProvider);
   final members = await repo.getActiveMembers(storeId);
-  final result = <String, int>{};
+  final result = <String, ({int delivery, int giaoHang})>{};
   for (final member in members) {
-    result[member.userId] = await repo.getMonthlyDeliveryCount(storeId, member.userId, month);
+    result[member.userId] = await repo.getMonthlySpecialCounts(storeId, member.userId, month);
   }
   return result;
 });

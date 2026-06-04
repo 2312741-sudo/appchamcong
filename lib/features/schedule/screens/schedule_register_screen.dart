@@ -131,12 +131,13 @@ class _ScheduleRegisterScreenState
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) {
-          final hasDelivery = selectedShifts.contains('delivery');
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final hasDelivery = selectedShifts.contains('delivery');
+            final hasGiaoHang = selectedShifts.contains('giaohang');
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +145,7 @@ class _ScheduleRegisterScreenState
                   Text('Chọn ca làm cho ${_dayNames[dayIndex]}', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
                   const SizedBox(height: 16),
                   if (store.customShifts.isEmpty)
-                    const Text('Chưa có ca làm nào được thiết lập. Vui lòng liên hệ quản lý.'),
+                    const Text('Chưa có ca làm nào được thiết lập. V vui lòng liên hệ quản lý.'),
                   ...store.customShifts.map((shift) {
                     final currentSelected = selectedShifts.where((s) => s.startsWith('${shift.id}|') || s == shift.id).firstOrNull ?? '';
                     final isSelected = currentSelected.isNotEmpty;
@@ -185,18 +186,29 @@ class _ScheduleRegisterScreenState
                       ],
                     );
                   }),
-                  if (store.deliveryEnabled)
-                    CheckboxListTile(
-                      title: Text('📦 Đăng ký chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                      value: hasDelivery,
-                      onChanged: (val) {
-                        setModalState(() {
-                          if (val == true) selectedShifts.add('delivery');
-                          else selectedShifts.remove('delivery');
-                        });
-                      }
-                    ),
-                  const SizedBox(height: 16),
+                    if (store.deliveryEnabled)
+                      CheckboxListTile(
+                        title: Text('🚛 Đăng ký Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        value: hasDelivery,
+                        onChanged: (val) {
+                          setModalState(() {
+                            if (val == true) selectedShifts.add('delivery');
+                            else selectedShifts.remove('delivery');
+                          });
+                        }
+                      ),
+                    if (store.giaoHangEnabled == true)
+                      CheckboxListTile(
+                        title: Text('📦 Đăng ký Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        value: hasGiaoHang,
+                        onChanged: (val) {
+                          setModalState(() {
+                            if (val == true) selectedShifts.add('giaohang');
+                            else selectedShifts.remove('giaohang');
+                          });
+                        }
+                      ),
+                    const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -452,11 +464,14 @@ class _DayRow extends StatelessWidget {
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: selectedShifts.map((s) {
-                  if (s == 'delivery') {
-                    return const _Chip(label: 'Chở hàng', color: AppColors.primary, icon: Icons.local_shipping);
-                  }
-                  final parts = s.split('|');
+                  children: selectedShifts.map((s) {
+                    if (s == 'delivery') {
+                      return const _Chip(label: 'Chở hàng', color: AppColors.primary, icon: Icons.local_shipping);
+                    }
+                    if (s == 'giaohang') {
+                      return const _Chip(label: 'Giao hàng', color: Colors.orange, icon: Icons.inventory_2);
+                    }
+                    final parts = s.split('|');
                   final baseId = parts[0];
                   final deptId = parts.length > 1 ? parts[1] : null;
                   

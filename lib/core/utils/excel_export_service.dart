@@ -190,8 +190,8 @@ class ExcelExportService {
         data['baseSalary'].toString(),
         data['deliveryCount'].toString(),
         data['deliveryPay'].toString(),
-        '0',
-        '0',
+        (data['giaoHangCount'] ?? 0).toString(),
+        (data['giaoHangPay'] ?? 0).toString(),
         data['advance'].toString(),
         data['netSalary'].toString(),
       ];

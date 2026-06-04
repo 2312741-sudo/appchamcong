@@ -60,12 +60,12 @@ class SalaryOverviewScreen extends ConsumerWidget {
     return membersAsync.when(
       data: (members) => salariesAsync.when(
         data: (salaries) {
-          final deliveryCountsAsync = ref.watch(allMonthlyDeliveryCountsProvider(monthStr));
+          final specialCountsAsync = ref.watch(allMonthlySpecialCountsProvider(monthStr));
           final storeAsync = ref.watch(currentStoreProvider);
           final advancesAsync = ref.watch(storeAdvancesProvider(monthStr));
 
-          return deliveryCountsAsync.when(
-            data: (deliveryCounts) => storeAsync.when(
+          return specialCountsAsync.when(
+            data: (specialCounts) => storeAsync.when(
               data: (store) => advancesAsync.when(
                 data: (advances) {
                   final storeSettings = store ?? const StoreModel(id: '', name: '', themeColor: '#C8102E');
@@ -83,9 +83,12 @@ class SalaryOverviewScreen extends ConsumerWidget {
                       calculatedSalary = totalHours * member.baseHourlyRate;
                     }
 
-                    final deliveryCount = deliveryCounts[member.userId] ?? 0;
+                    final counts = specialCounts[member.userId] ?? (delivery: 0, giaoHang: 0);
+                    final deliveryCount = counts.delivery;
+                    final giaoHangCount = counts.giaoHang;
                     final deliveryPay = deliveryCount * (storeSettings.deliveryAllowance ?? 0);
-                    calculatedSalary += deliveryPay;
+                    final giaoHangPay = giaoHangCount * (storeSettings.giaoHangAllowance ?? 0);
+                    calculatedSalary += deliveryPay + giaoHangPay;
                     totalPayout += calculatedSalary;
 
                     final memberAdvances = advances.where((a) => a.userId == member.userId && a.status == AdvanceStatus.approved);
@@ -101,6 +104,8 @@ class SalaryOverviewScreen extends ConsumerWidget {
                       'baseSalary': member.employeeType == 'fulltime' ? member.baseMonthlySalary : member.baseHourlyRate,
                       'deliveryCount': deliveryCount,
                       'deliveryPay': deliveryPay,
+                      'giaoHangCount': giaoHangCount,
+                      'giaoHangPay': giaoHangPay,
                       'advance': totalAdvance,
                       'netSalary': netSalary,
                       'member': member,
@@ -236,6 +241,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
     final member = data['member'] as MemberModel;
     final totalHours = data['totalHours'] as double;
     final deliveryCount = data['deliveryCount'] as int;
+    final giaoHangCount = data['giaoHangCount'] as int;
     final advanceTotal = data['advance'] as double;
     final netSalary = data['netSalary'] as double;
     final calculatedSalary = netSalary + advanceTotal; // Recover the calculated salary before advance
@@ -260,7 +266,13 @@ class SalaryOverviewScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(member.name, style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 15)),
-                    Text(member.isFulltime ? 'Full-time' : 'Part-time', style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary)),
+                    Text('Lương cơ bản: ${currencyFormat.format(data['baseSalary'])}đ', style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary)),
+                    if (deliveryCount > 0)
+                      Text('Phụ cấp chở hàng: $deliveryCount ca x ${currencyFormat.format(data['deliveryPay'] / deliveryCount)}đ', style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary)),
+                    if (giaoHangCount > 0)
+                      Text('Phụ cấp giao hàng: $giaoHangCount ca x ${currencyFormat.format(data['giaoHangPay'] / giaoHangCount)}đ', style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary)),
+                    if (advanceTotal > 0)
+                      Text('Đã tạm ứng: -${currencyFormat.format(advanceTotal)}đ', style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.danger)),
                   ],
                 ),
               ),
