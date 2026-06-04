@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
@@ -22,172 +21,174 @@ class _PendingApprovalScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Watch current member status for real-time update
-    final member = ref.watch(currentMemberProvider);
+    final user = ref.watch(userProvider).value;
+    final membersAsync = ref.watch(storeMembersProvider);
 
-    // Auto-navigate when approved
-    if (member != null && member.status == MemberStatus.active) {
+    membersAsync.whenData((members) {
+      final member = members.where((m) => m.userId == user?.id).firstOrNull;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go(AppRoutes.splash);
+        if (!mounted) return;
+        if (member == null) {
+          context.go(AppRoutes.welcome);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Yêu cầu tham gia đã bị từ chối hoặc bạn đã bị xóa.'),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        } else if (member.status == MemberStatus.active) {
+          context.go(AppRoutes.splash);
+        }
       });
-    }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Animated hourglass icon
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.hourglass_top_rounded,
-                  color: AppColors.accent,
-                  size: 64,
-                ),
-              )
-                  .animate(onPlay: (c) => c.repeat())
-                  .shimmer(
-                    duration: const Duration(seconds: 2),
-                    color: AppColors.accent.withOpacity(0.3),
-                  )
-                  .then()
-                  .shake(
-                    duration: const Duration(milliseconds: 400),
-                    hz: 2,
-                    offset: const Offset(0, -4),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Animated hourglass icon
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withOpacity(0.15),
+                    shape: BoxShape.circle,
                   ),
-              const SizedBox(height: 32),
-
-              // Title
-              const Text(
-                'Chờ xét duyệt',
-                style: TextStyle(
-                  fontFamily: 'BeVietnamPro',
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.neutral,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Subtitle
-              const Text(
-                'Yêu cầu của bạn đã được gửi.\nVui lòng chờ chủ cửa hàng duyệt.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'BeVietnamPro',
-                  fontSize: 15,
-                  color: AppColors.textSecondary,
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Status indicator
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.accent.withOpacity(0.3),
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: AppColors.accent,
+                    size: 64,
                   ),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Đang chờ phê duyệt...',
-                      style: TextStyle(
-                        fontFamily: 'BeVietnamPro',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFB8952A),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 48),
+                const SizedBox(height: 32),
 
-              // Info card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
+                // Title
+                const Text(
+                  'Chờ xét duyệt',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.neutral,
+                  ),
                 ),
-                child: const Column(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.notifications_rounded,
-                      text:
-                          'Bạn sẽ nhận được thông báo khi được duyệt',
-                    ),
-                    Divider(height: 20),
-                    _InfoRow(
-                      icon: Icons.access_time_rounded,
-                      text: 'Quá trình xét duyệt thường mất vài phút',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
+                const SizedBox(height: 12),
 
-              // Cancel button
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _isCancelling ? null : _cancelRequest,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // Subtitle
+                const Text(
+                  'Yêu cầu của bạn đã được gửi.\nVui lòng chờ chủ cửa hàng duyệt.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Status indicator
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.accent.withOpacity(0.3),
                     ),
                   ),
-                  child: _isCancelling
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primary,
-                          ),
-                        )
-                      : const Text(
-                          'Hủy yêu cầu',
-                          style: TextStyle(
-                            fontFamily: 'BeVietnamPro',
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.accent,
                         ),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Đang chờ phê duyệt...',
+                        style: TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFB8952A),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 48),
+
+                // Info card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Column(
+                    children: [
+                      _InfoRow(
+                        icon: Icons.notifications_rounded,
+                        text:
+                            'Bạn sẽ nhận được thông báo khi được duyệt',
+                      ),
+                      Divider(height: 20),
+                      _InfoRow(
+                        icon: Icons.access_time_rounded,
+                        text: 'Quá trình xét duyệt thường mất vài phút',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Cancel button
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _isCancelling ? null : _cancelRequest,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isCancelling
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : const Text(
+                            'Hủy yêu cầu',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
