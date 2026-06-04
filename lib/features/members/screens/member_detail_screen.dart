@@ -68,7 +68,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
         storeId, 
         widget.userId, 
         _employeeCodeCtrl.text.trim(), 
-        _joinedAt
+        _joinedAt ?? DateTime.now()
       );
 
       if (mounted) {

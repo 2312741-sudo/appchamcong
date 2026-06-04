@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/salary_provider.dart';
 import '../../../models/advance_request_model.dart';
