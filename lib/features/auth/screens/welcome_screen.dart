@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
@@ -24,217 +23,203 @@ class WelcomeScreen extends ConsumerWidget {
             children: [
               Column(
                 children: [
-              // ── Hero Section ────────────────────────────────────────────
-              Expanded(
-                flex: 5,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 40,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Logo
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.white.withOpacity(0.4),
-                            width: 2,
-                          ),
-                          image: const DecorationImage(
-                            image: AssetImage('assets/images/logo.jpg'),
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 500.ms)
-                          .scale(
-                            begin: const Offset(0.8, 0.8),
-                            duration: 500.ms,
+                  // ── Hero Section ────────────────────────────────────────────
+                  Expanded(
+                    flex: 5,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 40,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.white.withOpacity(0.4),
+                                width: 2,
+                              ),
+                              image: const DecorationImage(
+                                image: AssetImage('assets/images/logo.jpg'),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
 
-                      const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                      // App Name
-                      const Text(
-                        AppStrings.appName,
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.white,
-                          letterSpacing: 0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      )
-                          .animate()
-                          .fadeIn(delay: 200.ms, duration: 500.ms)
-                          .slideY(
-                            begin: 0.3,
-                            delay: 200.ms,
-                            duration: 500.ms,
+                          // App Name
+                          const Text(
+                            AppStrings.appName,
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.white,
+                              letterSpacing: 0.5,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
 
-                      const SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
-                      // Tagline
-                      const Text(
-                        AppStrings.appTagline,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      )
-                          .animate()
-                          .fadeIn(delay: 350.ms, duration: 500.ms),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ── Bottom Card ─────────────────────────────────────────────
-              Expanded(
-                flex: 4,
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(32),
-                      topRight: Radius.circular(32),
+                          // Tagline
+                          const Text(
+                            AppStrings.appTagline,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(24, 36, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Bắt đầu ngay',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.neutral,
-                            ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 400.ms, duration: 500.ms),
 
-                      const SizedBox(height: 8),
-
-                      Text(
-                        AppStrings.welcomeSubtitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 450.ms, duration: 500.ms),
-
-                      const SizedBox(height: 28),
-
-                      // Create Store Button
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          final authState = ref.read(authStateChangesProvider).value;
-                          if (authState != null) {
-                            context.push(AppRoutes.createStore);
-                          } else {
-                            context.push(AppRoutes.login, extra: {'mode': 'create'});
-                          }
-                        },
-                        icon: const Icon(Icons.add_business_rounded, size: 20),
-                        label: Column(
+                  // ── Bottom Card ─────────────────────────────────────────────
+                  Expanded(
+                    flex: 4,
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
+                        ),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(24, 36, 24, 24),
+                      child: SingleChildScrollView(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
-                              AppStrings.createStore,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                            Text(
+                              'Bắt đầu ngay',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.neutral,
+                                  ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Text(
+                              AppStrings.welcomeSubtitle,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
+
+                            const SizedBox(height: 28),
+
+                            // Create Store Button
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                final authState =
+                                    ref.read(authStateChangesProvider).value;
+                                if (authState != null) {
+                                  context.push(AppRoutes.createStore);
+                                } else {
+                                  context.push(AppRoutes.login,
+                                      extra: {'mode': 'create'});
+                                }
+                              },
+                              icon: const Icon(Icons.add_business_rounded,
+                                  size: 20),
+                              label: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    AppStrings.createStore,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    AppStrings.createStoreSubtitle,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.white.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                ),
                               ),
                             ),
-                            Text(
-                              AppStrings.createStoreSubtitle,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.white.withOpacity(0.8),
+
+                            const SizedBox(height: 14),
+
+                            // Join Store Button
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                final authState =
+                                    ref.read(authStateChangesProvider).value;
+                                if (authState != null) {
+                                  context.push(AppRoutes.joinStore);
+                                } else {
+                                  context.push(AppRoutes.login,
+                                      extra: {'mode': 'join'});
+                                }
+                              },
+                              icon:
+                                  const Icon(Icons.group_add_rounded, size: 20),
+                              label: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    AppStrings.joinStore,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    AppStrings.joinStoreSubtitle,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.primary.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 14,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        style: ElevatedButton.styleFrom(
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
-                          ),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 500.ms, duration: 400.ms)
-                          .slideX(begin: -0.1, delay: 500.ms, duration: 400.ms),
-
-                      const SizedBox(height: 14),
-
-                      // Join Store Button
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          final authState = ref.read(authStateChangesProvider).value;
-                          if (authState != null) {
-                            context.push(AppRoutes.joinStore);
-                          } else {
-                            context.push(AppRoutes.login, extra: {'mode': 'join'});
-                          }
-                        },
-                        icon: const Icon(Icons.group_add_rounded, size: 20),
-                        label: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              AppStrings.joinStore,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              AppStrings.joinStoreSubtitle,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.primary.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
-                          ),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 600.ms, duration: 400.ms)
-                          .slideX(begin: 0.1, delay: 600.ms, duration: 400.ms),
-                    ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              ],
+                ],
               ),
               Positioned(
                 top: 16,
@@ -244,7 +229,8 @@ class WelcomeScreen extends ConsumerWidget {
                     await ref.read(authNotifierProvider.notifier).signOut();
                     if (context.mounted) context.go(AppRoutes.login);
                   },
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.white),
+                  icon:
+                      const Icon(Icons.logout_rounded, color: AppColors.white),
                   tooltip: 'Đăng xuất',
                 ),
               ),
