@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
@@ -36,7 +37,7 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
       }
       final repo = ref.read(storeRepositoryProvider);
       final userRepo = ref.read(userRepositoryProvider);
-      final user = ref.read(userProvider).value;
+      final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Chưa đăng nhập');
 
       final store = await repo.findStoreByCode(code);

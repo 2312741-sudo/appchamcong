@@ -59,7 +59,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   final stores = await ref.read(userStoresProvider.future);
                   if (stores.isNotEmpty && mounted) {
                     final userRepo = ref.read(userRepositoryProvider);
-                    await userRepo.updateCurrentStoreId(userModel.id, stores.first.id);
+                    await userRepo.updateCurrentStoreId(
+                        userModel.id, stores.first.id);
                     context.go(AppRoutes.employeeDashboard);
                     return;
                   }
@@ -74,11 +75,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       .collection('members')
                       .doc(userModel.id)
                       .get();
-                      
+
                   if (memberDoc.exists) {
                     final role = memberDoc.data()?['role'] as String?;
                     final status = memberDoc.data()?['status'] as String?;
-                    
+
                     if (status == 'pending') {
                       if (mounted) context.go(AppRoutes.pendingApproval);
                       return;
@@ -87,7 +88,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       if (mounted) context.go(AppRoutes.welcome);
                       return;
                     }
-                    
+
                     if (mounted) {
                       if (role == 'owner') {
                         context.go(AppRoutes.ownerDashboard);
@@ -100,10 +101,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     return;
                   }
                 } catch (_) {}
-                
+
                 // Default fallback
                 if (mounted) context.go(AppRoutes.employeeDashboard);
               }
+            },
+            error: (_, __) {
+              if (mounted) context.go(AppRoutes.login);
             },
           );
           // If user model not yet loaded, go welcome as safe fallback
@@ -145,6 +149,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         data: (_) {
           if (!_hasNavigated) {
             Future.delayed(const Duration(milliseconds: 500), _navigate);
+          }
+        },
+        error: (_, __) {
+          if (mounted && !_hasNavigated) {
+            context.go(AppRoutes.login);
           }
         },
       );
@@ -224,9 +233,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   color: AppColors.white.withOpacity(0.8),
                   strokeWidth: 2.5,
                 ),
-              )
-                  .animate()
-                  .fadeIn(delay: 800.ms, duration: 400.ms),
+              ).animate().fadeIn(delay: 800.ms, duration: 400.ms),
             ],
           ),
         ),
