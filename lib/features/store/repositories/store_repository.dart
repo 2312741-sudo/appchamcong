@@ -225,19 +225,9 @@ class StoreRepository {
   Future<void> approveOrRejectMember(
       String storeId, String userId, bool approve) async {
     try {
-      final batch = _firestore.batch();
-
-      batch.update(_members(storeId).doc(userId), {
+      await _members(storeId).doc(userId).update({
         'status': approve ? 'active' : 'kicked',
       });
-
-      if (!approve) {
-        batch.update(_firestore.collection('users').doc(userId), {
-          'storeIds': FieldValue.arrayRemove([storeId])
-        });
-      }
-
-      await batch.commit();
     } catch (e) {
       throw Exception('Cập nhật trạng thái thành viên thất bại: $e');
     }
@@ -245,15 +235,7 @@ class StoreRepository {
 
   Future<void> kickMember(String storeId, String userId) async {
     try {
-      final batch = _firestore.batch();
-
-      batch.update(_members(storeId).doc(userId), {'status': 'kicked'});
-
-      batch.update(_firestore.collection('users').doc(userId), {
-        'storeIds': FieldValue.arrayRemove([storeId])
-      });
-
-      await batch.commit();
+      await _members(storeId).doc(userId).update({'status': 'kicked'});
     } catch (e) {
       throw Exception('Xóa thành viên thất bại: $e');
     }
