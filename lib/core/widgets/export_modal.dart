@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/member_model.dart';
-import '../../constants/app_colors.dart';
+import '../constants/app_colors.dart';
 
 class ExportModal extends StatefulWidget {
   final List<MemberModel> members;
