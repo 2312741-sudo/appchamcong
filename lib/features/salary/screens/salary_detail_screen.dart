@@ -195,13 +195,13 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi tải bảng công: $e')),
               data: (attendances) {
-                final deliveryCountAsync = ref.watch(myMonthlyDeliveryCountProvider(_monthKey));
+                final specialCountsAsync = ref.watch(myMonthSpecialCountsProvider(_monthKey));
                 final storeAsync = ref.watch(currentStoreProvider);
                 
-                return deliveryCountAsync.when(
+                return specialCountsAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(child: Text('Lỗi tải dữ liệu: $e')),
-                  data: (deliveryCount) => storeAsync.when(
+                  data: (specialCounts) => storeAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('Lỗi tải dữ liệu: $e')),
                     data: (store) {
@@ -209,6 +209,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                       
                       final totalHours = attendances.fold(0.0, (sum, a) => sum + a.totalHours);
                       final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
+                      final giaoHangAllowance = (store?.giaoHangAllowance ?? 0).toDouble();
 
                       final totalAdvance = advancesAsync.where((a) => a.status == AdvanceStatus.approved).fold(0.0, (sum, a) => sum + a.amount);
                       final hasPending = advancesAsync.any((a) => a.status == AdvanceStatus.pending);
@@ -217,14 +218,14 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         onRefresh: () async {
                           ref.invalidate(myMonthlySalaryProvider);
                           ref.invalidate(myMonthAttendancesProvider);
-                          ref.invalidate(myMonthlyDeliveryCountProvider);
+                          ref.invalidate(myMonthSpecialCountsProvider);
                           ref.invalidate(myAdvancesProvider);
                           ref.invalidate(currentStoreProvider);
                         },
                         child: ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
-                            _buildSalaryCard(member, salary, totalHours, deliveryCount, deliveryAllowance, totalAdvance),
+                            _buildSalaryCard(member, salary, totalHours, specialCounts.delivery, deliveryAllowance, specialCounts.giaoHang, giaoHangAllowance, totalAdvance),
                             const SizedBox(height: 16),
                             if (hasPending)
                               Container(
@@ -278,7 +279,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
   }
 
   Widget _buildSalaryCard(
-      MemberModel member, double salary, double totalHours, int deliveryCount, double deliveryAllowance, double totalAdvance) {
+      MemberModel member, double salary, double totalHours, int deliveryCount, double deliveryAllowance, int giaoHangCount, double giaoHangAllowance, double totalAdvance) {
     final standardHours = member.standardHoursPerMonth;
     final progress = standardHours > 0 ? (totalHours / standardHours).clamp(0.0, 1.0) : 0.0;
     final netSalary = salary - totalAdvance;
@@ -322,9 +323,22 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('🚚 Chở hàng ($deliveryCount ca):', style: TextStyle(color: Colors.white70)),
+                Text('🛵 Chở hàng ($deliveryCount ca):', style: const TextStyle(color: Colors.white70)),
                 Text(
                   '+${_formatCurrency(deliveryCount * deliveryAllowance)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
+                ),
+              ],
+            ),
+          ],
+          if (giaoHangCount > 0) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('📦 Giao hàng ($giaoHangCount ca):', style: const TextStyle(color: Colors.white70)),
+                Text(
+                  '+${_formatCurrency(giaoHangCount * giaoHangAllowance)}',
                   style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
                 ),
               ],

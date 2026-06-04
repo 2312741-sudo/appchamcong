@@ -169,7 +169,7 @@ final myMonthlySalaryProvider =
 
 // All salaries for owner view
 final allSalariesProvider =
-    FutureProvider.family<Map<String, double>, String>((ref, month) async {
+    FutureProvider.family<Map<String, Map<String, dynamic>>, String>((ref, month) async {
   final storeId = ref.watch(currentStoreIdProvider);
   if (storeId == null || storeId.isEmpty) return {};
   final repo = ref.read(salaryRepositoryProvider);
@@ -179,12 +179,16 @@ final allSalariesProvider =
     final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
     final giaoHangAllowance = (storeSnap.data()?['giaoHangAllowance'] as num?)?.toDouble() ?? 0.0;
   
-    final result = <String, double>{};
+    final result = <String, Map<String, dynamic>>{};
     for (final member in members) {
       final attendances = allAttendances[member.userId] ?? [];
       final totalHours = repo.calculateTotalHours(attendances);
       final specialCounts = await repo.getMonthlySpecialCounts(storeId, member.userId, month);
-      result[member.userId] = repo.calculateSalary(member, totalHours, deliveryCount: specialCounts.delivery, deliveryAllowance: deliveryAllowance, giaoHangCount: specialCounts.giaoHang, giaoHangAllowance: giaoHangAllowance);
+      final salary = repo.calculateSalary(member, totalHours, deliveryCount: specialCounts.delivery, deliveryAllowance: deliveryAllowance, giaoHangCount: specialCounts.giaoHang, giaoHangAllowance: giaoHangAllowance);
+      result[member.userId] = {
+        'totalHours': totalHours,
+        'salary': salary,
+      };
     }
   return result;
 });

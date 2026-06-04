@@ -68,7 +68,6 @@ class SalaryOverviewScreen extends ConsumerWidget {
             data: (specialCounts) => storeAsync.when(
               data: (store) => advancesAsync.when(
                 data: (advances) {
-                  final storeSettings = store ?? const StoreModel(id: '', name: '', themeColor: '#C8102E');
                   List<Map<String, dynamic>> computedSalaries = [];
                   double totalPayout = 0;
                   
@@ -86,8 +85,8 @@ class SalaryOverviewScreen extends ConsumerWidget {
                     final counts = specialCounts[member.userId] ?? (delivery: 0, giaoHang: 0);
                     final deliveryCount = counts.delivery;
                     final giaoHangCount = counts.giaoHang;
-                    final deliveryPay = deliveryCount * (storeSettings.deliveryAllowance ?? 0);
-                    final giaoHangPay = giaoHangCount * (storeSettings.giaoHangAllowance ?? 0);
+                    final deliveryPay = deliveryCount * (store?.deliveryAllowance ?? 0);
+                    final giaoHangPay = giaoHangCount * (store?.giaoHangAllowance ?? 0);
                     calculatedSalary += deliveryPay + giaoHangPay;
                     totalPayout += calculatedSalary;
 
@@ -136,8 +135,8 @@ class SalaryOverviewScreen extends ConsumerWidget {
                                         ? computedSalaries.where((s) => s['userId'] == memberId).toList()
                                         : computedSalaries;
                                     await ExcelExportService.exportMonthlySalary(
-                                      storeName: storeSettings.name,
-                                      themeColorHex: storeSettings.themeColor ?? '#C8102E',
+                                      storeName: store?.name ?? '',
+                                      themeColorHex: store?.themeColor ?? '#C8102E',
                                       computedSalaries: filteredSalaries,
                                       suffix: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : 'Filter',
                                     );
@@ -293,7 +292,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
                   children: [
                     const Text('Tổng lương thu nhập', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     Text(
-                      currencyFormat.format(salary),
+                      currencyFormat.format(calculatedSalary),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
