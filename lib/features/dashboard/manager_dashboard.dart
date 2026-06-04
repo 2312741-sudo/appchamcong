@@ -4,11 +4,32 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../core/widgets/store_drawer.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/constants/app_colors.dart';
+import '../../features/store/providers/store_provider.dart';
+import '../../features/auth/providers/auth_provider.dart';
+
 class ManagerDashboard extends ConsumerWidget {
   const ManagerDashboard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(storeMembersProvider, (prev, next) {
+      next.whenData((members) {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        final member = members.where((m) => m.userId == uid).firstOrNull;
+        if (member == null) {
+          context.go(AppRoutes.welcome);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bạn đã bị xóa khỏi cửa hàng.'),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        }
+      });
+    });
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F4EE),
       appBar: AppBar(
