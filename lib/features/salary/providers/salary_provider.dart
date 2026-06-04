@@ -66,23 +66,26 @@ class SalaryRepository {
 
   /// Calculates number of delivery and giaoHang shifts for a user in a specific month
   Future<({int delivery, int giaoHang})> getMonthlySpecialCounts(String storeId, String userId, String month) async {
-    // Fetch all schedules for this store
+    final allCounts = await getAllMonthlySpecialCounts(storeId, month);
+    return allCounts[userId] ?? (delivery: 0, giaoHang: 0);
+  }
+
+  /// Fetches all special counts for all users in a month efficiently
+  Future<Map<String, ({int delivery, int giaoHang})>> getAllMonthlySpecialCounts(String storeId, String month) async {
     final snap = await _firestore.collection('stores').doc(storeId).collection('schedules').get();
-    int deliveryCount = 0;
-    int giaoHangCount = 0;
+    final result = <String, ({int delivery, int giaoHang})>{};
     
     for (final doc in snap.docs) {
       final data = doc.data();
       final shifts = data['shifts'] as Map<String, dynamic>? ?? {};
-      final userShifts = shifts[userId] as Map<String, dynamic>?;
+      final weekStartStr = data['weekStart'] as String? ?? doc.id;
+      final weekStartDate = DateTime.tryParse(weekStartStr);
+      if (weekStartDate == null) continue;
       
-      if (userShifts != null) {
-        // userShifts is DaySchedule json
-        final weekStartStr = data['weekStart'] as String? ?? doc.id;
-        final weekStartDate = DateTime.tryParse(weekStartStr);
-        if (weekStartDate == null) continue;
+      for (final userId in shifts.keys) {
+        final userShifts = shifts[userId] as Map<String, dynamic>?;
+        if (userShifts == null) continue;
 
-        // Check all 7 days
         final daysMap = {
           0: userShifts['monday'],
           1: userShifts['tuesday'],
@@ -92,28 +95,30 @@ class SalaryRepository {
           5: userShifts['saturday'],
           6: userShifts['sunday'],
         };
-
+        
         for (int i = 0; i < 7; i++) {
           final dayDate = weekStartDate.add(Duration(days: i));
           final y = dayDate.year.toString().padLeft(4, '0');
           final m = dayDate.month.toString().padLeft(2, '0');
-          final dateStr = '$y-$m'; // e.g., '2026-06'
+          final dateStr = '$y-$m';
           
           if (dateStr == month) {
             final shiftsForDay = daysMap[i];
             if (shiftsForDay is List) {
-              if (shiftsForDay.contains('delivery')) {
-                deliveryCount++;
-              }
-              if (shiftsForDay.contains('giaohang')) {
-                giaoHangCount++;
+              int del = 0, giao = 0;
+              if (shiftsForDay.contains('delivery')) del++;
+              if (shiftsForDay.contains('giaohang')) giao++;
+              
+              if (del > 0 || giao > 0) {
+                 final current = result[userId] ?? (delivery: 0, giaoHang: 0);
+                 result[userId] = (delivery: current.delivery + del, giaoHang: current.giaoHang + giao);
               }
             }
           }
         }
       }
     }
-    return (delivery: deliveryCount, giaoHang: giaoHangCount);
+    return result;
   }
 
   /// Calculates total worked hours for [attendances].
@@ -179,11 +184,12 @@ final allSalariesProvider =
     final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
     final giaoHangAllowance = (storeSnap.data()?['giaoHangAllowance'] as num?)?.toDouble() ?? 0.0;
   
+    final allSpecialCounts = await repo.getAllMonthlySpecialCounts(storeId, month);
     final result = <String, Map<String, dynamic>>{};
     for (final member in members) {
       final attendances = allAttendances[member.userId] ?? [];
       final totalHours = repo.calculateTotalHours(attendances);
-      final specialCounts = await repo.getMonthlySpecialCounts(storeId, member.userId, month);
+      final specialCounts = allSpecialCounts[member.userId] ?? (delivery: 0, giaoHang: 0);
       final salary = repo.calculateSalary(member, totalHours, deliveryCount: specialCounts.delivery, deliveryAllowance: deliveryAllowance, giaoHangCount: specialCounts.giaoHang, giaoHangAllowance: giaoHangAllowance);
       result[member.userId] = {
         'totalHours': totalHours,
@@ -257,10 +263,5 @@ final allMonthlySpecialCountsProvider = FutureProvider.family<Map<String, ({int 
   final storeId = ref.watch(currentStoreIdProvider);
   if (storeId == null || storeId.isEmpty) return {};
   final repo = ref.read(salaryRepositoryProvider);
-  final members = await repo.getActiveMembers(storeId);
-  final result = <String, ({int delivery, int giaoHang})>{};
-  for (final member in members) {
-    result[member.userId] = await repo.getMonthlySpecialCounts(storeId, member.userId, month);
-  }
-  return result;
+  return repo.getAllMonthlySpecialCounts(storeId, month);
 });
