@@ -312,11 +312,14 @@ class StoreRepository {
         .doc(storeId)
         .collection('advances')
         .where('month', isEqualTo: month)
-        .orderBy('requestDate', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => AdvanceRequestModel.fromFirestore(doc))
-            .toList());
+        .map((snap) {
+          final list = snap.docs
+              .map((doc) => AdvanceRequestModel.fromFirestore(doc))
+              .toList();
+          list.sort((a, b) => b.requestDate.compareTo(a.requestDate));
+          return list;
+        });
   }
 
   Future<void> createAdvanceRequest(AdvanceRequestModel request) async {
