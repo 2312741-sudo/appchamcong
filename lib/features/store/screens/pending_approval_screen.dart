@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/member_model.dart';
+import '../../../app/router.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
 
