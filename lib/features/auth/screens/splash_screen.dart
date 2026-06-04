@@ -226,14 +226,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               const SizedBox(height: 64),
 
               // Loading Indicator
-              SizedBox(
+              const SizedBox(
                 width: 40,
                 height: 40,
                 child: CircularProgressIndicator(
-                  color: AppColors.white.withOpacity(0.8),
+                  color: Colors.white70,
                   strokeWidth: 2.5,
                 ),
-              ).animate().fadeIn(delay: 800.ms, duration: 400.ms),
+              ),
             ],
           ),
         ),
