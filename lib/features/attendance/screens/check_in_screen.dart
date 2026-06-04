@@ -61,10 +61,18 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       CheckInMethod method = _selectedMethod ?? CheckInMethod.wifi;
 
       if (method == CheckInMethod.wifi) {
-        if (store.networkIP == null || store.networkIP!.isEmpty) {
+        if (!store.hasWifi) {
           throw Exception('Cửa hàng chưa cấu hình WiFi.');
         }
-        final isWifiCorrect = await LocationUtils.isOnStoreNetwork(store.networkIP!);
+        final allowedIPs = <String>[];
+        if (store.networkIP != null && store.networkIP!.isNotEmpty) {
+          allowedIPs.add(store.networkIP!);
+        }
+        for (final wifi in store.wifis) {
+          if (wifi.ip.isNotEmpty) allowedIPs.add(wifi.ip);
+        }
+
+        final isWifiCorrect = await LocationUtils.isOnStoreNetwork(allowedIPs);
         if (!isWifiCorrect) {
           throw Exception('Sai mạng WiFi! Vui lòng kết nối đúng mạng WiFi của cửa hàng để chấm công.');
         }

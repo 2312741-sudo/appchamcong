@@ -29,6 +29,23 @@ class DepartmentDefinition extends Equatable {
   List<Object?> get props => [id, name, shortName];
 }
 
+class StoreWifi extends Equatable {
+  final String name;
+  final String ip;
+
+  const StoreWifi({required this.name, required this.ip});
+
+  factory StoreWifi.fromJson(Map<String, dynamic> json) => StoreWifi(
+    name: json['name'] as String? ?? '',
+    ip: json['ip'] as String? ?? '',
+  );
+
+  Map<String, dynamic> toJson() => {'name': name, 'ip': ip};
+
+  @override
+  List<Object?> get props => [name, ip];
+}
+
 class StoreModel extends Equatable {
   final String id;
   final String name;
@@ -43,8 +60,12 @@ class StoreModel extends Equatable {
   final List<ShiftDefinition> customShifts;
   final List<DepartmentDefinition> departments;
   final num? deliveryAllowance;
+  final num? giaoHangAllowance;
+  final bool deliveryEnabled;
+  final bool giaoHangEnabled;
   final String? themeColor;
   final bool departmentSelectionEnabled; // cho phép NV/QL chọn bộ phận khi đăng ký ca
+  final List<StoreWifi> wifis;
 
   const StoreModel({
     required this.id,
@@ -60,8 +81,12 @@ class StoreModel extends Equatable {
     this.customShifts = const [],
     this.departments = const [],
     this.deliveryAllowance,
+    this.giaoHangAllowance,
+    this.deliveryEnabled = true,
+    this.giaoHangEnabled = true,
     this.themeColor,
     this.departmentSelectionEnabled = true,
+    this.wifis = const [],
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
@@ -88,8 +113,15 @@ class StoreModel extends Equatable {
               .toList() ??
           [],
       deliveryAllowance: json['deliveryAllowance'] as num?,
+      giaoHangAllowance: json['giaoHangAllowance'] as num?,
+      deliveryEnabled: json['deliveryEnabled'] as bool? ?? true,
+      giaoHangEnabled: json['giaoHangEnabled'] as bool? ?? true,
       themeColor: json['themeColor'] as String?,
       departmentSelectionEnabled: json['departmentSelectionEnabled'] as bool? ?? true,
+      wifis: (json['wifis'] as List<dynamic>?)
+              ?.map((e) => StoreWifi.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -112,8 +144,12 @@ class StoreModel extends Equatable {
       'customShifts': customShifts.map((s) => s.toJson()).toList(),
       'departments': departments.map((d) => d.toJson()).toList(),
       'deliveryAllowance': deliveryAllowance,
+      'giaoHangAllowance': giaoHangAllowance,
+      'deliveryEnabled': deliveryEnabled,
+      'giaoHangEnabled': giaoHangEnabled,
       'themeColor': themeColor,
       'departmentSelectionEnabled': departmentSelectionEnabled,
+      'wifis': wifis.map((w) => w.toJson()).toList(),
     };
   }
 
@@ -131,8 +167,12 @@ class StoreModel extends Equatable {
     List<ShiftDefinition>? customShifts,
     List<DepartmentDefinition>? departments,
     num? deliveryAllowance,
+    num? giaoHangAllowance,
+    bool? deliveryEnabled,
+    bool? giaoHangEnabled,
     String? themeColor,
     bool? departmentSelectionEnabled,
+    List<StoreWifi>? wifis,
     bool clearAddress = false,
     bool clearNetworkIP = false,
     bool clearLocation = false,
@@ -151,13 +191,17 @@ class StoreModel extends Equatable {
       customShifts: customShifts ?? this.customShifts,
       departments: departments ?? this.departments,
       deliveryAllowance: deliveryAllowance ?? this.deliveryAllowance,
+      giaoHangAllowance: giaoHangAllowance ?? this.giaoHangAllowance,
+      deliveryEnabled: deliveryEnabled ?? this.deliveryEnabled,
+      giaoHangEnabled: giaoHangEnabled ?? this.giaoHangEnabled,
       themeColor: themeColor ?? this.themeColor,
       departmentSelectionEnabled: departmentSelectionEnabled ?? this.departmentSelectionEnabled,
+      wifis: wifis ?? this.wifis,
     );
   }
 
   bool get hasLocation => latitude != null && longitude != null;
-  bool get hasWifi => networkIP != null && networkIP!.isNotEmpty;
+  bool get hasWifi => (networkIP != null && networkIP!.isNotEmpty) || wifis.isNotEmpty;
 
   @override
   List<Object?> get props => [
@@ -174,8 +218,12 @@ class StoreModel extends Equatable {
         customShifts,
         departments,
         deliveryAllowance,
+        giaoHangAllowance,
+        deliveryEnabled,
+        giaoHangEnabled,
         themeColor,
         departmentSelectionEnabled,
+        wifis,
       ];
 
   @override

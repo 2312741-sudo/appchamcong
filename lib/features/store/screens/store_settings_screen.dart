@@ -27,6 +27,11 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   
   String? _networkIP;
   bool _isFetchingIP = false;
+  List<StoreWifi> _wifis = [];
+
+  bool _deliveryEnabled = true;
+  bool _giaoHangEnabled = true;
+  final _giaoHangAllowanceCtrl = TextEditingController();
 
   double _radius = 100;
   double? _lat;
@@ -44,15 +49,20 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _addressCtrl.dispose();
     _deptNameCtrl.dispose();
     _deptShortCtrl.dispose();
+    _giaoHangAllowanceCtrl.dispose();
     super.dispose();
   }
 
-  void _initFromStore(storeModel) {
+  void _initFromStore(StoreModel storeModel) {
     if (_initialized) return;
     _initialized = true;
     _nameCtrl.text = storeModel.name;
     _addressCtrl.text = storeModel.address ?? '';
     _networkIP = storeModel.networkIP;
+    _wifis = List.from(storeModel.wifis);
+    _deliveryEnabled = storeModel.deliveryEnabled;
+    _giaoHangEnabled = storeModel.giaoHangEnabled;
+    _giaoHangAllowanceCtrl.text = (storeModel.giaoHangAllowance ?? 0).toString();
     _radius = storeModel.radiusMeters.toDouble();
     _lat = storeModel.latitude;
     _lng = storeModel.longitude;
@@ -127,6 +137,10 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         'address':
             _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
         'networkIP': _networkIP,
+        'wifis': _wifis.map((w) => w.toJson()).toList(),
+        'deliveryEnabled': _deliveryEnabled,
+        'giaoHangEnabled': _giaoHangEnabled,
+        'giaoHangAllowance': num.tryParse(_giaoHangAllowanceCtrl.text.trim()) ?? 0,
         'latitude': _lat,
         'longitude': _lng,
         'radiusMeters': _radius.round(),
@@ -355,7 +369,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                               color: AppColors.success, size: 16),
                           const SizedBox(width: 8),
                           Text(
-                            'IP: $_networkIP',
+                            'IP hiện tại: $_networkIP',
                             style: const TextStyle(
                               fontFamily: 'BeVietnamPro',
                               fontSize: 12,
@@ -364,6 +378,19 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                             ),
                           ),
                           const Spacer(),
+                          if (_wifis.length < 3)
+                            TextButton(
+                              onPressed: () {
+                                if (_wifis.any((w) => w.ip == _networkIP)) {
+                                  _showError('IP này đã có trong danh sách');
+                                  return;
+                                }
+                                setState(() {
+                                  _wifis.add(StoreWifi(name: 'WiFi ${_wifis.length + 1}', ip: _networkIP!));
+                                });
+                              },
+                              child: const Text('Thêm vào DS'),
+                            ),
                           IconButton(
                             icon: const Icon(Icons.close, color: AppColors.danger, size: 20),
                             padding: EdgeInsets.zero,
@@ -374,6 +401,52 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  const _Label('Danh sách WiFi cho phép chấm công (Tối đa 3)'),
+                  const SizedBox(height: 6),
+                  if (_wifis.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Text('Chưa có WiFi nào. NV có thể chấm công bằng IP hiện tại nếu IP trên còn lưu.', style: TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary, fontSize: 13)),
+                    )
+                  else
+                    ..._wifis.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final wifi = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.wifi, color: AppColors.primary, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(wifi.name, style: const TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
+                                  Text(wifi.ip, style: const TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                              onPressed: () => setState(() => _wifis.removeAt(idx)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   const SizedBox(height: 20),
 
                   const _SectionHeader(title: 'Vị trí GPS'),
@@ -685,6 +758,54 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
+                  const SizedBox(height: 32),
+
+                  // Cài đặt Giao hàng / Chở hàng
+                  const _SectionHeader(title: 'Cài đặt Phụ cấp'),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Cho phép đăng ký Chở hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: const Text('Tích vào lịch để tính phụ cấp chở hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12)),
+                      value: _deliveryEnabled,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) => setState(() => _deliveryEnabled = val),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Cho phép đăng ký Giao hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: const Text('Tích vào lịch để tính phụ cấp giao hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12)),
+                      value: _giaoHangEnabled,
+                      activeColor: AppColors.primary,
+                      onChanged: (val) => setState(() => _giaoHangEnabled = val),
+                    ),
+                  ),
+                  if (_giaoHangEnabled) ...[
+                    const SizedBox(height: 12),
+                    const _Label('Mức phụ cấp Giao hàng (VNĐ)'),
+                    const SizedBox(height: 6),
+                    _Field(
+                      controller: _giaoHangAllowanceCtrl,
+                      hint: 'VD: 15000',
+                      icon: Icons.monetization_on_rounded,
+                    ),
+                  ],
                   const SizedBox(height: 32),
 
                   // Save button

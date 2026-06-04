@@ -184,16 +184,17 @@ class _ScheduleRegisterScreenState
                       ],
                     );
                   }),
-                  CheckboxListTile(
-                    title: Text('Đăng ký chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    value: hasDelivery,
-                    onChanged: (val) {
-                      setModalState(() {
-                        if (val == true) selectedShifts.add('delivery');
-                        else selectedShifts.remove('delivery');
-                      });
-                    }
-                  ),
+                  if (store.deliveryEnabled)
+                    CheckboxListTile(
+                      title: Text('📦 Đăng ký chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      value: hasDelivery,
+                      onChanged: (val) {
+                        setModalState(() {
+                          if (val == true) selectedShifts.add('delivery');
+                          else selectedShifts.remove('delivery');
+                        });
+                      }
+                    ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -450,12 +451,19 @@ class _DayRow extends StatelessWidget {
                 runSpacing: 6,
                 children: selectedShifts.map((s) {
                   if (s == 'delivery') {
-                    return _Chip(label: 'Chở hàng', color: AppColors.primary, icon: Icons.local_shipping);
+                    return const _Chip(label: 'Chở hàng', color: AppColors.primary, icon: Icons.local_shipping);
                   }
-                  final baseId = s.split('|')[0];
+                  final parts = s.split('|');
+                  final baseId = parts[0];
+                  final deptId = parts.length > 1 ? parts[1] : null;
+                  
                   final shiftDef = store.customShifts.where((x) => x.id == baseId).firstOrNull;
+                  final deptDef = deptId != null ? store.departments.where((d) => d.id == deptId).firstOrNull : null;
+                  
                   if (shiftDef == null) return const SizedBox();
-                  return _Chip(label: shiftDef.name, color: AppColors.success);
+                  
+                  final nameStr = deptDef != null ? '[${deptDef.shortName}] ${shiftDef.name}' : shiftDef.name;
+                  return _Chip(label: nameStr, color: AppColors.success);
                 }).toList(),
               ),
           ],

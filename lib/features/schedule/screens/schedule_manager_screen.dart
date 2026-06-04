@@ -125,6 +125,7 @@ class _ScheduleManagerScreenState
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           final hasDelivery = selectedShifts.contains('delivery');
+          final hasGiaoHang = selectedShifts.contains('giaohang');
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -155,7 +156,7 @@ class _ScheduleManagerScreenState
                             });
                           },
                         ),
-                        if (isSelected && store.departments.isNotEmpty)
+                        if (isSelected && store.departments.isNotEmpty && store.departmentSelectionEnabled)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: DropdownButtonFormField<String>(
@@ -176,16 +177,28 @@ class _ScheduleManagerScreenState
                       ],
                     );
                   }),
-                  CheckboxListTile(
-                    title: Text('Ca chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    value: hasDelivery,
-                    onChanged: (val) {
-                      setModalState(() {
-                        if (val == true) selectedShifts.add('delivery');
-                        else selectedShifts.remove('delivery');
-                      });
-                    }
-                  ),
+                  if (store.deliveryEnabled)
+                    CheckboxListTile(
+                      title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      value: hasDelivery,
+                      onChanged: (val) {
+                        setModalState(() {
+                          if (val == true) selectedShifts.add('delivery');
+                          else selectedShifts.remove('delivery');
+                        });
+                      }
+                    ),
+                  if (store.giaoHangEnabled)
+                    CheckboxListTile(
+                      title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      value: hasGiaoHang,
+                      onChanged: (val) {
+                        setModalState(() {
+                          if (val == true) selectedShifts.add('giaohang');
+                          else selectedShifts.remove('giaohang');
+                        });
+                      }
+                    ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -574,9 +587,20 @@ class _ShiftChip extends StatelessWidget {
         if (s == 'delivery') {
           return const Icon(Icons.local_shipping, color: AppColors.primary, size: 16);
         }
-        final baseId = s.split('|')[0];
+        if (s == 'giaohang') {
+          return const Icon(Icons.two_wheeler, color: AppColors.primary, size: 16);
+        }
+        final parts = s.split('|');
+        final baseId = parts[0];
+        final deptId = parts.length > 1 ? parts[1] : null;
+        
         final shiftDef = store.customShifts.where((x) => x.id == baseId).firstOrNull;
+        final deptDef = deptId != null ? store.departments.where((d) => d.id == deptId).firstOrNull : null;
+        
         if (shiftDef == null) return const SizedBox();
+        
+        final nameStr = deptDef != null ? '[${deptDef.shortName}] ${shiftDef.name}' : shiftDef.name;
+        
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
@@ -584,7 +608,7 @@ class _ShiftChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
-            shiftDef.name,
+            nameStr,
             style: GoogleFonts.beVietnamPro(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
           ),
         );

@@ -20,6 +20,8 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   final _monthlySalaryCtrl = TextEditingController();
   final _hourlyRateCtrl = TextEditingController();
   final _standardHoursCtrl = TextEditingController();
+  final _employeeCodeCtrl = TextEditingController();
+  DateTime? _joinedAt;
 
   bool _isInit = false;
   bool _isLoading = false;
@@ -29,6 +31,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     _monthlySalaryCtrl.dispose();
     _hourlyRateCtrl.dispose();
     _standardHoursCtrl.dispose();
+    _employeeCodeCtrl.dispose();
     super.dispose();
   }
 
@@ -36,6 +39,8 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     if (_isInit) return;
     _selectedRole = member.role;
     _selectedType = member.employeeType;
+    _employeeCodeCtrl.text = member.employeeCode ?? '';
+    _joinedAt = member.joinedAt;
     _monthlySalaryCtrl.text = member.baseMonthlySalary.toStringAsFixed(0);
     _hourlyRateCtrl.text = member.baseHourlyRate.toStringAsFixed(0);
     _standardHoursCtrl.text = member.standardHoursPerMonth.toStringAsFixed(0);
@@ -58,6 +63,14 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
           
       await repo.updateMemberSalary(storeId, widget.userId, _selectedType, salary, hours);
       
+      // Update employee info
+      await repo.updateMemberInfo(
+        storeId: storeId, 
+        userId: widget.userId, 
+        employeeCode: _employeeCodeCtrl.text.trim(), 
+        joinedAt: _joinedAt
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Lưu thành công'), backgroundColor: AppColors.success),
@@ -176,6 +189,47 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                 ),
                 const SizedBox(height: 32),
                 
+                const Text('Mã nhân viên', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _employeeCodeCtrl,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    hintText: 'VD: NV001',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Ngày vào làm', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _joinedAt ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setState(() => _joinedAt = picked);
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _joinedAt != null ? '${_joinedAt!.day.toString().padLeft(2, '0')}/${_joinedAt!.month.toString().padLeft(2, '0')}/${_joinedAt!.year}' : 'Chọn ngày',
+                      style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // Role Setup
                 const Text('Vai trò', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),

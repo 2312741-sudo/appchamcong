@@ -3,13 +3,15 @@ import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 
 class LocationUtils {
-  static Future<bool> isOnStoreNetwork(String storeNetworkIP) async {
+  static Future<bool> isOnStoreNetwork(List<String> allowedIPs) async {
+    if (allowedIPs.isEmpty) return false;
     try {
       final request = await HttpClient().getUrl(Uri.parse('https://api.ipify.org?format=json'));
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
       final data = jsonDecode(responseBody);
-      return data['ip'] == storeNetworkIP;
+      final currentIP = data['ip'] as String?;
+      return currentIP != null && allowedIPs.contains(currentIP);
     } catch (_) {
       return false;
     }

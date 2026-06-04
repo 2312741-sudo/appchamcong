@@ -291,4 +291,16 @@ class StoreRepository {
       throw Exception('Cập nhật bộ phận thất bại: $e');
     }
   }
+
+  Future<void> updateMemberInfo(
+      String storeId, String userId, String? employeeCode, DateTime joinedAt) async {
+    try {
+      await _members(storeId).doc(userId).update({
+        'employeeCode': employeeCode,
+        'joinedAt': Timestamp.fromDate(joinedAt),
+      });
+    } catch (e) {
+      throw Exception('Cập nhật thông tin thất bại: $e');
+    }
+  }
 }
