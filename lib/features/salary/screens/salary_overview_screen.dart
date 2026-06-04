@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/salary_provider.dart';
+import '../../../models/advance_request_model.dart';
 
 class SalaryOverviewScreen extends ConsumerWidget {
   const SalaryOverviewScreen({super.key});
@@ -94,47 +94,72 @@ class SalaryOverviewScreen extends ConsumerWidget {
                   data: (salaries) {
                     final deliveryCountsAsync = ref.watch(allMonthlyDeliveryCountsProvider(monthStr));
                     final storeAsync = ref.watch(currentStoreProvider);
+                    final advancesAsync = ref.watch(storeAdvancesProvider(monthStr));
 
                     return deliveryCountsAsync.when(
                       data: (deliveryCounts) => storeAsync.when(
-                        data: (store) {
-                          final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
+                        data: (store) => advancesAsync.when(
+                          data: (advances) {
+                            final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
 
-                          return CustomScrollView(
-                            slivers: [
-                              SliverToBoxAdapter(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildSummaryCard(salaries.values, currencyFormat),
-                                      const SizedBox(height: 24),
-                                      Text('Chi tiết từng nhân viên', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w700)),
-                                      const SizedBox(height: 12),
-                                    ],
+                            // Calculate actual net salary payout
+                            double totalPayout = 0;
+                            final netSalaries = <String, double>{};
+                            final advanceTotals = <String, double>{};
+
+                            for (final member in members) {
+                              final baseSalary = salaries[member.userId] ?? 0.0;
+                              final totalAdvance = advances
+                                  .where((a) => a.userId == member.userId && a.status == AdvanceStatus.approved)
+                                  .fold(0.0, (sum, a) => sum + a.amount);
+                              
+                              final netSalary = baseSalary - totalAdvance;
+                              
+                              netSalaries[member.userId] = netSalary;
+                              advanceTotals[member.userId] = totalAdvance;
+                              totalPayout += netSalary;
+                            }
+
+                            return CustomScrollView(
+                              slivers: [
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildSummaryCard(totalPayout, currencyFormat),
+                                        const SizedBox(height: 24),
+                                        Text('Chi tiết từng nhân viên', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w700)),
+                                        const SizedBox(height: 12),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                              SliverPadding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate(
-                                    (ctx, i) {
-                                      final member = members[i];
-                                      final salary = salaries[member.userId] ?? 0.0;
-                                      final deliveryCount = deliveryCounts[member.userId] ?? 0;
-                                      
-                                      return _buildSalaryCard(member, salary, deliveryCount, deliveryAllowance, currencyFormat);
-                                    },
-                                    childCount: members.length,
+                                SliverPadding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  sliver: SliverList(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (ctx, i) {
+                                        final member = members[i];
+                                        final salary = salaries[member.userId] ?? 0.0;
+                                        final deliveryCount = deliveryCounts[member.userId] ?? 0;
+                                        final advanceTotal = advanceTotals[member.userId] ?? 0.0;
+                                        final netSalary = netSalaries[member.userId] ?? 0.0;
+                                        
+                                        return _buildSalaryCard(member, salary, deliveryCount, deliveryAllowance, advanceTotal, netSalary, currencyFormat);
+                                      },
+                                      childCount: members.length,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                            ],
-                          );
-                        },
+                                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                              ],
+                            );
+                          },
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (e, st) => Center(child: Text('Lỗi tải dữ liệu ứng lương: $e')),
+                        ),
                         loading: () => const Center(child: CircularProgressIndicator()),
                         error: (e, st) => Center(child: Text('Lỗi tải dữ liệu: $e')),
                       ),
@@ -156,22 +181,21 @@ class SalaryOverviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCard(Iterable<double> salaries, NumberFormat currencyFormat) {
-    final total = salaries.fold(0.0, (sum, val) => sum + val);
+  Widget _buildSummaryCard(double total, NumberFormat currencyFormat) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Tổng chi trả lương', style: TextStyle(color: Colors.white70)),
+          const Text('Tổng chi trả lương thực tế', style: TextStyle(color: Colors.white70)),
           Text(currencyFormat.format(total), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildSalaryCard(MemberModel member, double salary, int deliveryCount, double deliveryAllowance, NumberFormat currencyFormat) {
+  Widget _buildSalaryCard(MemberModel member, double salary, int deliveryCount, double deliveryAllowance, double advanceTotal, double netSalary, NumberFormat currencyFormat) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -197,7 +221,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
                 ),
               ),
               Text(
-                currencyFormat.format(salary),
+                currencyFormat.format(netSalary),
                 style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.primary),
               ),
             ],
@@ -211,22 +235,22 @@ class SalaryOverviewScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Mức lương cơ bản', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const Text('Tổng lương thu nhập', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     Text(
-                      member.isFulltime ? '${currencyFormat.format(member.baseMonthlySalary)} /tháng' : '${currencyFormat.format(member.baseHourlyRate)} /giờ',
+                      currencyFormat.format(salary),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
-                if (deliveryCount > 0) ...[
+                if (advanceTotal > 0) ...[
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('🚚 Chở hàng ($deliveryCount ca)', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const Text('Đã tạm ứng', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       Text(
-                        '+${currencyFormat.format(deliveryCount * deliveryAllowance)}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent),
+                        '-${currencyFormat.format(advanceTotal)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger),
                       ),
                     ],
                   ),

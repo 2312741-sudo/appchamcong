@@ -4,6 +4,7 @@ import '../../../models/store_model.dart';
 import '../../../models/member_model.dart';
 import '../repositories/store_repository.dart';
 import 'user_repository.dart';
+import '../../../models/advance_request_model.dart';
 
 // ---------- Repository Provider ----------
 
@@ -70,4 +71,22 @@ final currentMemberProvider = Provider<MemberModel?>((ref) {
       }
     },
   );
+});
+
+// ---------- Advances ----------
+
+final storeAdvancesProvider = StreamProvider.family<List<AdvanceRequestModel>, String>((ref, month) {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return Stream.value([]);
+  final repo = ref.watch(storeRepositoryProvider);
+  return repo.watchAdvances(storeId, month);
+});
+
+final myAdvancesProvider = Provider.family<List<AdvanceRequestModel>, String>((ref, month) {
+  final advancesAsync = ref.watch(storeAdvancesProvider(month));
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return [];
+  return advancesAsync.whenOrNull(
+    data: (list) => list.where((a) => a.userId == uid).toList(),
+  ) ?? [];
 });

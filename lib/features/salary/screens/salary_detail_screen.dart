@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/member_model.dart';
+import '../../../models/advance_request_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/salary_provider.dart';
 
@@ -66,6 +67,87 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
     );
   }
 
+  void _showAdvanceRequestModal(BuildContext context, String storeId, String userId) {
+    final amountCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 16, right: 16, top: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Xin ứng lương', style: GoogleFonts.beVietnamPro(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Số tiền muốn ứng (VNĐ)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.money),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Lý do (không bắt buộc)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.notes),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text);
+                  if (amount == null || amount <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')));
+                    return;
+                  }
+                  
+                  final request = AdvanceRequestModel(
+                    id: '', // Firestore auto-generates if we don't pass id, wait, in toMap we don't pass id.
+                    storeId: storeId,
+                    userId: userId,
+                    month: _monthKey,
+                    amount: amount,
+                    status: AdvanceStatus.pending,
+                    requestDate: DateTime.now(),
+                    note: noteCtrl.text.trim(),
+                  );
+                  
+                  try {
+                    await ref.read(storeRepositoryProvider).createAdvanceRequest(request);
+                    if (context.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã gửi yêu cầu ứng lương thành công'), backgroundColor: AppColors.success));
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.danger));
+                    }
+                  }
+                },
+                child: Text('Gửi yêu cầu', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final memberAsync = ref.watch(myMemberDataProvider);
@@ -119,25 +201,57 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('Lỗi tải dữ liệu: $e')),
                     data: (store) {
+                      final advancesAsync = ref.watch(myAdvancesProvider(_monthKey));
+                      
                       final totalHours = attendances.fold(0.0, (sum, a) => sum + a.totalHours);
                       final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
+
+                      final totalAdvance = advancesAsync.where((a) => a.status == AdvanceStatus.approved).fold(0.0, (sum, a) => sum + a.amount);
+                      final hasPending = advancesAsync.any((a) => a.status == AdvanceStatus.pending);
 
                       return RefreshIndicator(
                         onRefresh: () async {
                           ref.invalidate(myMonthlySalaryProvider);
                           ref.invalidate(myMonthAttendancesProvider);
                           ref.invalidate(myMonthlyDeliveryCountProvider);
+                          ref.invalidate(myAdvancesProvider);
                           ref.invalidate(currentStoreProvider);
                         },
                         child: ListView(
                           padding: const EdgeInsets.all(16),
                           children: [
-                            _buildSalaryCard(member, salary, totalHours, deliveryCount, deliveryAllowance),
+                            _buildSalaryCard(member, salary, totalHours, deliveryCount, deliveryAllowance, totalAdvance),
                             const SizedBox(height: 16),
+                            if (hasPending)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(8)),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.info_outline, color: Color(0xFF856404), size: 20),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text('Bạn đang có yêu cầu ứng lương chờ duyệt.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: const Color(0xFF856404))),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             _buildStatsRow(
                               attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length,
                               totalHours,
                               (DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month) - attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length).clamp(0, 31),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 44,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.money),
+                                label: const Text('Xin ứng lương'),
+                                onPressed: () => _showAdvanceRequestModal(context, member.storeId, member.userId),
+                                style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary)),
+                              ),
                             ),
                             const SizedBox(height: 16),
                             _buildDailyBreakdown(attendances),
@@ -156,9 +270,10 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
   }
 
   Widget _buildSalaryCard(
-      MemberModel member, double salary, double totalHours, int deliveryCount, double deliveryAllowance) {
+      MemberModel member, double salary, double totalHours, int deliveryCount, double deliveryAllowance, double totalAdvance) {
     final standardHours = member.standardHoursPerMonth;
     final progress = standardHours > 0 ? (totalHours / standardHours).clamp(0.0, 1.0) : 0.0;
+    final netSalary = salary - totalAdvance;
 
     return Container(
       decoration: BoxDecoration(
@@ -180,18 +295,16 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Lương tháng này', style: GoogleFonts.beVietnamPro(color: Colors.white70, fontSize: 14)),
+          Text('Thực nhận tháng này', style: GoogleFonts.beVietnamPro(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
-          Text(_formatCurrency(salary), style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+          Text(_formatCurrency(netSalary), style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Mức lương:', style: TextStyle(color: Colors.white70)),
+              Text('Tổng thu nhập:', style: TextStyle(color: Colors.white70)),
               Text(
-                member.isFulltime
-                    ? 'CB: ${_formatCurrency(member.baseMonthlySalary)}/tháng'
-                    : 'CB: ${_formatCurrency(member.baseHourlyRate)}/giờ',
+                _formatCurrency(salary),
                 style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
               ),
             ],
@@ -205,6 +318,19 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                 Text(
                   '+${_formatCurrency(deliveryCount * deliveryAllowance)}',
                   style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
+                ),
+              ],
+            ),
+          ],
+          if (totalAdvance > 0) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Đã tạm ứng:', style: TextStyle(color: Colors.white70)),
+                Text(
+                  '-${_formatCurrency(totalAdvance)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.danger),
                 ),
               ],
             ),

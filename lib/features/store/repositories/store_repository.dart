@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/store_model.dart';
+import '../../../models/advance_request_model.dart';
 import '../../../models/member_model.dart';
 
 class StoreRepository {
@@ -301,6 +302,49 @@ class StoreRepository {
       });
     } catch (e) {
       throw Exception('Cập nhật thông tin thất bại: $e');
+    }
+  }
+
+  // ---------- Advances ----------
+
+  Stream<List<AdvanceRequestModel>> watchAdvances(String storeId, String month) {
+    return _stores
+        .doc(storeId)
+        .collection('advances')
+        .where('month', isEqualTo: month)
+        .orderBy('requestDate', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => AdvanceRequestModel.fromFirestore(doc))
+            .toList());
+  }
+
+  Future<void> createAdvanceRequest(AdvanceRequestModel request) async {
+    try {
+      await _stores
+          .doc(request.storeId)
+          .collection('advances')
+          .add(request.toMap());
+    } catch (e) {
+      throw Exception('Failed to create advance request: $e');
+    }
+  }
+
+  Future<void> updateAdvanceRequestStatus(String storeId, String advanceId, AdvanceStatus status, [DateTime? approvedDate]) async {
+    try {
+      final updateData = <String, dynamic>{
+        'status': status.name,
+      };
+      if (approvedDate != null) {
+        updateData['approvedDate'] = approvedDate.toIso8601String();
+      }
+      await _stores
+          .doc(storeId)
+          .collection('advances')
+          .doc(advanceId)
+          .update(updateData);
+    } catch (e) {
+      throw Exception('Failed to update advance request: $e');
     }
   }
 }
