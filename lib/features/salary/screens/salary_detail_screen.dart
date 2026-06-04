@@ -106,8 +106,12 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text);
                   if (amount == null || amount <= 0) {
@@ -116,7 +120,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                   }
                   
                   final request = AdvanceRequestModel(
-                    id: '', // Firestore auto-generates if we don't pass id, wait, in toMap we don't pass id.
+                    id: '',
                     storeId: storeId,
                     userId: userId,
                     month: _monthKey,
@@ -138,7 +142,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                     }
                   }
                 },
-                child: Text('Gửi yêu cầu', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text('Gửi yêu cầu', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 24),
