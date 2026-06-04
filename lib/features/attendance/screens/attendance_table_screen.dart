@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/export_utils.dart';
+import '../../../core/utils/excel_export_service.dart';
+import '../../../core/widgets/export_modal.dart';
 import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../../salary/providers/salary_provider.dart';
@@ -43,27 +44,56 @@ class AttendanceTableScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.download_rounded),
             tooltip: 'Xuất Excel Tháng',
-            onPressed: () async {
+            onPressed: () {
               final membersData = membersAsync.valueOrNull;
-              if (storeId != null && membersData != null) {
+              final store = ref.read(currentStoreProvider).valueOrNull;
+              if (storeId != null && membersData != null && store != null) {
                 final activeMembers = membersData
                     .where((m) => m.status == MemberStatus.active)
                     .toList();
-                try {
-                  final repo = ref.read(salaryRepositoryProvider);
-                  await ExportUtils.exportMonthlyAttendanceToExcel(
-                    storeId,
-                    DateTime.now(),
-                    activeMembers,
-                    repo,
-                  );
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Lỗi xuất file: $e'),
-                        backgroundColor: AppColors.primary));
-                  }
-                }
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => ExportModal(
+                    title: 'Xuất Bảng Công',
+                    members: activeMembers,
+                    onExport: ({memberId, required isMonth, monthDate, startDate, endDate}) async {
+                      try {
+                        final repo = ref.read(attendanceRepositoryProvider);
+                        List<dynamic> attendances = [];
+                        
+                        if (isMonth && monthDate != null) {
+                          final monthStr = '${monthDate.year}-${monthDate.month.toString().padLeft(2, '0')}';
+                          attendances = await repo.getMonthAttendances(storeId, monthStr);
+                        } else if (!isMonth && startDate != null && endDate != null) {
+                          final startStr = '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+                          final endStr = '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+                          attendances = await repo.getAttendancesInRange(storeId, startStr, endStr);
+                        }
+                        
+                        final filteredMembers = memberId != null 
+                            ? activeMembers.where((m) => m.userId == memberId).toList()
+                            : activeMembers;
+                            
+                        await ExcelExportService.exportMonthlyAttendance(
+                          members: filteredMembers,
+                          attendances: attendances.cast(),
+                          month: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : '',
+                          store: store,
+                          startDate: !isMonth ? startDate : null,
+                          endDate: !isMonth ? endDate : null,
+                        );
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Lỗi xuất file: $e'),
+                              backgroundColor: AppColors.primary));
+                        }
+                      }
+                    },
+                  ),
+                );
               }
             },
           ),

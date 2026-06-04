@@ -65,6 +65,26 @@ class OwnerDashboard extends ConsumerWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => context.push(AppRoutes.manageAdvances),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.monetization_on, color: Color(0xFF1A6B5A), size: 32),
+                    SizedBox(width: 16),
+                    Text('Duyệt Ứng Lương', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    Spacer(),
+                    Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

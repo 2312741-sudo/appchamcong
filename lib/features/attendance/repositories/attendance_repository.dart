@@ -180,7 +180,28 @@ class AttendanceRepository {
           .map((d) => AttendanceModel.fromFirestore(d))
           .toList();
     } catch (e) {
-      throw Exception('Lấy dữ liệu chấm công thất bại: $e');
+      print('Lỗi getMonthAttendances: $e');
+      return [];
+    }
+  }
+
+  Future<List<AttendanceModel>> getAttendancesInRange(
+    String storeId,
+    String startDate,
+    String endDate,
+  ) async {
+    try {
+      final snap = await _attendances(storeId)
+          .where('date', isGreaterThanOrEqualTo: startDate)
+          .where('date', isLessThanOrEqualTo: endDate)
+          .orderBy('date')
+          .get();
+      return snap.docs
+          .map((d) => AttendanceModel.fromFirestore(d))
+          .toList();
+    } catch (e) {
+      print('Lỗi getAttendancesInRange: $e');
+      return [];
     }
   }
 

@@ -21,6 +21,7 @@ import '../features/schedule/screens/schedule_register_screen.dart';
 import '../features/schedule/screens/schedule_manager_screen.dart';
 import '../features/salary/screens/salary_detail_screen.dart';
 import '../features/salary/screens/salary_overview_screen.dart';
+import '../features/salary/screens/manage_advances_screen.dart';
 import '../features/members/screens/members_list_screen.dart';
 import '../features/members/screens/member_detail_screen.dart';
 import '../features/members/screens/pending_members_screen.dart';
@@ -58,6 +59,7 @@ class AppRoutes {
   static const String scheduleManager = '/schedule-manager';
   static const String salary = '/salary';
   static const String salaryOverview = '/salary-overview';
+  static const String manageAdvances = '/manage-advances';
   static const String members = '/members';
   static const String memberDetail = '/member-detail';
   static const String pendingMembers = '/pending-members';
@@ -223,6 +225,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.salaryOverview,
         name: 'salary-overview',
         builder: (context, state) => const SalaryOverviewScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.manageAdvances,
+        name: 'manage-advances',
+        builder: (context, state) => const ManageAdvancesScreen(),
       ),
 
       // ── Members ───────────────────────────────────────────────────────────

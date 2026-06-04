@@ -30,6 +30,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   List<StoreWifi> _wifis = [];
 
   bool _deliveryEnabled = true;
+  final _deliveryAllowanceCtrl = TextEditingController();
   bool _giaoHangEnabled = true;
   final _giaoHangAllowanceCtrl = TextEditingController();
 
@@ -49,6 +50,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _addressCtrl.dispose();
     _deptNameCtrl.dispose();
     _deptShortCtrl.dispose();
+    _deliveryAllowanceCtrl.dispose();
     _giaoHangAllowanceCtrl.dispose();
     super.dispose();
   }
@@ -61,6 +63,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _networkIP = storeModel.networkIP;
     _wifis = List.from(storeModel.wifis);
     _deliveryEnabled = storeModel.deliveryEnabled;
+    _deliveryAllowanceCtrl.text = (storeModel.deliveryAllowance ?? 0).toString();
     _giaoHangEnabled = storeModel.giaoHangEnabled;
     _giaoHangAllowanceCtrl.text = (storeModel.giaoHangAllowance ?? 0).toString();
     _radius = storeModel.radiusMeters.toDouble();
@@ -139,6 +142,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         'networkIP': _networkIP,
         'wifis': _wifis.map((w) => w.toJson()).toList(),
         'deliveryEnabled': _deliveryEnabled,
+        'deliveryAllowance': num.tryParse(_deliveryAllowanceCtrl.text.trim()) ?? 0,
         'giaoHangEnabled': _giaoHangEnabled,
         'giaoHangAllowance': num.tryParse(_giaoHangAllowanceCtrl.text.trim()) ?? 0,
         'latitude': _lat,
@@ -779,6 +783,17 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       onChanged: (val) => setState(() => _deliveryEnabled = val),
                     ),
                   ),
+                  if (_deliveryEnabled) ...[
+                    const SizedBox(height: 12),
+                    const _Label('Mức phụ cấp Chở hàng (VNĐ)'),
+                    const SizedBox(height: 6),
+                    _Field(
+                      controller: _deliveryAllowanceCtrl,
+                      hint: 'VD: 15000',
+                      icon: Icons.monetization_on_rounded,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -804,6 +819,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       controller: _giaoHangAllowanceCtrl,
                       hint: 'VD: 15000',
                       icon: Icons.monetization_on_rounded,
+                      keyboardType: TextInputType.number,
                     ),
                   ],
                   const SizedBox(height: 32),
@@ -890,6 +906,7 @@ class _Field extends StatelessWidget {
   final String hint;
   final IconData icon;
   final int maxLines;
+  final TextInputType? keyboardType;
   final String? Function(String?)? validator;
 
   const _Field({
@@ -897,6 +914,7 @@ class _Field extends StatelessWidget {
     required this.hint,
     required this.icon,
     this.maxLines = 1,
+    this.keyboardType,
     this.validator,
   });
 
@@ -905,6 +923,7 @@ class _Field extends StatelessWidget {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      keyboardType: keyboardType,
       validator: validator,
       style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 15),
       decoration: InputDecoration(

@@ -249,14 +249,15 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                             const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
-                              child: OutlinedButton.icon(
-                                icon: const Icon(Icons.money),
-                                label: const Text('Xin ứng lương'),
+                              child: FilledButton.icon(
+                                icon: const Icon(Icons.money, color: Colors.white),
+                                label: const Text('Xin ứng lương', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                 onPressed: () => _showAdvanceRequestModal(context, ref.read(currentStoreIdProvider)!, member.userId),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary, 
-                                  side: const BorderSide(color: AppColors.primary),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                               ),
                             ),

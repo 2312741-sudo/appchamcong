@@ -1,0 +1,227 @@
+import 'dart:io';
+import 'package:excel/excel.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../models/member_model.dart';
+import '../../../models/attendance_model.dart';
+import '../../../models/store_model.dart';
+
+class ExcelExportService {
+  static Future<void> exportMonthlyAttendance({
+    required List<MemberModel> members,
+    required List<AttendanceModel> attendances,
+    required String month,
+    required StoreModel store,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Bảng Công'];
+    excel.setDefaultSheet('Bảng Công');
+
+    List<DateTime> dates = [];
+    if (startDate != null && endDate != null) {
+      DateTime current = startDate;
+      while (!current.isAfter(endDate)) {
+        dates.add(current);
+        current = current.add(const Duration(days: 1));
+      }
+    } else {
+      final parts = month.split('-');
+      final year = int.parse(parts[0]);
+      final mon = int.parse(parts[1]);
+      final daysInMonth = DateTime(year, mon + 1, 0).day;
+      for (int i = 1; i <= daysInMonth; i++) {
+        dates.add(DateTime(year, mon, i));
+      }
+    }
+
+    final themeColorHex = (store.themeColor ?? '#C8102E').replaceAll('#', '');
+    final headerStyle = CellStyle(
+      backgroundColorHex: ExcelColor.fromHexString('#FF$themeColorHex'),
+      fontColorHex: ExcelColor.fromHexString('#FFFFFFFF'),
+      bold: true,
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+
+    // Light color formula roughly mixing with white
+    final r = int.parse(themeColorHex.substring(0, 2), radix: 16);
+    final g = int.parse(themeColorHex.substring(2, 4), radix: 16);
+    final b = int.parse(themeColorHex.substring(4, 6), radix: 16);
+    final lr = (r + (255 - r) * 0.85).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final lg = (g + (255 - g) * 0.85).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final lb = (b + (255 - b) * 0.85).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final lightColorHex = '#FF${lr.toUpperCase()}${lg.toUpperCase()}${lb.toUpperCase()}';
+
+    final dataStyle = CellStyle(
+      backgroundColorHex: ExcelColor.fromHexString(lightColorHex),
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+    final normalStyle = CellStyle(
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+
+    // Headers
+    final headers = ['NHÂN VIÊN', 'VAI TRÒ', 'TỔNG GIỜ', ...dates.map((d) => '${d.day}/${d.month}')];
+    for (int c = 0; c < headers.length; c++) {
+      var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
+      cell.value = TextCellValue(headers[c]);
+      cell.cellStyle = headerStyle;
+    }
+
+    // Rows
+    for (int r = 0; r < members.length; r++) {
+      final member = members[r];
+      final memberAtts = attendances.where((a) => a.userId == member.userId).toList();
+      double totalHours = 0;
+      
+      final rowIdx = r + 1;
+      
+      var nameCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIdx));
+      nameCell.value = TextCellValue(member.name);
+      
+      var roleCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIdx));
+      roleCell.value = TextCellValue(member.role == 'owner' ? 'Chủ' : member.role == 'manager' ? 'Quản lý' : 'Nhân viên');
+      
+      // Calculate day cells and total hours
+      List<String> dayValues = [];
+      for (var d in dates) {
+        final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        // Some attendances use month-day format without year if it's old code, but standard is YYYY-MM-DD
+        final att = memberAtts.where((a) => a.date == dateStr || a.date == '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}').firstOrNull;
+        
+        if (att != null && att.totalHours > 0) {
+          totalHours += att.totalHours;
+          dayValues.add('${att.totalHours.toStringAsFixed(1)}h');
+        } else {
+          dayValues.add('-');
+        }
+      }
+
+      var totalCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIdx));
+      totalCell.value = TextCellValue('${totalHours.toStringAsFixed(1)}h');
+      totalCell.cellStyle = normalStyle;
+
+      for (int i = 0; i < dates.length; i++) {
+        var c = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i + 3, rowIndex: rowIdx));
+        c.value = TextCellValue(dayValues[i]);
+        if (dayValues[i] != '-') {
+          c.cellStyle = dataStyle;
+        } else {
+          c.cellStyle = normalStyle;
+        }
+      }
+    }
+
+    // Auto fit column widths roughly
+    sheet.setColumnWidth(0, 25);
+    sheet.setColumnWidth(1, 15);
+    sheet.setColumnWidth(2, 12);
+    for (int i = 0; i < dates.length; i++) {
+      sheet.setColumnWidth(i + 3, 10);
+    }
+
+    final fileBytes = excel.save();
+    if (fileBytes != null) {
+      final directory = await getTemporaryDirectory();
+      final suffix = startDate != null ? 'Filter' : month;
+      final file = File('${directory.path}/BangCong_$suffix.xlsx');
+      await file.writeAsBytes(fileBytes);
+      await Share.shareXFiles([XFile(file.path)], text: 'Bảng Công');
+    }
+  }
+
+  static Future<void> exportMonthlySalary({
+    required String storeName,
+    required String themeColorHex,
+    required List<Map<String, dynamic>> computedSalaries,
+    required String suffix,
+  }) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Lương Tháng'];
+    excel.setDefaultSheet('Lương Tháng');
+
+    final headerStyle = CellStyle(
+      backgroundColorHex: ExcelColor.fromHexString('#FF${themeColorHex.replaceAll('#', '')}'),
+      fontColorHex: ExcelColor.fromHexString('#FFFFFFFF'),
+      bold: true,
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+
+    final r = int.parse(themeColorHex.substring(0, 2), radix: 16);
+    final g = int.parse(themeColorHex.substring(2, 4), radix: 16);
+    final b = int.parse(themeColorHex.substring(4, 6), radix: 16);
+    final lr = (r + (255 - r) * 0.85).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final lg = (g + (255 - g) * 0.85).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final lb = (b + (255 - b) * 0.85).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final lightColorHex = '#FF${lr.toUpperCase()}${lg.toUpperCase()}${lb.toUpperCase()}';
+
+    final dataStyle = CellStyle(
+      backgroundColorHex: ExcelColor.fromHexString(lightColorHex),
+      horizontalAlign: HorizontalAlign.Center,
+      verticalAlign: VerticalAlign.Center,
+    );
+
+    final headers = [
+      'TÊN NHÂN VIÊN', 'VAI TRÒ', 'LOẠI HĐ',
+      'TỔNG GIỜ', 'GIỜ CHUẨN', 'LƯƠNG CƠ BẢN', 'SỐ CA CHỞ HÀNG', 'PHỤ CẤP CHỞ', 'SỐ CA GIAO', 'PHỤ CẤP GIAO', 'ĐÃ TẠM ỨNG', 'LƯƠNG THỰC NHẬN'
+    ];
+    
+    for (int c = 0; c < headers.length; c++) {
+      var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
+      cell.value = TextCellValue(headers[c]);
+      cell.cellStyle = headerStyle;
+    }
+
+    for (int r = 0; r < computedSalaries.length; r++) {
+      final data = computedSalaries[r];
+      final rowIdx = r + 1;
+      
+      final rowData = [
+        data['name'],
+        data['role'],
+        data['type'],
+        '${data['totalHours'].toStringAsFixed(1)}h',
+        '208h',
+        data['baseSalary'].toString(),
+        data['deliveryCount'].toString(),
+        data['deliveryPay'].toString(),
+        '0',
+        '0',
+        data['advance'].toString(),
+        data['netSalary'].toString(),
+      ];
+
+      for (int c = 0; c < rowData.length; c++) {
+        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: rowIdx));
+        cell.value = TextCellValue(rowData[c].toString());
+        if (c > 2) cell.cellStyle = dataStyle;
+      }
+    }
+
+    sheet.setColumnWidth(0, 22);
+    sheet.setColumnWidth(1, 12);
+    sheet.setColumnWidth(2, 16);
+    sheet.setColumnWidth(3, 10);
+    sheet.setColumnWidth(4, 10);
+    sheet.setColumnWidth(5, 16);
+    sheet.setColumnWidth(6, 16);
+    sheet.setColumnWidth(7, 16);
+    sheet.setColumnWidth(8, 16);
+    sheet.setColumnWidth(9, 16);
+    sheet.setColumnWidth(10, 16);
+    sheet.setColumnWidth(11, 20);
+
+    final fileBytes = excel.save();
+    if (fileBytes != null) {
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/BaoCaoLuong_$suffix.xlsx');
+      await file.writeAsBytes(fileBytes);
+      await Share.shareXFiles([XFile(file.path)], text: 'Báo cáo lương');
+    }
+  }
+}
