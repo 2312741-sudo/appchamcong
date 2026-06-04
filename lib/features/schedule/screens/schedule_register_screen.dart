@@ -8,6 +8,7 @@ import '../../../models/store_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
+import '../../../models/member_model.dart';
 
 class ScheduleRegisterScreen extends ConsumerStatefulWidget {
   const ScheduleRegisterScreen({super.key});

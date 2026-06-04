@@ -65,10 +65,10 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
       
       // Update employee info
       await repo.updateMemberInfo(
-        storeId: storeId, 
-        userId: widget.userId, 
-        employeeCode: _employeeCodeCtrl.text.trim(), 
-        joinedAt: _joinedAt
+        storeId, 
+        widget.userId, 
+        _employeeCodeCtrl.text.trim(), 
+        _joinedAt
       );
 
       if (mounted) {
