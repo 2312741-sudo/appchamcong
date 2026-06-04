@@ -146,7 +146,7 @@ class _ScheduleManagerScreenState
                   if (isLockedForManager)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
-                      child: Text('Đang trong tuần hiện tại. Bạn chỉ có thể sửa phụ cấp.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.error)),
+                      child: Text('Đang trong tuần hiện tại. Bạn chỉ có thể sửa phụ cấp.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.danger)),
                     ),
                   const SizedBox(height: 16),
                   if (store.customShifts.isEmpty)
