@@ -46,8 +46,8 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
         return;
       }
 
-      await repo.joinStore(store.id, user.id);
-      await userRepo.updateCurrentStoreId(user.id, store.id);
+      await repo.joinStore(store.id, user.uid);
+      await userRepo.updateCurrentStoreId(user.uid, store.id);
       
       ref.invalidate(userStoresProvider);
 
