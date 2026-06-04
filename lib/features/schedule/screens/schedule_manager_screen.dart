@@ -115,8 +115,17 @@ class _ScheduleManagerScreenState
     }
   }
 
+  bool get _isCurrentWeek {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentMonday = today.subtract(Duration(days: today.weekday - 1));
+    final weekMonday = _parseDate(_currentWeek);
+    return currentMonday.isAtSameMomentAs(weekMonday);
+  }
+
   void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner) {
     var selectedShifts = List<String>.from(_draft[userId]?.shiftForDay(dayIndex + 1) ?? []);
+    final isLockedForManager = _isCurrentWeek && !isOwner;
     
     showModalBottomSheet(
       context: context,
@@ -134,6 +143,11 @@ class _ScheduleManagerScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Chọn ca làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
+                  if (isLockedForManager)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text('Đang trong tuần hiện tại. Bạn chỉ có thể sửa phụ cấp.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.error)),
+                    ),
                   const SizedBox(height: 16),
                   if (store.customShifts.isEmpty)
                     const Text('Chưa có ca làm nào được thiết lập. Vui lòng tạo trên Web hoặc trong Cài đặt.'),
@@ -146,7 +160,7 @@ class _ScheduleManagerScreenState
                         CheckboxListTile(
                           title: Text('${shift.name} (${shift.timeRange})', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
                           value: isSelected,
-                          onChanged: (val) {
+                          onChanged: isLockedForManager ? null : (val) {
                             setModalState(() {
                               if (val == true) {
                                 selectedShifts.add(shift.id);
@@ -163,7 +177,7 @@ class _ScheduleManagerScreenState
                               value: selectedDeptId.isEmpty ? null : selectedDeptId,
                               hint: const Text('Chọn bộ phận'),
                               items: store.departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
-                              onChanged: (val) {
+                              onChanged: isLockedForManager ? null : (val) {
                                 if (val != null) {
                                   setModalState(() {
                                     selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
@@ -177,28 +191,26 @@ class _ScheduleManagerScreenState
                       ],
                     );
                   }),
-                  if (store.deliveryEnabled)
-                    CheckboxListTile(
-                      title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                      value: hasDelivery,
-                      onChanged: (val) {
-                        setModalState(() {
-                          if (val == true) selectedShifts.add('delivery');
-                          else selectedShifts.remove('delivery');
-                        });
-                      }
-                    ),
-                  if (store.giaoHangEnabled)
-                    CheckboxListTile(
-                      title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                      value: hasGiaoHang,
-                      onChanged: (val) {
-                        setModalState(() {
-                          if (val == true) selectedShifts.add('giaohang');
-                          else selectedShifts.remove('giaohang');
-                        });
-                      }
-                    ),
+                  CheckboxListTile(
+                    title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    value: hasDelivery,
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) selectedShifts.add('delivery');
+                        else selectedShifts.remove('delivery');
+                      });
+                    }
+                  ),
+                  CheckboxListTile(
+                    title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    value: hasGiaoHang,
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) selectedShifts.add('giaohang');
+                        else selectedShifts.remove('giaohang');
+                      });
+                    }
+                  ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
