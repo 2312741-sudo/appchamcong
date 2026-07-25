@@ -8,6 +8,8 @@ import '../../core/constants/app_colors.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
+import '../../features/schedule/providers/schedule_provider.dart';
+import '../../core/widgets/store_drawer.dart';
 
 class OwnerDashboard extends ConsumerStatefulWidget {
   const OwnerDashboard({super.key});
@@ -22,6 +24,7 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const StoreDrawer(),
       backgroundColor: const Color(0xFFF5F6FA),
       body: IndexedStack(
         index: _selectedIndex,
@@ -111,9 +114,18 @@ class _OwnerHomeTab extends ConsumerWidget {
                             style: const TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'BeVietnamPro'),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            store?.name ?? 'Cửa hàng',
-                            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro'),
+                          GestureDetector(
+                            onTap: () => Scaffold.of(context).openDrawer(),
+                            child: Row(
+                              children: [
+                                Text(
+                                  store.name,
+                                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro'),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.arrow_drop_down, color: Colors.white, size: 24),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(

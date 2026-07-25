@@ -11,6 +11,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../models/attendance_model.dart';
+import '../../core/widgets/store_drawer.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
@@ -75,6 +76,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
+      drawer: const StoreDrawer(),
       body: IndexedStack(
         index: _selectedIndex,
         children: [
@@ -170,19 +172,24 @@ class _HomeTab extends ConsumerWidget {
                         ),
                         // Store chip
                         if (store != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.store_rounded, color: Colors.white, size: 14),
-                                const SizedBox(width: 6),
-                                Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
-                              ],
+                          GestureDetector(
+                            onTap: () => Scaffold.of(context).openDrawer(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.store_rounded, color: Colors.white, size: 14),
+                                  const SizedBox(width: 6),
+                                  Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                                ],
+                              ),
                             ),
                           ),
                       ],

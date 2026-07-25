@@ -7,6 +7,7 @@ import '../../app/router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../core/widgets/store_drawer.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 
 class ManagerDashboard extends ConsumerStatefulWidget {
@@ -37,6 +38,7 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
+      drawer: const StoreDrawer(),
       body: IndexedStack(
         index: _selectedIndex,
         children: [
@@ -128,18 +130,30 @@ class _ManagerHomeTab extends ConsumerWidget {
                           ),
                         ),
                         if (store != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.store_rounded, color: Colors.white, size: 14),
-                                const SizedBox(width: 6),
-                                Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
-                              ],
+                          GestureDetector(
+                            onTap: () => Scaffold.of(context).openDrawer(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.store_rounded, color: Colors.white, size: 14),
+                                  const SizedBox(width: 6),
+                                  Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                                ],
+                              ),
                             ),
                           ),
+                      ],
+                    ),
+                        const SizedBox(height: 16),
+                        Text(DateFormat('EEEE, dd/MM/yyyy', 'vi').format(now), style: const TextStyle(color: Colors.white60, fontSize: 13, fontFamily: 'BeVietnamPro')),
                       ],
                     ),
                     const SizedBox(height: 16),
