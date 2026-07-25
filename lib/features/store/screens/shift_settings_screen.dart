@@ -13,6 +13,7 @@ class ShiftDefinition {
   final int startMinute;
   final int endHour;
   final int endMinute;
+  final bool isProduction;
 
   const ShiftDefinition({
     required this.id,
@@ -21,6 +22,7 @@ class ShiftDefinition {
     required this.startMinute,
     required this.endHour,
     required this.endMinute,
+    this.isProduction = false,
   });
 
   String get startTimeStr =>
@@ -43,6 +45,7 @@ class ShiftDefinition {
         'startMinute': startMinute,
         'endHour': endHour,
         'endMinute': endMinute,
+        'isProduction': isProduction,
       };
 
   factory ShiftDefinition.fromJson(Map<String, dynamic> json) =>
@@ -53,6 +56,7 @@ class ShiftDefinition {
         startMinute: (json['startMinute'] as int?) ?? 0,
         endHour: (json['endHour'] as int?) ?? 17,
         endMinute: (json['endMinute'] as int?) ?? 0,
+        isProduction: (json['isProduction'] as bool?) ?? false,
       );
 
   ShiftDefinition copyWith({
@@ -61,6 +65,7 @@ class ShiftDefinition {
     int? startMinute,
     int? endHour,
     int? endMinute,
+    bool? isProduction,
   }) =>
       ShiftDefinition(
         id: id,
@@ -69,6 +74,7 @@ class ShiftDefinition {
         startMinute: startMinute ?? this.startMinute,
         endHour: endHour ?? this.endHour,
         endMinute: endMinute ?? this.endMinute,
+        isProduction: isProduction ?? this.isProduction,
       );
 }
 

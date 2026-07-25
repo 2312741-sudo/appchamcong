@@ -1,79 +1,731 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../app/router.dart';
-import '../../core/widgets/store_drawer.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import '../../app/router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/attendance/providers/attendance_provider.dart';
+import '../../features/schedule/providers/schedule_provider.dart';
+import '../../models/attendance_model.dart';
 
-class EmployeeDashboard extends ConsumerWidget {
+class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EmployeeDashboard> createState() => _EmployeeDashboardState();
+}
+
+class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
+    with SingleTickerProviderStateMixin {
+  int _selectedIndex = 0;
+  late Timer _clockTimer;
+  DateTime _now = DateTime.now();
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _clockTimer.cancel();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = ref.watch(currentUserProvider).value?.id;
+
+    // Kick out if removed
     ref.listen(storeMembersProvider, (prev, next) {
       next.whenData((members) {
-        final uid = FirebaseAuth.instance.currentUser?.uid;
         final member = members.where((m) => m.userId == uid).firstOrNull;
         if (member == null) {
           ref.invalidate(userStoresProvider);
           ref.invalidate(currentUserProvider);
           context.go(AppRoutes.splash);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bạn đã bị xóa khỏi cửa hàng.'),
-              backgroundColor: AppColors.primary,
-            ),
-          );
         }
       });
     });
 
+    final store = ref.watch(currentStoreProvider).value;
+    final memberAsync = ref.watch(storeMembersProvider);
+    final member = memberAsync.valueOrNull?.where((m) => m.userId == uid).firstOrNull;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard Nhân viên', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFFC8102E),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      drawer: const StoreDrawer(),
-      body: Column(
+      backgroundColor: const Color(0xFFF5F6FA),
+      body: IndexedStack(
+        index: _selectedIndex,
         children: [
-          const Spacer(),
-          Center(
-            child: InkWell(
-              onTap: () => context.push(AppRoutes.checkIn),
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFC8102E),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Text('CHẤM CÔNG', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+          _HomeTab(now: _now, pulseAnimation: _pulseAnimation, uid: uid ?? ''),
+          _ScheduleTab(),
+          _ProfileTab(),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, -4))],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              _NavItem(icon: Icons.home_rounded, label: 'Tổng quan', index: 0, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _NavItem(icon: Icons.calendar_month_rounded, label: 'Lịch làm', index: 1, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _NavItem(icon: Icons.person_rounded, label: 'Hồ sơ', index: 2, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── HOME TAB ───────────────────────────────────────────────────────────────
+
+class _HomeTab extends ConsumerWidget {
+  final DateTime now;
+  final Animation<double> pulseAnimation;
+  final String uid;
+
+  const _HomeTab({required this.now, required this.pulseAnimation, required this.uid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider).value;
+    final store = ref.watch(currentStoreProvider).value;
+    final attendanceAsync = ref.watch(myTodayAttendanceProvider);
+    final memberAsync = ref.watch(storeMembersProvider);
+    final member = memberAsync.valueOrNull?.where((m) => m.userId == uid).firstOrNull;
+
+    final greeting = _getGreeting(now.hour);
+    final firstName = (user?.name ?? 'Bạn').split(' ').last;
+
+    return CustomScrollView(
+      slivers: [
+        // Header gradient
+        SliverToBoxAdapter(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFC8102E), Color(0xFF8B0000)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$greeting,',
+                                style: const TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'BeVietnamPro'),
+                              ),
+                              Text(
+                                firstName,
+                                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Store chip
+                        if (store != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.store_rounded, color: Colors.white, size: 14),
+                                const SizedBox(width: 6),
+                                Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Clock
+                    Text(
+                      DateFormat('HH:mm').format(now),
+                      style: const TextStyle(color: Colors.white, fontSize: 52, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', height: 1),
+                    ),
+                    Text(
+                      DateFormat('EEEE, dd/MM/yyyy', 'vi').format(now),
+                      style: const TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'BeVietnamPro'),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          const Spacer(),
+        ),
+
+        // Status card
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            child: attendanceAsync.when(
+              loading: () => _ShimmerCard(),
+              error: (e, _) => const SizedBox.shrink(),
+              data: (att) => _StatusCard(attendance: att, pulseAnimation: pulseAnimation, now: now),
+            ),
+          ),
+        ),
+
+        // Department badge
+        if (member?.department != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.business_rounded, size: 14, color: Color(0xFF1C4E6B)),
+                        const SizedBox(width: 6),
+                        Text(
+                          member!.department!,
+                          style: const TextStyle(color: Color(0xFF1C4E6B), fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Quick actions
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Thao tác nhanh', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro')),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _QuickAction(icon: Icons.fingerprint_rounded, label: 'Chấm công', color: const Color(0xFFC8102E), onTap: () => context.push(AppRoutes.checkIn))),
+                    const SizedBox(width: 12),
+                    Expanded(child: _QuickAction(icon: Icons.history_rounded, label: 'Lịch sử', color: const Color(0xFF1C4E6B), onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString()))),
+                    const SizedBox(width: 12),
+                    Expanded(child: _QuickAction(icon: Icons.payments_rounded, label: 'Lương', color: const Color(0xFF1A6B5A), onTap: () => context.push(AppRoutes.salary))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Today's schedule
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            child: _TodayScheduleCard(uid: uid),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getGreeting(int hour) {
+    if (hour < 12) return 'Chào buổi sáng';
+    if (hour < 18) return 'Chào buổi chiều';
+    return 'Chào buổi tối';
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  final AttendanceModel? attendance;
+  final Animation<double> pulseAnimation;
+  final DateTime now;
+
+  const _StatusCard({required this.attendance, required this.pulseAnimation, required this.now});
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = attendance != null && attendance!.isActive;
+    final isDone = attendance != null && !attendance!.isActive;
+
+    Duration? duration;
+    if (isActive) {
+      duration = now.difference(attendance!.checkIn);
+    } else if (isDone && attendance!.checkOut != null) {
+      duration = attendance!.checkOut!.difference(attendance!.checkIn);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          // Status indicator
+          ScaleTransition(
+            scale: isActive ? pulseAnimation : const AlwaysStoppedAnimation(1.0),
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFF1A6B5A).withOpacity(0.1)
+                    : isDone
+                        ? const Color(0xFF1C4E6B).withOpacity(0.1)
+                        : const Color(0xFFF5F6FA),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isActive ? Icons.timer_rounded : isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                color: isActive ? const Color(0xFF1A6B5A) : isDone ? const Color(0xFF1C4E6B) : Colors.grey,
+                size: 28,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isActive ? 'Đang trong ca' : isDone ? 'Đã hoàn thành ca' : 'Chưa chấm công',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'BeVietnamPro',
+                    color: isActive ? const Color(0xFF1A6B5A) : isDone ? const Color(0xFF1C4E6B) : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (duration != null)
+                  Text(
+                    _formatDuration(duration),
+                    style: const TextStyle(fontSize: 13, color: Colors.grey, fontFamily: 'BeVietnamPro'),
+                  )
+                else
+                  const Text(
+                    'Nhấn "Chấm công" để bắt đầu ca',
+                    style: TextStyle(fontSize: 13, color: Colors.grey, fontFamily: 'BeVietnamPro'),
+                  ),
+              ],
+            ),
+          ),
+          if (!isDone)
+            ElevatedButton(
+              onPressed: () => (context as Element).findAncestorWidgetOfExactType<_HomeTab>() != null
+                  ? Navigator.of(context).pushNamed(AppRoutes.checkIn)
+                  : GoRouter.of(context).push(AppRoutes.checkIn),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isActive ? const Color(0xFFC8102E) : const Color(0xFF1A6B5A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                elevation: 0,
+              ),
+              child: Text(isActive ? 'Ra ca' : 'Vào ca', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+            ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        unselectedItemColor: Colors.grey,
-        selectedItemColor: const Color(0xFFC8102E),
-        currentIndex: 0,
-        onTap: (index) {
-          if (index == 1) context.push(AppRoutes.scheduleRegister);
-          if (index == 2) context.push(AppRoutes.salary);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch làm'),
-          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Lương'),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    if (h > 0) return '$h giờ $m phút $s giây';
+    if (m > 0) return '$m phút $s giây';
+    return '$s giây';
+  }
+}
+
+class _QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickAction({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color, fontFamily: 'BeVietnamPro')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayScheduleCard extends ConsumerWidget {
+  final String uid;
+  const _TodayScheduleCard({required this.uid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheduleAsync = ref.watch(currentWeekScheduleProvider);
+    final store = ref.watch(currentStoreProvider).value;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5C842).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.event_note_rounded, color: Color(0xFFB8860B), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text('Ca làm hôm nay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          scheduleAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            error: (_, __) => const Text('Không tải được lịch', style: TextStyle(color: Colors.grey)),
+            data: (schedule) {
+              if (schedule == null) return const Text('Không có lịch tuần này', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
+              final daySchedule = schedule.shifts[uid];
+              List<String> shiftIds = [];
+              if (daySchedule != null) {
+                switch (DateTime.now().weekday) {
+                  case 1: shiftIds = daySchedule.monday; break;
+                  case 2: shiftIds = daySchedule.tuesday; break;
+                  case 3: shiftIds = daySchedule.wednesday; break;
+                  case 4: shiftIds = daySchedule.thursday; break;
+                  case 5: shiftIds = daySchedule.friday; break;
+                  case 6: shiftIds = daySchedule.saturday; break;
+                  case 7: shiftIds = daySchedule.sunday; break;
+                }
+              }
+              final shifts = store?.customShifts?.where((s) => shiftIds.contains(s.id)).toList() ?? [];
+              if (shifts.isEmpty) return const Text('Hôm nay không có ca làm', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
+              return Column(
+                children: shifts.map((shift) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5C842).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
+                      ),
+                    ],
+                  ),
+                )).toList(),
+              );
+            },
+          ),
         ],
+      ),
+    );
+  }
+
+  String _getDayKey(int weekday) {
+    const keys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return keys[weekday - 1];
+  }
+
+  String _pad(int n) => n.toString().padLeft(2, '0');
+}
+
+class _ShimmerCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 88,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+    );
+  }
+}
+
+// ─── SCHEDULE TAB ────────────────────────────────────────────────────────────
+
+class _ScheduleTab extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        title: const Text('Lịch làm việc', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1A1A1A),
+        elevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.push(AppRoutes.scheduleRegister),
+            icon: const Icon(Icons.edit_rounded, size: 18),
+            label: const Text('Đăng ký', style: TextStyle(fontFamily: 'BeVietnamPro')),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.calendar_month_rounded, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => context.push(AppRoutes.scheduleRegister),
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('Xem & Đăng ký lịch làm', style: TextStyle(fontFamily: 'BeVietnamPro')),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC8102E),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PROFILE TAB ─────────────────────────────────────────────────────────────
+
+class _ProfileTab extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider).value;
+    final uid = ref.watch(currentUserProvider).value?.id ?? '';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        title: const Text('Hồ sơ cá nhân', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1A1A1A),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            onPressed: () => context.push(AppRoutes.profileSettings),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Avatar + info
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 4))],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: const Color(0xFFC8102E),
+                  backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
+                  child: user?.avatarUrl == null
+                      ? Text((user?.name ?? 'U')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(user?.name ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                      const SizedBox(height: 4),
+                      Text(user?.email ?? '', style: const TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'BeVietnamPro')),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text('Nhân viên', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro')),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Menu items
+          _ProfileMenuItem(icon: Icons.attach_money_rounded, label: 'Xem lương tháng này', color: const Color(0xFF1A6B5A), onTap: () => context.push(AppRoutes.salary)),
+          _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công', color: const Color(0xFF1C4E6B), onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString())),
+          _ProfileMenuItem(icon: Icons.account_balance_wallet_rounded, label: 'Tạm ứng lương', color: const Color(0xFFB8860B), onTap: () => context.push(AppRoutes.salary)),
+          _ProfileMenuItem(icon: Icons.notifications_rounded, label: 'Thông báo', color: const Color(0xFF7B1FA2), onTap: () {}),
+          _ProfileMenuItem(icon: Icons.logout_rounded, label: 'Đăng xuất', color: Colors.red, onTap: () async {
+            final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
+              title: const Text('Đăng xuất?', style: TextStyle(fontFamily: 'BeVietnamPro')),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Đăng xuất', style: TextStyle(color: Colors.red))),
+              ],
+            ));
+            if (confirm == true && context.mounted) {
+              await ref.read(authRepositoryProvider).signOut();
+              context.go(AppRoutes.splash);
+            }
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ProfileMenuItem({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      ),
+    );
+  }
+}
+
+// ─── NAV ITEM ────────────────────────────────────────────────────────────────
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int index;
+  final int selected;
+  final Function(int) onTap;
+
+  const _NavItem({required this.icon, required this.label, required this.index, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = index == selected;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFC8102E).withOpacity(0.08) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: isSelected ? const Color(0xFFC8102E) : Colors.grey, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? const Color(0xFFC8102E) : Colors.grey,
+                  fontFamily: 'BeVietnamPro',
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -49,3 +49,6 @@ final dateAttendancesProvider =
   final repo = ref.watch(attendanceRepositoryProvider);
   return repo.watchAllAttendances(storeId, date);
 });
+
+// Alias cho employee dashboard
+final myTodayAttendanceProvider = todayAttendanceProvider;

@@ -45,3 +45,9 @@ final availableWeeksProvider = Provider<List<String>>((ref) {
   final repo = ref.read(scheduleRepositoryProvider);
   return repo.getNextWeeks(3);
 });
+
+// Alias cho employee dashboard
+final currentWeekScheduleProvider = Provider<AsyncValue<ScheduleModel?>>((ref) {
+  final weekStart = ref.watch(currentWeekStartProvider);
+  return ref.watch(weekScheduleProvider(weekStart));
+});

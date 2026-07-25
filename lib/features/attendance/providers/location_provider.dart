@@ -63,7 +63,12 @@ final canCheckInProvider = FutureProvider<CheckInStatus>((ref) async {
   bool isWifi = false;
   if (store.hasWifi) {
     try {
-      isWifi = await LocationUtils.isOnStoreNetwork(store.networkIP!);
+      final allowedIPs = <String>[];
+      if (store.networkIP != null && store.networkIP!.isNotEmpty) allowedIPs.add(store.networkIP!);
+      for (final w in store.wifis) {
+        if (w.ip.isNotEmpty) allowedIPs.add(w.ip);
+      }
+      isWifi = await LocationUtils.isOnStoreNetwork(allowedIPs);
     } catch (_) {
       isWifi = false;
     }
