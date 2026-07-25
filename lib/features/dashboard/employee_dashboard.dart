@@ -69,6 +69,10 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
     final memberAsync = ref.watch(storeMembersProvider);
     final member = memberAsync.valueOrNull?.where((m) => m.userId == uid).firstOrNull;
 
+    if (store == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
       body: IndexedStack(
@@ -121,6 +125,8 @@ class _HomeTab extends ConsumerWidget {
     final attendanceAsync = ref.watch(myTodayAttendanceProvider);
     final memberAsync = ref.watch(storeMembersProvider);
     final member = memberAsync.valueOrNull?.where((m) => m.userId == uid).firstOrNull;
+
+    if (store == null) return const SizedBox();
 
     final greeting = _getGreeting(now.hour);
     final firstName = (user?.name ?? 'Bạn').split(' ').last;
@@ -425,6 +431,8 @@ class _TodayScheduleCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheduleAsync = ref.watch(currentWeekScheduleProvider);
     final store = ref.watch(currentStoreProvider).value;
+
+    if (store == null) return const SizedBox();
 
     return Container(
       padding: const EdgeInsets.all(16),

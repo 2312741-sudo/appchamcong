@@ -66,6 +66,11 @@ class _OwnerHomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider).value;
     final store = ref.watch(currentStoreProvider).value;
+
+    if (store == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final membersAsync = ref.watch(storeMembersProvider);
     final pendingAsync = ref.watch(pendingMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
@@ -323,6 +328,8 @@ class _OwnerSettingsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider).value;
     final store = ref.watch(currentStoreProvider).value;
+
+    if (store == null) return const SizedBox();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),

@@ -81,6 +81,11 @@ class _ManagerHomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider).value;
     final store = ref.watch(currentStoreProvider).value;
+
+    if (store == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final membersAsync = ref.watch(storeMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
     final now = DateTime.now();
