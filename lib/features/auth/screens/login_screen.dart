@@ -119,11 +119,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
 
-    return LoadingOverlay(
-      isLoading: authState.isLoading,
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: SafeArea(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: LoadingOverlay(
+        isLoading: authState.isLoading,
+        child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Form(
