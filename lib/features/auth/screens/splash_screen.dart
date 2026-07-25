@@ -114,15 +114,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           if (userAsync.isLoading) {
             // Wait for user provider to load instead of going to welcome immediately
             // We'll rely on the provider listener
+            _hasNavigated = false;
+            return;
           }
         }
       },
       loading: () {
         // Wait a bit more if still loading
-        if (!_hasNavigated) {
-          _hasNavigated = false;
-          _scheduleNavigation();
-        }
+        _hasNavigated = false;
+        _scheduleNavigation();
       },
       error: (_, __) {
         if (mounted) context.go(AppRoutes.login);
