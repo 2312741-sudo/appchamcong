@@ -25,17 +25,29 @@ void main() async {
   );
 
   // Initialize Hive for local storage
-  await Hive.initFlutter();
-  await Hive.openBox('attendance_offline');
-  await Hive.openBox('app_cache');
+  try {
+    await Hive.initFlutter();
+    await Hive.openBox('attendance_offline');
+    await Hive.openBox('app_cache');
+  } catch (e) {
+    debugPrint('Hive initialization error: $e');
+  }
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization error: $e');
+  }
 
   // Initialize notifications
-  await NotificationService().initialize();
+  try {
+    await NotificationService().initialize();
+  } catch (e) {
+    debugPrint('NotificationService initialization error: $e');
+  }
 
   // Global error handling
   FlutterError.onError = (FlutterErrorDetails details) {

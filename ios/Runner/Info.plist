@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập camera để quét mã QR tham gia cửa hàng.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện và chứng minh.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ứng dụng cần quyền lưu ảnh vào thư viện.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập vị trí của bạn để xác thực việc chấm công.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
