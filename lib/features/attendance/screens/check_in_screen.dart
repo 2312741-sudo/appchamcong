@@ -205,6 +205,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
                         // Glassmorphism Header
                         Container(
                           width: double.infinity,
@@ -212,23 +215,23 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(colors: [Color(0xFFC8102E), Color(0xFFE52040)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                             borderRadius: BorderRadius.circular(24),
-                            boxShadow: [BoxShadow(color: const Color(0xFFC8102E).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                            boxShadow: [BoxShadow(color: const Color(0xFFC8102E).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
                           ),
                           child: Column(
                             children: [
-                              Text(DateFormat('EEEE, dd/MM/yyyy', 'vi').format(_currentTime), style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16, fontWeight: FontWeight.w500)),
+                              Text(DateFormat('EEEE, dd/MM/yyyy', 'vi').format(_currentTime), style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16, fontWeight: FontWeight.w500)),
                               const SizedBox(height: 8),
                               Text(DateFormat('HH:mm:ss').format(_currentTime), style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w800, letterSpacing: 2)),
                               const SizedBox(height: 16),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.storefront_rounded, color: Colors.white.withValues(alpha: 0.9), size: 18),
+                                    Icon(Icons.storefront_rounded, color: Colors.white.withOpacity(0.9), size: 18),
                                     const SizedBox(width: 8),
-                                    Text(store.name, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600)),
+                                    Text(store.name, style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -254,13 +257,13 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
                             ),
                             child: Row(
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
                                   child: const Icon(Icons.login_rounded, color: Colors.green, size: 28),
                                 ),
                                 const SizedBox(width: 16),
@@ -300,7 +303,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: (isCheckedIn ? const Color(0xFF888780) : const Color(0xFF1A6B5A)).withValues(alpha: 0.4),
+                                        color: (isCheckedIn ? const Color(0xFF888780) : const Color(0xFF1A6B5A)).withOpacity(0.4),
                                         blurRadius: 30,
                                         spreadRadius: 10,
                                       )
@@ -349,7 +352,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
             color: isSelected ? const Color(0xFF1C4E6B) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: isSelected ? const Color(0xFF1C4E6B) : Colors.grey.shade300, width: 2),
-            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF1C4E6B).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
+            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF1C4E6B).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
           ),
           child: Column(
             children: [
@@ -492,7 +495,7 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFC8102E).withValues(alpha: 0.05) : Colors.white,
+                    color: isSelected ? const Color(0xFFC8102E).withOpacity(0.05) : Colors.white,
                     border: Border.all(color: isSelected ? const Color(0xFFC8102E) : Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(12),
                   ),
