@@ -205,9 +205,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
                         // Glassmorphism Header
                         Container(
                           width: double.infinity,
