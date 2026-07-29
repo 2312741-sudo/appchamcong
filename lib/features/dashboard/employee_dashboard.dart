@@ -56,14 +56,16 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
 
     // Kick out if removed
     ref.listen(storeMembersProvider, (prev, next) {
-      next.whenData((members) {
-        final member = members.where((m) => m.userId == uid).firstOrNull;
-        if (member == null) {
+      if (uid == null) return;
+      final prevList = prev?.valueOrNull;
+      final nextList = next.valueOrNull;
+      if (prevList != null && prevList.any((m) => m.userId == uid)) {
+        if (nextList != null && !nextList.any((m) => m.userId == uid)) {
           ref.invalidate(userStoresProvider);
           ref.invalidate(currentUserProvider);
           context.go(AppRoutes.splash);
         }
-      });
+      }
     });
 
     final store = ref.watch(currentStoreProvider).value;

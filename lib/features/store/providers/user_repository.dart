@@ -57,12 +57,11 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
 });
 
 final userProvider = StreamProvider<UserModel?>((ref) {
-  final auth = FirebaseAuth.instance;
-  final firebaseUser = auth.currentUser;
-  if (firebaseUser == null) return Stream.value(null);
+  final authUser = ref.watch(authStateProvider).valueOrNull;
+  if (authUser == null) return Stream.value(null);
 
   final repo = ref.watch(userRepositoryProvider);
-  return repo.watchUser(firebaseUser.uid);
+  return repo.watchUser(authUser.uid);
 });
 
 final authStateProvider = StreamProvider<User?>((ref) {
