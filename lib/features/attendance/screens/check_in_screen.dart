@@ -22,10 +22,10 @@ final todayAttendanceProvider = StreamProvider.family<AttendanceModel?, String>(
   return repo.watchTodayAttendance(storeId, userId);
 });
 
-const kDefaultProductionTasks = [
-  ProductionTask(id: 'task_san_xuat', name: 'Sản lượng sản xuất trong ca', unitLabel: 'sản phẩm', active: true, order: 1),
-  ProductionTask(id: 'task_ve_sinh', name: 'Vệ sinh khu vực sản xuất & dụng cụ', unitLabel: 'khu vực', active: true, order: 2),
-  ProductionTask(id: 'task_ban_giao', name: 'Bàn giao nguyên vật liệu & công cụ', unitLabel: 'lần', active: true, order: 3),
+final List<ProductionTask> kDefaultProductionTasks = [
+  ProductionTask(id: 'task_san_xuat', name: 'Sản lượng sản xuất trong ca', unit: ProductionUnitType.qty, unitLabel: 'sản phẩm', active: true, order: 1),
+  ProductionTask(id: 'task_ve_sinh', name: 'Vệ sinh khu vực sản xuất & dụng cụ', unit: ProductionUnitType.qty, unitLabel: 'khu vực', active: true, order: 2),
+  ProductionTask(id: 'task_ban_giao', name: 'Bàn giao nguyên vật liệu & công cụ', unit: ProductionUnitType.qty, unitLabel: 'lần', active: true, order: 3),
 ];
 
 class CheckInScreen extends ConsumerStatefulWidget {
