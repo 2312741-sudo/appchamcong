@@ -79,6 +79,13 @@ class NotificationService {
     }
   }
 
+  Future<void> updateToken() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await saveTokenForUser(uid);
+    }
+  }
+
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null || _localNotifications == null) return;
