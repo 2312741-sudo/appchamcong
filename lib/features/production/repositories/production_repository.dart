@@ -17,11 +17,14 @@ class ProductionRepository {
   Stream<List<ProductionTask>> watchActiveTasks(String storeId) {
     return _tasksRef(storeId)
         .where('active', isEqualTo: true)
-        .orderBy('order')
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => ProductionTask.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snap) {
+      final list = snap.docs
+          .map((doc) => ProductionTask.fromJson(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => a.order.compareTo(b.order));
+      return list;
+    });
   }
 
   // Submit báo cáo

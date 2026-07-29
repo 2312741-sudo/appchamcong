@@ -22,6 +22,12 @@ final todayAttendanceProvider = StreamProvider.family<AttendanceModel?, String>(
   return repo.watchTodayAttendance(storeId, userId);
 });
 
+const kDefaultProductionTasks = [
+  ProductionTask(id: 'task_san_xuat', name: 'Sản lượng sản xuất trong ca', unitLabel: 'sản phẩm', active: true, order: 1),
+  ProductionTask(id: 'task_ve_sinh', name: 'Vệ sinh khu vực sản xuất & dụng cụ', unitLabel: 'khu vực', active: true, order: 2),
+  ProductionTask(id: 'task_ban_giao', name: 'Bàn giao nguyên vật liệu & công cụ', unitLabel: 'lần', active: true, order: 3),
+];
+
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key});
 
@@ -66,7 +72,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       final repo = ref.read(attendanceRepositoryProvider);
       
       if (isCheckedIn) {
-        // Handle checkout - CHECK IF PRODUCTION SHIFT
+        // Handle checkout - ALWAYS SHOW PRODUCTION CHECKLIST / REPORT
         final shifts = ref.read(storeShiftsProvider);
         ShiftDefinition? currentShift;
         final nowTime = TimeOfDay(hour: _currentTime.hour, minute: _currentTime.minute);
@@ -82,19 +88,26 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
             break;
           }
         }
+        currentShift ??= shifts.firstOrNull ??
+            const ShiftDefinition(
+              id: 'default',
+              name: 'Ca làm việc',
+              startHour: 8,
+              startMinute: 0,
+              endHour: 17,
+              endMinute: 0,
+              isProduction: true,
+            );
 
-        bool requiresChecklist = currentShift?.isProduction ?? false;
-
-        if (requiresChecklist) {
-          setState(() => _isLoading = false); // Pause loading to show dialog
-          final tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? [];
-          
-          if (tasks.isNotEmpty) {
-            final result = await _showProductionChecklist(context, tasks, currentShift!, store, userId);
-            if (result != true) return; // User cancelled checkout
-            setState(() => _isLoading = true); // Resume loading if submitted
-          }
+        var tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? [];
+        if (tasks.isEmpty) {
+          tasks = kDefaultProductionTasks;
         }
+
+        setState(() => _isLoading = false); // Pause loading to show dialog
+        final result = await _showProductionChecklist(context, tasks, currentShift, store, userId);
+        if (result != true) return; // User cancelled checkout
+        setState(() => _isLoading = true); // Resume loading if submitted
 
         await repo.checkOut(store.id, userId);
         _showSuccess('Chấm ra thành công!');
