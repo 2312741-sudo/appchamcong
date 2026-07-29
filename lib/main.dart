@@ -15,7 +15,6 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -23,18 +22,34 @@ void main() async {
     ),
   );
 
-  // Initialize Firebase FIRST - must complete before anything else
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Initialize Firebase - may already be configured natively by AppDelegate
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint('Firebase initialization: $e');
+  }
 
-  // Initialize Hive for local storage (non-critical, wrap in try-catch)
+  // Initialize Hive for local storage
   try {
     await Hive.initFlutter();
-    await Hive.openBox('attendance_offline');
-    await Hive.openBox('app_cache');
+    // Use compaction to clean up lock files from prior crashes
+    await Hive.openBox('attendance_offline',
+        compactionStrategy: (entries, deletedEntries) => deletedEntries > 20);
+    await Hive.openBox('app_cache',
+        compactionStrategy: (entries, deletedEntries) => deletedEntries > 20);
   } catch (e) {
     debugPrint('Hive initialization error: $e');
+    // If Hive fails, try deleting and re-creating
+    try {
+      await Hive.deleteBoxFromDisk('attendance_offline');
+      await Hive.deleteBoxFromDisk('app_cache');
+      await Hive.openBox('attendance_offline');
+      await Hive.openBox('app_cache');
+    } catch (_) {}
   }
 
   // Global error handling
