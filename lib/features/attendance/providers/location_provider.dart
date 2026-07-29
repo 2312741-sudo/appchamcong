@@ -7,16 +7,20 @@ import '../../../core/utils/location_utils.dart';
 // ---------- Location permission ----------
 
 final locationPermissionProvider = FutureProvider<bool>((ref) async {
-  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) return false;
+  try {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
 
-  LocationPermission permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) return false;
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
+    if (permission == LocationPermission.deniedForever) return false;
+    return true;
+  } catch (_) {
+    return false;
   }
-  if (permission == LocationPermission.deniedForever) return false;
-  return true;
 });
 
 // ---------- Current position ----------
@@ -77,15 +81,19 @@ final canCheckInProvider = FutureProvider<CheckInStatus>((ref) async {
   // GPS check
   bool isGps = false;
   if (store.hasLocation) {
-    final position = await ref.watch(currentPositionProvider.future);
-    if (position != null) {
-      final distanceMeters = Geolocator.distanceBetween(
-        position.latitude,
-        position.longitude,
-        store.latitude!,
-        store.longitude!,
-      );
-      isGps = distanceMeters <= store.radiusMeters;
+    try {
+      final position = await ref.watch(currentPositionProvider.future);
+      if (position != null) {
+        final distanceMeters = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          store.latitude!,
+          store.longitude!,
+        );
+        isGps = distanceMeters <= store.radiusMeters;
+      }
+    } catch (_) {
+      isGps = false;
     }
   }
 
@@ -96,16 +104,20 @@ final canCheckInProvider = FutureProvider<CheckInStatus>((ref) async {
 // ---------- Distance to store (meters) ----------
 
 final distanceToStoreProvider = FutureProvider<double?>((ref) async {
-  final store = ref.watch(currentStoreProvider).whenOrNull(data: (s) => s);
-  if (store == null || !store.hasLocation) return null;
+  try {
+    final store = ref.watch(currentStoreProvider).whenOrNull(data: (s) => s);
+    if (store == null || !store.hasLocation) return null;
 
-  final position = await ref.watch(currentPositionProvider.future);
-  if (position == null) return null;
+    final position = await ref.watch(currentPositionProvider.future);
+    if (position == null) return null;
 
-  return Geolocator.distanceBetween(
-    position.latitude,
-    position.longitude,
-    store.latitude!,
-    store.longitude!,
-  );
+    return Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      store.latitude!,
+      store.longitude!,
+    );
+  } catch (_) {
+    return null;
+  }
 });
