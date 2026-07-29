@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -10,27 +9,29 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
-  
+  // Lazy-initialize these - do NOT access FirebaseMessaging.instance at field level
+  FirebaseMessaging? _fcm;
+  FlutterLocalNotificationsPlugin? _localNotifications;
+
   bool _initialized = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
 
     try {
+      _fcm = FirebaseMessaging.instance;
+      _localNotifications = FlutterLocalNotificationsPlugin();
+
       // Request permission
-      final settings = await _fcm.requestPermission(
+      final settings = await _fcm!.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
       );
 
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('User granted permission for notifications');
-      } else {
-        debugPrint('User declined or has not accepted permission');
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        debugPrint('User declined notification permission');
         return;
       }
 
@@ -38,57 +39,49 @@ class NotificationService {
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosInit = DarwinInitializationSettings();
       const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
-      
-      await _localNotifications.initialize(initSettings);
 
-      // Save token if user is logged in
-      _fcm.getToken().then(_saveTokenToFirestore).catchError((e) {
-        debugPrint('FCM getToken error: $e');
-      });
-      _fcm.onTokenRefresh.listen(_saveTokenToFirestore);
+      await _localNotifications!.initialize(initSettings);
 
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Got a message whilst in the foreground!');
         if (message.notification != null) {
           _showLocalNotification(message);
         }
       });
-      
+
       _initialized = true;
+      debugPrint('NotificationService initialized successfully');
     } catch (e) {
       debugPrint('Failed to initialize NotificationService: $e');
     }
   }
 
-  void _saveTokenToFirestore(String? token) async {
-    if (token == null) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
+  /// Call this AFTER user logs in to save FCM token
+  Future<void> saveTokenForUser(String uid) async {
+    if (_fcm == null) return;
     try {
+      final token = await _fcm!.getToken();
+      if (token == null) return;
+
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'fcmToken': token,
         'tokenUpdatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      debugPrint('FCM Token saved for user $uid');
+
+      _fcm!.onTokenRefresh.listen((newToken) async {
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'fcmToken': newToken,
+          'tokenUpdatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      });
     } catch (e) {
       debugPrint('Failed to save FCM token: $e');
     }
   }
 
-  Future<void> updateToken() async {
-    try {
-      final token = await _fcm.getToken();
-      _saveTokenToFirestore(token);
-    } catch (e) {
-      debugPrint('Failed to fetch/save FCM token on login: $e');
-    }
-  }
-
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
-    if (notification == null) return;
+    if (notification == null || _localNotifications == null) return;
 
     const androidDetails = AndroidNotificationDetails(
       'schedule_updates',
@@ -97,10 +90,14 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
     );
-    const iosDetails = DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true);
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
     const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    await _localNotifications.show(
+    await _localNotifications!.show(
       notification.hashCode,
       notification.title,
       notification.body,

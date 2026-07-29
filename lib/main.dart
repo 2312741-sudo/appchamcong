@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 import 'app/app.dart';
-import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,29 +23,18 @@ void main() async {
     ),
   );
 
-  // Initialize Hive for local storage
+  // Initialize Firebase FIRST - must complete before anything else
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Initialize Hive for local storage (non-critical, wrap in try-catch)
   try {
     await Hive.initFlutter();
     await Hive.openBox('attendance_offline');
     await Hive.openBox('app_cache');
   } catch (e) {
     debugPrint('Hive initialization error: $e');
-  }
-
-  // Initialize Firebase
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('Firebase initialization error: $e');
-  }
-
-  // Initialize notifications
-  try {
-    await NotificationService().initialize();
-  } catch (e) {
-    debugPrint('NotificationService initialization error: $e');
   }
 
   // Global error handling

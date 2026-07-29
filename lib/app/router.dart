@@ -68,16 +68,12 @@ class AppRoutes {
   static const String profileSettings = '/profile-settings';
 }
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateChangesProvider);
-
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     redirect: (BuildContext context, GoRouterState state) {
+      final authState = ref.read(authStateChangesProvider);
       final isAuthenticated =
           authState.whenOrNull(data: (user) => user != null) ?? false;
       final isLoading = authState.isLoading;
@@ -89,14 +85,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Allow splash to handle its own redirect
       if (currentPath == AppRoutes.splash) return null;
 
-      // Auth screens - allow access only when not authenticated
+      // Allow welcome, profile-setup, create-store, join-store screens
+      final publicScreens = [
+        AppRoutes.welcome,
+        AppRoutes.login,
+        AppRoutes.register,
+        AppRoutes.profileSetup,
+        AppRoutes.createStore,
+        AppRoutes.joinStore,
+        AppRoutes.joinStoreQr,
+        AppRoutes.pendingApproval,
+      ];
+      final isOnPublicScreen = publicScreens.contains(currentPath);
+
+      // Auth screens only
       final authScreens = [
         AppRoutes.login,
         AppRoutes.register,
       ];
       final isOnAuthScreen = authScreens.contains(currentPath);
 
-      if (!isAuthenticated && !isOnAuthScreen) {
+      if (!isAuthenticated && !isOnPublicScreen) {
         return AppRoutes.login;
       }
 
