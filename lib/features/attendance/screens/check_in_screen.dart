@@ -12,6 +12,7 @@ import '../../store/providers/store_provider.dart';
 import '../../store/screens/shift_settings_screen.dart';
 import '../repositories/attendance_repository.dart';
 import '../../production/providers/production_provider.dart';
+import '../../schedule/providers/schedule_provider.dart';
 
 // File-local provider (private) to avoid name collision with the global
 // todayAttendanceProvider in attendance_provider.dart (which has a different signature).
@@ -22,12 +23,6 @@ final _localTodayAttendanceProvider = StreamProvider.family<AttendanceModel?, St
   return repo.watchTodayAttendance(storeId, userId);
 });
 
-
-const List<ProductionTask> kDefaultProductionTasks = [
-  ProductionTask(id: 'task_san_xuat', name: 'Sản lượng sản xuất trong ca', unit: ProductionUnitType.qty, unitLabel: 'sản phẩm', active: true, order: 1),
-  ProductionTask(id: 'task_ve_sinh', name: 'Vệ sinh khu vực sản xuất & dụng cụ', unit: ProductionUnitType.qty, unitLabel: 'khu vực', active: true, order: 2),
-  ProductionTask(id: 'task_ban_giao', name: 'Bàn giao nguyên vật liệu & công cụ', unit: ProductionUnitType.qty, unitLabel: 'lần', active: true, order: 3),
-];
 
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key});
@@ -73,42 +68,57 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       final repo = ref.read(attendanceRepositoryProvider);
       
       if (isCheckedIn) {
-        // Handle checkout - ALWAYS SHOW PRODUCTION CHECKLIST / REPORT
-        final shifts = ref.read(storeShiftsProvider);
-        ShiftDefinition? currentShift;
-        final nowTime = TimeOfDay(hour: _currentTime.hour, minute: _currentTime.minute);
-        final nowMinutes = nowTime.hour * 60 + nowTime.minute;
-        
-        for (final s in shifts) {
-          final sStart = s.startHour * 60 + s.startMinute;
-          var sEnd = s.endHour * 60 + s.endMinute;
-          if (sEnd < sStart) sEnd += 24 * 60; // qua ngày
-          
-          if (nowMinutes >= sStart - 60 && nowMinutes <= sEnd + 60) {
-            currentShift = s;
-            break;
+        // Handle checkout - check if user is in a production (SX) department shift today
+        bool isInSXShift = false;
+        final mySchedule = ref.read(myScheduleProvider);
+        if (mySchedule != null) {
+          final todayWeekday = DateTime.now().weekday; // 1=Mon, 7=Sun
+          final todayShiftEntries = mySchedule.shiftForDay(todayWeekday);
+          // Each entry can be 'shiftId' or 'shiftId|deptId'
+          final sxDept = store.departments.where(
+            (d) => d.shortName.toUpperCase() == 'SX',
+          ).firstOrNull;
+          if (sxDept != null) {
+            for (final entry in todayShiftEntries) {
+              if (entry.contains('|')) {
+                final deptId = entry.split('|')[1];
+                if (deptId == sxDept.id) {
+                  isInSXShift = true;
+                  break;
+                }
+              }
+            }
           }
         }
-        currentShift ??= shifts.firstOrNull ??
-            const ShiftDefinition(
-              id: 'default',
-              name: 'Ca làm việc',
-              startHour: 8,
-              startMinute: 0,
-              endHour: 17,
-              endMinute: 0,
-              isProduction: true,
-            );
 
-        List<ProductionTask> tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? <ProductionTask>[];
-        if (tasks.isEmpty) {
-          tasks = List<ProductionTask>.from(kDefaultProductionTasks);
+        if (isInSXShift) {
+          // User is in a production shift today → show production checklist
+          final shifts = ref.read(storeShiftsProvider);
+          final nowMinutes = _currentTime.hour * 60 + _currentTime.minute;
+          ShiftDefinition? currentShift;
+          for (final s in shifts) {
+            final sStart = s.startHour * 60 + s.startMinute;
+            var sEnd = s.endHour * 60 + s.endMinute;
+            if (sEnd < sStart) sEnd += 24 * 60;
+            if (nowMinutes >= sStart - 60 && nowMinutes <= sEnd + 60) {
+              currentShift = s;
+              break;
+            }
+          }
+          currentShift ??= shifts.firstOrNull ?? const ShiftDefinition(
+            id: 'default', name: 'Ca làm việc',
+            startHour: 8, startMinute: 0, endHour: 17, endMinute: 0,
+          );
+
+          final List<ProductionTask> tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? <ProductionTask>[];
+
+          if (tasks.isNotEmpty) {
+            setState(() => _isLoading = false);
+            final result = await _showProductionChecklist(context, tasks, currentShift, store, userId);
+            if (result != true) return; // User cancelled checkout
+            setState(() => _isLoading = true);
+          }
         }
-
-        setState(() => _isLoading = false); // Pause loading to show dialog
-        final result = await _showProductionChecklist(context, tasks, currentShift, store, userId);
-        if (result != true) return; // User cancelled checkout
-        setState(() => _isLoading = true); // Resume loading if submitted
 
         await repo.checkOut(store.id, userId);
         _showSuccess('Chấm ra thành công!');
