@@ -2,16 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../app/router.dart';
-import '../../core/constants/app_colors.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../models/attendance_model.dart';
 import '../../core/widgets/store_drawer.dart';
+import '../../features/schedule/screens/schedule_register_screen.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
@@ -69,8 +68,6 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
     });
 
     final store = ref.watch(currentStoreProvider).value;
-    final memberAsync = ref.watch(storeMembersProvider);
-    final member = memberAsync.valueOrNull?.where((m) => m.userId == uid).firstOrNull;
 
     if (store == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -83,7 +80,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
         index: _selectedIndex,
         children: [
           _HomeTab(now: _now, pulseAnimation: _pulseAnimation, uid: uid ?? ''),
-          _ScheduleTab(),
+          const ScheduleRegisterScreen(),
           _ProfileTab(),
         ],
       ),
@@ -172,9 +169,8 @@ class _HomeTab extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        // Store chip
-                        if (store != null)
-                          GestureDetector(
+                        // Store chip - store is guaranteed non-null here (parent checks store == null)
+                        GestureDetector(
                             onTap: () => Scaffold.of(context).openDrawer(),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -374,9 +370,7 @@ class _StatusCard extends StatelessWidget {
           ),
           if (!isDone)
             ElevatedButton(
-              onPressed: () => (context as Element).findAncestorWidgetOfExactType<_HomeTab>() != null
-                  ? Navigator.of(context).pushNamed(AppRoutes.checkIn)
-                  : GoRouter.of(context).push(AppRoutes.checkIn),
+              onPressed: () => GoRouter.of(context).push(AppRoutes.checkIn),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isActive ? const Color(0xFFC8102E) : const Color(0xFF1A6B5A),
                 foregroundColor: Colors.white,
@@ -486,7 +480,7 @@ class _TodayScheduleCard extends ConsumerWidget {
                   case 7: shiftIds = daySchedule.sunday; break;
                 }
               }
-              final shifts = store?.customShifts?.where((s) => shiftIds.contains(s.id)).toList() ?? [];
+              final shifts = store.customShifts.where((s) => shiftIds.contains(s.id)).toList();
               if (shifts.isEmpty) return const Text('Hôm nay không có ca làm', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
               return Column(
                 children: shifts.map((shift) => Container(
@@ -516,11 +510,6 @@ class _TodayScheduleCard extends ConsumerWidget {
     );
   }
 
-  String _getDayKey(int weekday) {
-    const keys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    return keys[weekday - 1];
-  }
-
   String _pad(int n) => n.toString().padLeft(2, '0');
 }
 
@@ -534,49 +523,7 @@ class _ShimmerCard extends StatelessWidget {
   }
 }
 
-// ─── SCHEDULE TAB ────────────────────────────────────────────────────────────
 
-class _ScheduleTab extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text('Lịch làm việc', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
-        elevation: 0,
-        actions: [
-          TextButton.icon(
-            onPressed: () => context.push(AppRoutes.scheduleRegister),
-            icon: const Icon(Icons.edit_rounded, size: 18),
-            label: const Text('Đăng ký', style: TextStyle(fontFamily: 'BeVietnamPro')),
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_month_rounded, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => context.push(AppRoutes.scheduleRegister),
-              icon: const Icon(Icons.edit_rounded),
-              label: const Text('Xem & Đăng ký lịch làm', style: TextStyle(fontFamily: 'BeVietnamPro')),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC8102E),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ─── PROFILE TAB ─────────────────────────────────────────────────────────────
 
@@ -659,9 +606,12 @@ class _ProfileTab extends ConsumerWidget {
                 TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Đăng xuất', style: TextStyle(color: Colors.red))),
               ],
             ));
-            if (confirm == true && context.mounted) {
+            if (confirm == true) {
               await ref.read(authRepositoryProvider).signOut();
-              context.go(AppRoutes.splash);
+              await Future.delayed(const Duration(milliseconds: 300));
+              if (context.mounted) {
+                context.go(AppRoutes.login);
+              }
             }
           }),
         ],
@@ -687,15 +637,18 @@ class _ProfileMenuItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: color, size: 22),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          onTap: onTap,
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
+          trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
         ),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
-        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
       ),
     );
   }

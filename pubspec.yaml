@@ -23,7 +23,7 @@ dependencies:
   network_info_plus: ^6.0.1
   # QR Code
   qr_flutter: ^4.1.0
-  mobile_scanner: ^6.0.0
+  mobile_scanner: ^7.4.0
   # Excel Export
   excel: ^4.0.6
   path_provider: ^2.1.4

@@ -5,13 +5,10 @@ import '../../../models/user_model.dart';
 
 class UserRepository {
   final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
 
   UserRepository({
     FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  })  : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection('users');

@@ -174,6 +174,7 @@ class StoreDrawer extends ConsumerWidget {
             title: const Text('Đăng xuất', style: TextStyle(color: AppColors.danger, fontFamily: 'BeVietnamPro')),
             onTap: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
+              await Future.delayed(const Duration(milliseconds: 300));
               if (context.mounted) context.go(AppRoutes.login);
             },
           ),

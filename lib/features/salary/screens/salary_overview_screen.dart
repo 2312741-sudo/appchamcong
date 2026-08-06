@@ -53,172 +53,164 @@ class SalaryOverviewScreen extends ConsumerWidget {
 
     if (storeId == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    // Always watch all providers unconditionally at the top level
     final membersAsync = ref.watch(allActiveMembersProvider(storeId));
     final salariesAsync = ref.watch(allSalariesProvider(monthStr));
+    final specialCountsAsync = ref.watch(allMonthlySpecialCountsProvider(monthStr));
+    final storeAsync = ref.watch(currentStoreProvider);
+    final advancesAsync = ref.watch(storeAdvancesProvider(monthStr));
+
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
-    return membersAsync.when(
-      data: (members) => salariesAsync.when(
-        data: (salaries) {
-          final specialCountsAsync = ref.watch(allMonthlySpecialCountsProvider(monthStr));
-          final storeAsync = ref.watch(currentStoreProvider);
-          final advancesAsync = ref.watch(storeAdvancesProvider(monthStr));
+    if (membersAsync.isLoading || salariesAsync.isLoading || specialCountsAsync.isLoading || storeAsync.isLoading || advancesAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-          return specialCountsAsync.when(
-            data: (specialCounts) => storeAsync.when(
-              data: (store) => advancesAsync.when(
-                data: (advances) {
-                  List<Map<String, dynamic>> computedSalaries = [];
-                  double totalPayout = 0;
-                  
-                  for (var member in members) {
-                    final salaryData = salaries[member.userId];
-                    final totalHours = salaryData?['totalHours'] ?? 0.0;
-                    double calculatedSalary = 0;
-                    
-                    if (member.employeeType == 'fulltime') {
-                      calculatedSalary = member.baseMonthlySalary * (totalHours / (member.standardHoursPerMonth ?? 208));
-                    } else {
-                      calculatedSalary = totalHours * member.baseHourlyRate;
+    if (membersAsync.hasError || salariesAsync.hasError || specialCountsAsync.hasError || storeAsync.hasError || advancesAsync.hasError) {
+      final e = membersAsync.error ?? salariesAsync.error ?? specialCountsAsync.error ?? storeAsync.error ?? advancesAsync.error;
+      return Scaffold(body: Center(child: Text('Lỗi: $e')));
+    }
+
+    final members = membersAsync.valueOrNull ?? [];
+    final salaries = salariesAsync.valueOrNull ?? {};
+    final specialCounts = specialCountsAsync.valueOrNull ?? {};
+    final store = storeAsync.valueOrNull;
+    final advances = advancesAsync.valueOrNull ?? [];
+
+    List<Map<String, dynamic>> computedSalaries = [];
+    double totalPayout = 0;
+    
+    for (var member in members) {
+      final salaryData = salaries[member.userId];
+      final totalHours = salaryData?['totalHours'] ?? 0.0;
+      double calculatedSalary = 0;
+      
+      if (member.employeeType == EmployeeType.fulltime) {
+        calculatedSalary = member.baseMonthlySalary * (totalHours / member.standardHoursPerMonth);
+      } else {
+        calculatedSalary = totalHours * member.baseHourlyRate;
+      }
+
+      final counts = specialCounts[member.userId] ?? (delivery: 0, giaoHang: 0);
+      final deliveryCount = counts.delivery;
+      final giaoHangCount = counts.giaoHang;
+      final deliveryPay = deliveryCount * (store?.deliveryAllowance ?? 0);
+      final giaoHangPay = giaoHangCount * (store?.giaoHangAllowance ?? 0);
+      calculatedSalary += deliveryPay + giaoHangPay;
+      totalPayout += calculatedSalary;
+
+      final memberAdvances = advances.where((a) => a.userId == member.userId && a.status == AdvanceStatus.approved);
+      final totalAdvance = memberAdvances.fold(0.0, (sum, a) => sum + a.amount);
+      final netSalary = calculatedSalary - totalAdvance;
+      
+      computedSalaries.add({
+        'userId': member.userId,
+        'name': member.name,
+        'role': member.role == UserRole.owner ? 'Chủ' : member.role == UserRole.manager ? 'Quản lý' : 'Nhân viên',
+        'type': member.employeeType == EmployeeType.fulltime ? 'Toàn thời gian' : 'Bán thời gian',
+        'totalHours': totalHours,
+        'baseSalary': member.employeeType == EmployeeType.fulltime ? member.baseMonthlySalary : member.baseHourlyRate,
+        'deliveryCount': deliveryCount,
+        'deliveryPay': deliveryPay,
+        'giaoHangCount': giaoHangCount,
+        'giaoHangPay': giaoHangPay,
+        'advance': totalAdvance,
+        'netSalary': netSalary,
+        'member': member,
+      });
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Báo cáo Lương', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => ExportModal(
+                  title: 'Xuất Báo cáo Lương',
+                  members: members,
+                  onExport: ({memberId, required isMonth, monthDate, startDate, endDate}) async {
+                    try {
+                      final filteredSalaries = memberId != null 
+                          ? computedSalaries.where((s) => s['userId'] == memberId).toList()
+                          : computedSalaries;
+                      await ExcelExportService.exportMonthlySalary(
+                        storeName: store?.name ?? '',
+                        themeColorHex: store?.themeColor ?? '#C8102E',
+                        computedSalaries: filteredSalaries,
+                        suffix: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : 'Filter',
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất file: $e'), backgroundColor: AppColors.primary));
+                      }
                     }
-
-                    final counts = specialCounts[member.userId] ?? (delivery: 0, giaoHang: 0);
-                    final deliveryCount = counts.delivery;
-                    final giaoHangCount = counts.giaoHang;
-                    final deliveryPay = deliveryCount * (store?.deliveryAllowance ?? 0);
-                    final giaoHangPay = giaoHangCount * (store?.giaoHangAllowance ?? 0);
-                    calculatedSalary += deliveryPay + giaoHangPay;
-                    totalPayout += calculatedSalary;
-
-                    final memberAdvances = advances.where((a) => a.userId == member.userId && a.status == AdvanceStatus.approved);
-                    final totalAdvance = memberAdvances.fold(0.0, (sum, a) => sum + a.amount);
-                    final netSalary = calculatedSalary - totalAdvance;
-                    
-                    computedSalaries.add({
-                      'userId': member.userId,
-                      'name': member.name,
-                      'role': member.role == UserRole.owner ? 'Chủ' : member.role == UserRole.manager ? 'Quản lý' : 'Nhân viên',
-                      'type': member.employeeType == 'fulltime' ? 'Toàn thời gian' : 'Bán thời gian',
-                      'totalHours': totalHours,
-                      'baseSalary': member.employeeType == 'fulltime' ? member.baseMonthlySalary : member.baseHourlyRate,
-                      'deliveryCount': deliveryCount,
-                      'deliveryPay': deliveryPay,
-                      'giaoHangCount': giaoHangCount,
-                      'giaoHangPay': giaoHangPay,
-                      'advance': totalAdvance,
-                      'netSalary': netSalary,
-                      'member': member,
-                    });
-                  }
-
-                  return Scaffold(
-                    backgroundColor: AppColors.background,
-                    appBar: AppBar(
-                      title: const Text('Báo cáo Lương', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      actions: [
-                        IconButton(
-                          icon: const Icon(Icons.download_rounded),
-                          onPressed: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => ExportModal(
-                                title: 'Xuất Báo cáo Lương',
-                                members: members,
-                                onExport: ({memberId, required isMonth, monthDate, startDate, endDate}) async {
-                                  try {
-                                    final filteredSalaries = memberId != null 
-                                        ? computedSalaries.where((s) => s['userId'] == memberId).toList()
-                                        : computedSalaries;
-                                    await ExcelExportService.exportMonthlySalary(
-                                      storeName: store?.name ?? '',
-                                      themeColorHex: store?.themeColor ?? '#C8102E',
-                                      computedSalaries: filteredSalaries,
-                                      suffix: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : 'Filter',
-                                    );
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất file: $e'), backgroundColor: AppColors.primary));
-                                    }
-                                  }
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text('Tháng: $monthStr', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  OutlinedButton(
+                    onPressed: () => _selectMonth(context, ref),
+                    child: Text('Chọn tháng', style: GoogleFonts.beVietnamPro()),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: _buildSummaryCard(totalPayout, currencyFormat),
                     ),
-                    body: SafeArea(
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            color: Colors.white,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
-                                    const SizedBox(width: 8),
-                                    Text('Tháng: $monthStr', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                                OutlinedButton(
-                                  onPressed: () => _selectMonth(context, ref),
-                                  child: Text('Chọn tháng', style: GoogleFonts.beVietnamPro()),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: CustomScrollView(
-                              slivers: [
-                                SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: _buildSummaryCard(totalPayout, currencyFormat),
-                                  ),
-                                ),
-                                SliverPadding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) {
-                                        final data = computedSalaries[index];
-                                        return _buildSalaryCard(data, currencyFormat);
-                                      },
-                                      childCount: computedSalaries.length,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final data = computedSalaries[index];
+                          return _buildSalaryCard(data, currencyFormat);
+                        },
+                        childCount: computedSalaries.length,
                       ),
                     ),
-                  );
-                },
-                loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-                error: (e, st) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
+                  ),
+                ],
               ),
-              loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-              error: (e, st) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
             ),
-            loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-            error: (e, st) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
-          );
-        },
-        loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-        error: (e, st) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
+          ],
+        ),
       ),
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, st) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
     );
   }
 
@@ -238,7 +230,6 @@ class SalaryOverviewScreen extends ConsumerWidget {
 
   Widget _buildSalaryCard(Map<String, dynamic> data, NumberFormat currencyFormat) {
     final member = data['member'] as MemberModel;
-    final totalHours = data['totalHours'] as double;
     final deliveryCount = data['deliveryCount'] as int;
     final giaoHangCount = data['giaoHangCount'] as int;
     final advanceTotal = data['advance'] as double;

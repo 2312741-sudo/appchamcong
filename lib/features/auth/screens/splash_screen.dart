@@ -89,7 +89,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           await userRepo.updateCurrentStoreId(userModel.id, stores.first.id);
           // Refresh and navigate
           ref.invalidate(currentUserProvider);
-          context.go(AppRoutes.splash);
+          if (mounted) context.go(AppRoutes.splash);
           return;
         }
       } catch (_) {}

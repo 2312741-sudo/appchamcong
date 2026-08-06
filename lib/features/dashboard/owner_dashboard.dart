@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../app/router.dart';
-import '../../core/constants/app_colors.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
-import '../../features/schedule/providers/schedule_provider.dart';
 import '../../core/widgets/store_drawer.dart';
+import '../../features/members/screens/members_list_screen.dart';
+import '../../features/attendance/screens/attendance_table_screen.dart';
 
 class OwnerDashboard extends ConsumerStatefulWidget {
   const OwnerDashboard({super.key});
@@ -30,8 +29,8 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
         index: _selectedIndex,
         children: [
           _OwnerHomeTab(),
-          _OwnerMembersTab(),
-          _OwnerAttendanceTab(),
+          const MembersListScreen(),
+          const AttendanceTableScreen(),
           _OwnerSettingsTab(),
         ],
       ),
@@ -135,9 +134,8 @@ class _OwnerHomeTab extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // Store code badge
-                    if (store != null)
-                      Container(
+                    // Store code badge - store is guaranteed non-null here
+                    Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFFC8102E),
@@ -226,17 +224,20 @@ class _OwnerHomeTab extends ConsumerWidget {
                           final name = member?.name ?? att.userId;
                           final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
                           final checkInTime = '${att.checkIn.hour.toString().padLeft(2,'0')}:${att.checkIn.minute.toString().padLeft(2,'0')}';
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: const Color(0xFF1A6B5A).withOpacity(0.15),
-                              child: Text(initial, style: const TextStyle(color: Color(0xFF1A6B5A), fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-                            ),
-                            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
-                            subtitle: Text('Vào ca: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFF1A6B5A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                              child: const Text('Đang làm', style: TextStyle(color: Color(0xFF1A6B5A), fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                          return Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF1A6B5A).withOpacity(0.15),
+                                child: Text(initial, style: const TextStyle(color: Color(0xFF1A6B5A), fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                              ),
+                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
+                              subtitle: Text('Vào ca: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFF1A6B5A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                child: const Text('Đang làm', style: TextStyle(color: Color(0xFF1A6B5A), fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                              ),
                             ),
                           );
                         }).toList(),
@@ -280,58 +281,6 @@ class _OwnerHomeTab extends ConsumerWidget {
   }
 }
 
-// ─── MEMBERS TAB ─────────────────────────────────────────────────────────────
-
-class _OwnerMembersTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text('Nhân viên', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
-        elevation: 0,
-        actions: [
-          IconButton(icon: const Icon(Icons.pending_actions_rounded, color: Color(0xFFC8102E)), onPressed: () => GoRouter.of(context).push(AppRoutes.pendingMembers)),
-        ],
-      ),
-      body: Center(
-        child: ElevatedButton.icon(
-          onPressed: () => GoRouter.of(context).push(AppRoutes.members),
-          icon: const Icon(Icons.people_rounded),
-          label: const Text('Xem danh sách nhân viên', style: TextStyle(fontFamily: 'BeVietnamPro')),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC8102E), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── ATTENDANCE TAB ───────────────────────────────────────────────────────────
-
-class _OwnerAttendanceTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text('Bảng công', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
-        elevation: 0,
-      ),
-      body: Center(
-        child: ElevatedButton.icon(
-          onPressed: () => GoRouter.of(context).push(AppRoutes.attendanceTable),
-          icon: const Icon(Icons.table_chart_rounded),
-          label: const Text('Xem bảng chấm công', style: TextStyle(fontFamily: 'BeVietnamPro')),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1C4E6B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-        ),
-      ),
-    );
-  }
-}
 
 // ─── SETTINGS TAB ─────────────────────────────────────────────────────────────
 
@@ -387,7 +336,7 @@ class _OwnerSettingsTab extends ConsumerWidget {
           const SizedBox(height: 16),
 
           _SettingsSection(title: 'Cửa hàng', items: [
-            _SettingsItem(icon: Icons.store_rounded, label: 'Cài đặt cửa hàng', sub: store?.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
+            _SettingsItem(icon: Icons.store_rounded, label: 'Cài đặt cửa hàng', sub: store.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
             _SettingsItem(icon: Icons.schedule_rounded, label: 'Quản lý ca làm', onTap: () => GoRouter.of(context).push(AppRoutes.shiftSettings)),
             _SettingsItem(icon: Icons.qr_code_rounded, label: 'Mã QR cửa hàng', onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
           ]),
@@ -404,7 +353,8 @@ class _OwnerSettingsTab extends ConsumerWidget {
               ));
               if (confirm == true && context.mounted) {
                 await ref.read(authRepositoryProvider).signOut();
-                GoRouter.of(context).go(AppRoutes.splash);
+                await Future.delayed(const Duration(milliseconds: 300));
+                if (context.mounted) GoRouter.of(context).go(AppRoutes.login);
               }
             }),
           ]),
@@ -515,12 +465,15 @@ class _SettingsSection extends StatelessWidget {
               final isLast = e.key == items.length - 1;
               return Column(
                 children: [
-                  ListTile(
-                    onTap: item.onTap,
-                    leading: Icon(item.icon, color: item.color ?? const Color(0xFF1A1A1A), size: 22),
-                    title: Text(item.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', color: item.color ?? const Color(0xFF1A1A1A))),
-                    subtitle: item.sub != null ? Text(item.sub!, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'BeVietnamPro')) : null,
-                    trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                  Material(
+                    color: Colors.transparent,
+                    child: ListTile(
+                      onTap: item.onTap,
+                      leading: Icon(item.icon, color: item.color ?? const Color(0xFF1A1A1A), size: 22),
+                      title: Text(item.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', color: item.color ?? const Color(0xFF1A1A1A))),
+                      subtitle: item.sub != null ? Text(item.sub!, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'BeVietnamPro')) : null,
+                      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                    ),
                   ),
                   if (!isLast) const Divider(height: 1, indent: 56),
                 ],

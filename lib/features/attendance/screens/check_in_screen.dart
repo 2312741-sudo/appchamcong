@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/location_utils.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/store_model.dart';
@@ -13,16 +12,18 @@ import '../../store/providers/store_provider.dart';
 import '../../store/screens/shift_settings_screen.dart';
 import '../repositories/attendance_repository.dart';
 import '../../production/providers/production_provider.dart';
-import '../../production/repositories/production_repository.dart';
 
-final todayAttendanceProvider = StreamProvider.family<AttendanceModel?, String>((ref, userId) {
+// File-local provider (private) to avoid name collision with the global
+// todayAttendanceProvider in attendance_provider.dart (which has a different signature).
+final _localTodayAttendanceProvider = StreamProvider.family<AttendanceModel?, String>((ref, userId) {
   final storeId = ref.watch(currentStoreIdProvider);
   if (storeId == null || storeId.isEmpty) return Stream.value(null);
   final repo = ref.watch(attendanceRepositoryProvider);
   return repo.watchTodayAttendance(storeId, userId);
 });
 
-final List<ProductionTask> kDefaultProductionTasks = [
+
+const List<ProductionTask> kDefaultProductionTasks = [
   ProductionTask(id: 'task_san_xuat', name: 'Sản lượng sản xuất trong ca', unit: ProductionUnitType.qty, unitLabel: 'sản phẩm', active: true, order: 1),
   ProductionTask(id: 'task_ve_sinh', name: 'Vệ sinh khu vực sản xuất & dụng cụ', unit: ProductionUnitType.qty, unitLabel: 'khu vực', active: true, order: 2),
   ProductionTask(id: 'task_ban_giao', name: 'Bàn giao nguyên vật liệu & công cụ', unit: ProductionUnitType.qty, unitLabel: 'lần', active: true, order: 3),
@@ -99,9 +100,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
               isProduction: true,
             );
 
-        var tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? [];
+        List<ProductionTask> tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? <ProductionTask>[];
         if (tasks.isEmpty) {
-          tasks = kDefaultProductionTasks;
+          tasks = List<ProductionTask>.from(kDefaultProductionTasks);
         }
 
         setState(() => _isLoading = false); // Pause loading to show dialog
@@ -181,7 +182,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       error: (e, s) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
       data: (store) {
         if (store == null) return const Scaffold(body: Center(child: Text('Không tìm thấy cửa hàng')));
-        final attAsync = ref.watch(todayAttendanceProvider(userId));
+        final attAsync = ref.watch(_localTodayAttendanceProvider(userId));
 
         return attAsync.when(
           loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),

@@ -9,19 +9,10 @@ import '../../store/providers/store_provider.dart';
 
 class SalaryRepository {
   final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
-
   SalaryRepository({
     FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  })  : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  String _getUid() {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception('Chưa đăng nhập');
-    return uid;
-  }
 
   CollectionReference<Map<String, dynamic>> _attendances(String storeId) =>
       _firestore.collection('stores').doc(storeId).collection('attendances');

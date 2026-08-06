@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -14,6 +15,10 @@ class NotificationService {
   FlutterLocalNotificationsPlugin? _localNotifications;
 
   bool _initialized = false;
+
+  // Keep track of subscriptions so we can cancel them on dispose
+  StreamSubscription<RemoteMessage>? _onMessageSubscription;
+  StreamSubscription<String>? _onTokenRefreshSubscription;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -42,8 +47,8 @@ class NotificationService {
 
       await _localNotifications!.initialize(initSettings);
 
-      // Handle foreground messages
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      // Handle foreground messages — store subscription to allow cancellation
+      _onMessageSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         if (message.notification != null) {
           _showLocalNotification(message);
         }
@@ -68,11 +73,17 @@ class NotificationService {
         'tokenUpdatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      _fcm!.onTokenRefresh.listen((newToken) async {
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'fcmToken': newToken,
-          'tokenUpdatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+      // Cancel previous token refresh subscription before creating new one
+      await _onTokenRefreshSubscription?.cancel();
+      _onTokenRefreshSubscription = _fcm!.onTokenRefresh.listen((newToken) async {
+        try {
+          await FirebaseFirestore.instance.collection('users').doc(uid).set({
+            'fcmToken': newToken,
+            'tokenUpdatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('Failed to update FCM token: $e');
+        }
       });
     } catch (e) {
       debugPrint('Failed to save FCM token: $e');
@@ -84,6 +95,17 @@ class NotificationService {
     if (uid != null) {
       await saveTokenForUser(uid);
     }
+  }
+
+  /// Call this when the user logs out or app is being cleaned up
+  Future<void> dispose() async {
+    await _onMessageSubscription?.cancel();
+    await _onTokenRefreshSubscription?.cancel();
+    _onMessageSubscription = null;
+    _onTokenRefreshSubscription = null;
+    _initialized = false;
+    _fcm = null;
+    _localNotifications = null;
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {

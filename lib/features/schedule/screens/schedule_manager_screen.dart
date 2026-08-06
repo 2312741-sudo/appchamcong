@@ -229,16 +229,6 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Color _shiftColor(List<String> shifts) {
-    if (shifts.isEmpty) return const Color(0xFFCCCCCC);
-    return AppColors.primary;
-  }
-
-  String _shiftAbbr(List<String> shifts) {
-    if (shifts.isEmpty) return '—';
-    return '${shifts.length} ca';
-  }
-
   @override
   Widget build(BuildContext context) {
     final storeAsync = ref.watch(currentStoreProvider);
@@ -276,7 +266,7 @@ class _ScheduleManagerScreenState
                   schedule: schedule,
                 );
               } catch (e) {
-                if (mounted) {
+                if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Lỗi xuất: $e'),
@@ -309,8 +299,8 @@ class _ScheduleManagerScreenState
           Expanded(
             child: scheduleAsync.when(
               data: (_) => _viewMode == _ViewMode.byDay
-                  ? _buildByDayView(members, store!, isOwner)
-                  : _buildByEmployeeView(members, store!, isOwner),
+                  ? _buildByDayView(members, store, isOwner)
+                  : _buildByEmployeeView(members, store, isOwner),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),

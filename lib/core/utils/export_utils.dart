@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
-import '../../models/attendance_model.dart';
 import '../../models/member_model.dart';
 import '../../models/schedule_model.dart';
 import '../../features/salary/providers/salary_provider.dart';

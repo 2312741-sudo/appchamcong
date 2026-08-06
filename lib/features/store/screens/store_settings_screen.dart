@@ -74,17 +74,19 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   }
 
   Future<void> _fetchNetworkIP() async {
-    setState(() => _isFetchingIP = true);
+    if (mounted) setState(() => _isFetchingIP = true);
     try {
       final request = await HttpClient().getUrl(Uri.parse('https://api.ipify.org?format=json'));
       final response = await request.close();
       final responseBody = await response.transform(utf8.decoder).join();
       final data = jsonDecode(responseBody);
       
-      setState(() {
-        _networkIP = data['ip'];
-      });
-      _showSuccess('Lấy IP mạng thành công');
+      if (mounted) {
+        setState(() {
+          _networkIP = data['ip'];
+        });
+        _showSuccess('Lấy IP mạng thành công');
+      }
     } catch (e) {
       _showError('Không thể lấy IP mạng: $e');
     } finally {
@@ -118,15 +120,17 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
           timeLimit: Duration(seconds: 15),
         ),
       );
-      setState(() {
-        _lat = pos.latitude;
-        _lng = pos.longitude;
-      });
-      _showSuccess('Đã cập nhật vị trí GPS');
+      if (mounted) {
+        setState(() {
+          _lat = pos.latitude;
+          _lng = pos.longitude;
+        });
+        _showSuccess('Đã cập nhật vị trí GPS');
+      }
     } catch (e) {
       _showError('Không lấy được vị trí');
     } finally {
-      setState(() => _isFetchingLocation = false);
+      if (mounted) setState(() => _isFetchingLocation = false);
     }
   }
 

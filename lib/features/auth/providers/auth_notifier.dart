@@ -58,7 +58,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       
       // Update FCM token after successful login
-      await NotificationService().updateToken();
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await NotificationService().saveTokenForUser(user.uid);
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -115,7 +118,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repository.createUserDocument(userModel);
 
       // Update FCM token after successful register
-      await NotificationService().updateToken();
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await NotificationService().saveTokenForUser(currentUser.uid);
+      }
 
       state = state.copyWith(
         isLoading: false,

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/advance_request_model.dart';
 import '../../store/providers/store_provider.dart';
-import '../providers/salary_provider.dart';
 
 class ManageAdvancesScreen extends ConsumerStatefulWidget {
   const ManageAdvancesScreen({super.key});

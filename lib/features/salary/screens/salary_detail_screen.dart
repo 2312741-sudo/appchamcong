@@ -154,12 +154,13 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch all providers unconditionally at the top level
     final memberAsync = ref.watch(myMemberDataProvider);
     final salaryAsync = ref.watch(myMonthlySalaryProvider(_monthKey));
-    final hoursAsync = ref.watch(monthTotalHoursProvider(
-        (userId: '', month: _monthKey)));
-    final attendancesAsync =
-        ref.watch(myMonthAttendancesProvider(_monthKey));
+    final attendancesAsync = ref.watch(myMonthAttendancesProvider(_monthKey));
+    final specialCountsAsync = ref.watch(myMonthSpecialCountsProvider(_monthKey));
+    final storeAsync = ref.watch(currentStoreProvider);
+    final advancesAsync = ref.watch(myAdvancesProvider(_monthKey));
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -183,94 +184,84 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
         ),
         elevation: 0,
       ),
-      body: memberAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
-        data: (member) {
+      body: Builder(
+        builder: (context) {
+          if (memberAsync.isLoading || salaryAsync.isLoading || attendancesAsync.isLoading || specialCountsAsync.isLoading || storeAsync.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (memberAsync.hasError || salaryAsync.hasError || attendancesAsync.hasError || specialCountsAsync.hasError || storeAsync.hasError) {
+            final e = memberAsync.error ?? salaryAsync.error ?? attendancesAsync.error ?? specialCountsAsync.error ?? storeAsync.error;
+            return Center(child: Text('Lỗi: $e'));
+          }
+
+          final member = memberAsync.valueOrNull;
           if (member == null) return const Center(child: Text('Không tìm thấy thông tin nhân viên'));
-          return salaryAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Lỗi tải lương: $e')),
-            data: (salary) => attendancesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Lỗi tải bảng công: $e')),
-              data: (attendances) {
-                final specialCountsAsync = ref.watch(myMonthSpecialCountsProvider(_monthKey));
-                final storeAsync = ref.watch(currentStoreProvider);
-                
-                return specialCountsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Lỗi tải dữ liệu: $e')),
-                  data: (specialCounts) => storeAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Lỗi tải dữ liệu: $e')),
-                    data: (store) {
-                      final advancesAsync = ref.watch(myAdvancesProvider(_monthKey));
-                      
-                      final totalHours = attendances.fold(0.0, (sum, a) => sum + a.totalHours);
-                      final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
-                      final giaoHangAllowance = (store?.giaoHangAllowance ?? 0).toDouble();
 
-                      final totalAdvance = advancesAsync.where((a) => a.status == AdvanceStatus.approved).fold(0.0, (sum, a) => sum + a.amount);
-                      final hasPending = advancesAsync.any((a) => a.status == AdvanceStatus.pending);
+          final salary = salaryAsync.valueOrNull ?? 0.0;
+          final attendances = attendancesAsync.valueOrNull ?? [];
+          final specialCounts = specialCountsAsync.valueOrNull ?? (delivery: 0, giaoHang: 0);
+          final store = storeAsync.valueOrNull;
+          
+          final advances = advancesAsync; // It is already a List<AdvanceRequestModel>
 
-                      return RefreshIndicator(
-                        onRefresh: () async {
-                          ref.invalidate(myMonthlySalaryProvider);
-                          ref.invalidate(myMonthAttendancesProvider);
-                          ref.invalidate(myMonthSpecialCountsProvider);
-                          ref.invalidate(myAdvancesProvider);
-                          ref.invalidate(currentStoreProvider);
-                        },
-                        child: ListView(
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            _buildSalaryCard(member, salary, totalHours, specialCounts.delivery, deliveryAllowance, specialCounts.giaoHang, giaoHangAllowance, totalAdvance),
-                            const SizedBox(height: 16),
-                            if (hasPending)
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 16),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(8)),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.info_outline, color: Color(0xFF856404), size: 20),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text('Bạn đang có yêu cầu ứng lương chờ duyệt.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: const Color(0xFF856404))),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            _buildStatsRow(
-                              attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length,
-                              totalHours,
-                              (DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month) - attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length).clamp(0, 31),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                icon: const Icon(Icons.money, color: Colors.white),
-                                label: const Text('Xin ứng lương', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                onPressed: () => _showAdvanceRequestModal(context, ref.read(currentStoreIdProvider)!, member.userId),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildDailyBreakdown(attendances),
-                          ],
+          final totalHours = attendances.fold(0.0, (sum, a) => sum + a.totalHours);
+          final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
+          final giaoHangAllowance = (store?.giaoHangAllowance ?? 0).toDouble();
+
+          final totalAdvance = advances.where((a) => a.status == AdvanceStatus.approved).fold(0.0, (sum, a) => sum + a.amount);
+          final hasPending = advances.any((a) => a.status == AdvanceStatus.pending);
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(myMonthlySalaryProvider);
+              ref.invalidate(myMonthAttendancesProvider);
+              ref.invalidate(myMonthSpecialCountsProvider);
+              ref.invalidate(myAdvancesProvider);
+              ref.invalidate(currentStoreProvider);
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildSalaryCard(member, salary, totalHours, specialCounts.delivery, deliveryAllowance, specialCounts.giaoHang, giaoHangAllowance, totalAdvance),
+                const SizedBox(height: 16),
+                if (hasPending)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Color(0xFF856404), size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('Bạn đang có yêu cầu ứng lương chờ duyệt.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: const Color(0xFF856404))),
                         ),
-                      );
-                    }
+                      ],
+                    ),
                   ),
-                );
-              },
+                _buildStatsRow(
+                  attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length,
+                  totalHours,
+                  (DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month) - attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length).clamp(0, 31),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.money, color: Colors.white),
+                    label: const Text('Xin ứng lương', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    onPressed: () => _showAdvanceRequestModal(context, ref.read(currentStoreIdProvider)!, member.userId),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildDailyBreakdown(attendances),
+              ],
             ),
           );
         },

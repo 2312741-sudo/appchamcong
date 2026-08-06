@@ -6,7 +6,6 @@ import '../../../core/constants/app_strings.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../providers/auth_provider.dart';
 import '../providers/auth_notifier.dart';
 
 class WelcomeScreen extends ConsumerWidget {
@@ -226,6 +225,7 @@ class WelcomeScreen extends ConsumerWidget {
                 child: IconButton(
                   onPressed: () async {
                     await ref.read(authNotifierProvider.notifier).signOut();
+                    await Future.delayed(const Duration(milliseconds: 300));
                     if (context.mounted) context.go(AppRoutes.login);
                   },
                   icon:

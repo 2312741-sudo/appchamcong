@@ -9,6 +9,7 @@ import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
+import '../../features/schedule/screens/schedule_manager_screen.dart';
 
 class ManagerDashboard extends ConsumerStatefulWidget {
   const ManagerDashboard({super.key});
@@ -45,7 +46,7 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
         index: _selectedIndex,
         children: [
           _ManagerHomeTab(uid: uid ?? ''),
-          _ManagerScheduleTab(),
+          const ScheduleManagerScreen(),
           _ManagerProfileTab(uid: uid ?? ''),
         ],
       ),
@@ -242,17 +243,20 @@ class _ManagerHomeTab extends ConsumerWidget {
                           final member = members.where((m) => m.userId == att.userId).firstOrNull;
                           final name = member?.name ?? att.userId;
                           final checkInTime = '${att.checkIn.hour.toString().padLeft(2,'0')}:${att.checkIn.minute.toString().padLeft(2,'0')}';
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: const Color(0xFF1C4E6B).withOpacity(0.15),
-                              child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFF1C4E6B), fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-                            ),
-                            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
-                            subtitle: Text('Vào: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFF1A6B5A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                              child: const Text('Đang làm', style: TextStyle(color: Color(0xFF1A6B5A), fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                          return Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFF1C4E6B).withOpacity(0.15),
+                                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFF1C4E6B), fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                              ),
+                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
+                              subtitle: Text('Vào: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                              trailing: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: const Color(0xFF1A6B5A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                child: const Text('Đang làm', style: TextStyle(color: Color(0xFF1A6B5A), fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                              ),
                             ),
                           );
                         }).toList(),
@@ -292,44 +296,7 @@ class _ManagerHomeTab extends ConsumerWidget {
   }
 }
 
-// ─── SCHEDULE TAB ─────────────────────────────────────────────────────────────
 
-class _ManagerScheduleTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text('Lịch làm', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
-        elevation: 0,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today_rounded, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => context.push(AppRoutes.scheduleManager),
-              icon: const Icon(Icons.edit_calendar_rounded),
-              label: const Text('Duyệt & Chỉnh lịch làm', style: TextStyle(fontFamily: 'BeVietnamPro')),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1C4E6B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => context.push(AppRoutes.scheduleRegister),
-              icon: const Icon(Icons.event_available_rounded),
-              label: const Text('Đăng ký lịch của tôi', style: TextStyle(fontFamily: 'BeVietnamPro')),
-              style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF1C4E6B), side: const BorderSide(color: Color(0xFF1C4E6B)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ─── PROFILE TAB ─────────────────────────────────────────────────────────────
 
@@ -388,9 +355,12 @@ class _ManagerProfileTab extends ConsumerWidget {
                 TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Đăng xuất', style: TextStyle(color: Colors.red))),
               ],
             ));
-            if (confirm == true && context.mounted) {
+            if (confirm == true) {
               await ref.read(authRepositoryProvider).signOut();
-              context.go(AppRoutes.splash);
+              await Future.delayed(const Duration(milliseconds: 300));
+              if (context.mounted) {
+                context.go(AppRoutes.login);
+              }
             }
           }),
         ],
@@ -402,11 +372,14 @@ class _ManagerProfileTab extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))]),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 22)),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
-        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          onTap: onTap,
+          leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 22)),
+          title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
+          trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+        ),
       ),
     );
   }
