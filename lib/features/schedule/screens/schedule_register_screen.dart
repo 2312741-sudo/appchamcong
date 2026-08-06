@@ -186,9 +186,9 @@ class _ScheduleRegisterScreenState
                       ],
                     );
                   }),
-                    if (store.deliveryEnabled)
+                    if (isOwner || store.deliveryEnabled)
                       CheckboxListTile(
-                        title: Text('🚛 Đăng ký Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        title: Text('📦 Đăng ký Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
                         value: hasDelivery,
                         onChanged: (val) {
                           setModalState(() {
@@ -197,9 +197,9 @@ class _ScheduleRegisterScreenState
                           });
                         }
                       ),
-                    if (store.giaoHangEnabled == true)
+                    if (isOwner || store.giaoHangEnabled)
                       CheckboxListTile(
-                        title: Text('📦 Đăng ký Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        title: Text('🛵 Đăng ký Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
                         value: hasGiaoHang,
                         onChanged: (val) {
                           setModalState(() {
@@ -235,7 +235,7 @@ class _ScheduleRegisterScreenState
     final storeAsync = ref.watch(currentStoreProvider);
     final store = storeAsync.valueOrNull;
     final currentMember = ref.watch(currentMemberProvider);
-    final isOwner = currentMember?.role == UserRole.owner;
+    final isOwner = currentMember?.role == UserRole.owner || currentMember?.role == UserRole.manager;
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
