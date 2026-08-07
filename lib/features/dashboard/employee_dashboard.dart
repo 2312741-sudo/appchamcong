@@ -377,6 +377,8 @@ class _StatusCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 elevation: 0,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(isActive ? 'Ra ca' : 'Vào ca', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
             ),
