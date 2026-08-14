@@ -7,14 +7,16 @@ import 'package:intl/intl.dart';
 import '../../models/member_model.dart';
 import '../../models/schedule_model.dart';
 import '../../features/salary/providers/salary_provider.dart';
+import 'excel_export_service.dart';
 
 class ExportUtils {
   static Future<void> exportMonthlyAttendanceToExcel(
     String storeId,
     DateTime dateInMonth,
     List<MemberModel> members,
-    SalaryRepository repo,
-  ) async {
+    SalaryRepository repo, {
+    String storeName = '',
+  }) async {
     try {
       final monthStr = '${dateInMonth.year}-${dateInMonth.month.toString().padLeft(2, '0')}';
       final allAttendances = await repo.getAllMonthAttendances(storeId, monthStr);
@@ -55,13 +57,13 @@ class ExportUtils {
           totalMonthHours += dayHours;
           
           if (dayHours > 0) {
-            row.add(TextCellValue('${dayHours.toStringAsFixed(1)}h'));
+            row.add(DoubleCellValue(dayHours));
           } else {
-            row.add(TextCellValue('0h'));
+            row.add(IntCellValue(0));
           }
         }
 
-        row.add(TextCellValue('${totalMonthHours.toStringAsFixed(1)}h'));
+        row.add(DoubleCellValue(totalMonthHours));
         sheet.appendRow(row);
       }
 
@@ -69,7 +71,11 @@ class ExportUtils {
       final fileBytes = excel.save();
       if (fileBytes != null) {
         final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/BangCong_Thang_$monthStr.xlsx');
+        final storePart = ExcelExportService.sanitize(storeName);
+        final timePart = 'T${dateInMonth.month.toString().padLeft(2, '0')}-${dateInMonth.year}';
+        final storePrefix = storePart.isNotEmpty ? '${storePart}_' : '';
+        final fileName = 'BangCong_$storePrefix$timePart.xlsx';
+        final file = File('${dir.path}/$fileName');
         
         await file.writeAsBytes(fileBytes);
         await Share.shareXFiles([XFile(file.path)], text: 'Bảng công tháng $monthStr');
@@ -83,6 +89,7 @@ class ExportUtils {
     required String weekStart,
     required List<MemberModel> members,
     required ScheduleModel? schedule,
+    String storeName = '',
   }) async {
     try {
       final monday = DateTime.parse(weekStart);
@@ -123,7 +130,12 @@ class ExportUtils {
       final fileBytes = excel.save();
       if (fileBytes != null) {
         final dir = await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/LichLam_Tuan_$weekStart.xlsx');
+        final storePart = ExcelExportService.sanitize(storeName);
+        final sundayStr = '${days.last.day.toString().padLeft(2, '0')}.${days.last.month.toString().padLeft(2, '0')}.${days.last.year}';
+        final mondayStr = '${monday.day.toString().padLeft(2, '0')}.${monday.month.toString().padLeft(2, '0')}';
+        final storePrefix = storePart.isNotEmpty ? '${storePart}_' : '';
+        final fileName = 'LichLam_${storePrefix}Tuan_$mondayStr-$sundayStr.xlsx';
+        final file = File('${dir.path}/$fileName');
         await file.writeAsBytes(fileBytes);
         await Share.shareXFiles(
           [XFile(file.path)],

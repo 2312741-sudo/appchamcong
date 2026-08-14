@@ -7,6 +7,46 @@ import '../../../models/attendance_model.dart';
 import '../../../models/store_model.dart';
 
 class ExcelExportService {
+  /// Sanitize tên file: bỏ dấu tiếng Việt, thay khoảng trắng bằng _, bỏ ký tự đặc biệt
+  static String sanitize(String input) {
+    const vietMap = {
+      'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+      'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+      'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+      'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+      'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+      'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+      'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+      'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+      'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+      'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+      'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+      'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+      'đ': 'd',
+      'À': 'A', 'Á': 'A', 'Ả': 'A', 'Ã': 'A', 'Ạ': 'A',
+      'Ă': 'A', 'Ằ': 'A', 'Ắ': 'A', 'Ẳ': 'A', 'Ẵ': 'A', 'Ặ': 'A',
+      'Â': 'A', 'Ầ': 'A', 'Ấ': 'A', 'Ẩ': 'A', 'Ẫ': 'A', 'Ậ': 'A',
+      'È': 'E', 'É': 'E', 'Ẻ': 'E', 'Ẽ': 'E', 'Ẹ': 'E',
+      'Ê': 'E', 'Ề': 'E', 'Ế': 'E', 'Ể': 'E', 'Ễ': 'E', 'Ệ': 'E',
+      'Ì': 'I', 'Í': 'I', 'Ỉ': 'I', 'Ĩ': 'I', 'Ị': 'I',
+      'Ò': 'O', 'Ó': 'O', 'Ỏ': 'O', 'Õ': 'O', 'Ọ': 'O',
+      'Ô': 'O', 'Ồ': 'O', 'Ố': 'O', 'Ổ': 'O', 'Ỗ': 'O', 'Ộ': 'O',
+      'Ơ': 'O', 'Ờ': 'O', 'Ớ': 'O', 'Ở': 'O', 'Ỡ': 'O', 'Ợ': 'O',
+      'Ù': 'U', 'Ú': 'U', 'Ủ': 'U', 'Ũ': 'U', 'Ụ': 'U',
+      'Ư': 'U', 'Ừ': 'U', 'Ứ': 'U', 'Ử': 'U', 'Ữ': 'U', 'Ự': 'U',
+      'Ỳ': 'Y', 'Ý': 'Y', 'Ỷ': 'Y', 'Ỹ': 'Y', 'Ỵ': 'Y',
+      'Đ': 'D',
+    };
+    final buffer = StringBuffer();
+    for (int i = 0; i < input.length; i++) {
+      final char = input[i];
+      buffer.write(vietMap[char] ?? char);
+    }
+    return buffer.toString()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\s_\-]'), '')
+        .replaceAll(RegExp(r'\s+'), '_');
+  }
+
   static Future<void> exportMonthlyAttendance({
     required List<MemberModel> members,
     required List<AttendanceModel> attendances,
@@ -14,6 +54,7 @@ class ExcelExportService {
     required StoreModel store,
     DateTime? startDate,
     DateTime? endDate,
+    String? memberName,
   }) async {
     final excel = Excel.createExcel();
     final sheet = excel['Bảng Công'];
@@ -87,7 +128,7 @@ class ExcelExportService {
       roleCell.value = TextCellValue(member.role == 'owner' ? 'Chủ' : member.role == 'manager' ? 'Quản lý' : 'Nhân viên');
       
       // Calculate day cells and total hours
-      List<String> dayValues = [];
+      List<double> dayValues = [];
       for (var d in dates) {
         final dateStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
         // Some attendances use month-day format without year if it's old code, but standard is YYYY-MM-DD
@@ -95,20 +136,21 @@ class ExcelExportService {
         
         if (att != null && att.totalHours > 0) {
           totalHours += att.totalHours;
-          dayValues.add('${att.totalHours.toStringAsFixed(1)}h');
+          dayValues.add(att.totalHours);
         } else {
-          dayValues.add('-');
+          dayValues.add(0.0);
         }
       }
 
       var totalCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIdx));
-      totalCell.value = TextCellValue('${totalHours.toStringAsFixed(1)}h');
+      totalCell.value = DoubleCellValue(totalHours);
       totalCell.cellStyle = normalStyle;
 
       for (int i = 0; i < dates.length; i++) {
         var c = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i + 3, rowIndex: rowIdx));
-        c.value = TextCellValue(dayValues[i]);
-        if (dayValues[i] != '-') {
+        final hours = dayValues[i];
+        c.value = DoubleCellValue(hours);
+        if (hours > 0) {
           c.cellStyle = dataStyle;
         } else {
           c.cellStyle = normalStyle;
@@ -127,8 +169,17 @@ class ExcelExportService {
     final fileBytes = excel.save();
     if (fileBytes != null) {
       final directory = await getTemporaryDirectory();
-      final suffix = startDate != null ? 'Filter' : month;
-      final file = File('${directory.path}/BangCong_$suffix.xlsx');
+      final storePart = sanitize(store.name);
+      String timePart;
+      if (startDate != null && endDate != null) {
+        timePart = '${startDate.day.toString().padLeft(2, '0')}.${startDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}.${endDate.month.toString().padLeft(2, '0')}.${endDate.year}';
+      } else {
+        final parts = month.split('-');
+        timePart = 'T${parts[1]}-${parts[0]}';
+      }
+      final memberPart = memberName != null ? '_${sanitize(memberName)}' : '';
+      final fileName = 'BangCong_${storePart}_$timePart$memberPart.xlsx';
+      final file = File('${directory.path}/$fileName');
       await file.writeAsBytes(fileBytes);
       await Share.shareXFiles([XFile(file.path)], text: 'Bảng Công');
     }
@@ -139,6 +190,7 @@ class ExcelExportService {
     required String themeColorHex,
     required List<Map<String, dynamic>> computedSalaries,
     required String suffix,
+    String? memberName,
   }) async {
     final excel = Excel.createExcel();
     final sheet = excel['Lương Tháng'];
@@ -181,25 +233,31 @@ class ExcelExportService {
       final data = computedSalaries[r];
       final rowIdx = r + 1;
       
-      final rowData = [
-        data['name'],
-        data['role'],
-        data['type'],
-        '${data['totalHours'].toStringAsFixed(1)}h',
-        '208h',
-        data['baseSalary'].toString(),
-        data['deliveryCount'].toString(),
-        data['deliveryPay'].toString(),
-        (data['giaoHangCount'] ?? 0).toString(),
-        (data['giaoHangPay'] ?? 0).toString(),
-        data['advance'].toString(),
-        data['netSalary'].toString(),
+      // Text columns
+      var nameCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIdx));
+      nameCell.value = TextCellValue(data['name'].toString());
+      var roleCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIdx));
+      roleCell.value = TextCellValue(data['role'].toString());
+      var typeCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIdx));
+      typeCell.value = TextCellValue(data['type'].toString());
+
+      // Numeric columns
+      final numericData = [
+        (data['totalHours'] as num).toDouble(),   // col 3: TỔNG GIỜ
+        208.0,                                     // col 4: GIỜ CHUẨN
+        (data['baseSalary'] as num).toDouble(),     // col 5: LƯƠNG CƠ BẢN
+        (data['deliveryCount'] as num).toDouble(),  // col 6: SỐ CA CHỞ
+        (data['deliveryPay'] as num).toDouble(),    // col 7: PHỤ CẤP CHỞ
+        ((data['giaoHangCount'] ?? 0) as num).toDouble(), // col 8: SỐ CA GIAO
+        ((data['giaoHangPay'] ?? 0) as num).toDouble(),   // col 9: PHỤ CẤP GIAO
+        (data['advance'] as num).toDouble(),        // col 10: ĐÃ TẠM ỨNG
+        (data['netSalary'] as num).toDouble(),      // col 11: LƯƠNG THỰC NHẬN
       ];
 
-      for (int c = 0; c < rowData.length; c++) {
-        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: rowIdx));
-        cell.value = TextCellValue(rowData[c].toString());
-        if (c > 2) cell.cellStyle = dataStyle;
+      for (int c = 0; c < numericData.length; c++) {
+        var cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c + 3, rowIndex: rowIdx));
+        cell.value = DoubleCellValue(numericData[c]);
+        cell.cellStyle = dataStyle;
       }
     }
 
@@ -219,7 +277,12 @@ class ExcelExportService {
     final fileBytes = excel.save();
     if (fileBytes != null) {
       final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/BaoCaoLuong_$suffix.xlsx');
+      final storePart = sanitize(storeName);
+      final parts = suffix.split('-');
+      final timePart = parts.length == 2 ? 'T${parts[1]}-${parts[0]}' : suffix;
+      final memberPart = memberName != null ? '_${sanitize(memberName)}' : '';
+      final fileName = 'BaoCaoLuong_${storePart}_$timePart$memberPart.xlsx';
+      final file = File('${directory.path}/$fileName');
       await file.writeAsBytes(fileBytes);
       await Share.shareXFiles([XFile(file.path)], text: 'Báo cáo lương');
     }

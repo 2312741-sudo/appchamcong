@@ -65,6 +65,17 @@ class NotificationService {
   Future<void> saveTokenForUser(String uid) async {
     if (_fcm == null) return;
     try {
+      // On iOS, APNS token may not be ready immediately.
+      // Wait up to 10 seconds for it to become available.
+      String? apnsToken = await _fcm!.getAPNSToken();
+      if (apnsToken == null) {
+        for (int i = 0; i < 10; i++) {
+          await Future.delayed(const Duration(seconds: 1));
+          apnsToken = await _fcm!.getAPNSToken();
+          if (apnsToken != null) break;
+        }
+      }
+
       final token = await _fcm!.getToken();
       if (token == null) return;
 

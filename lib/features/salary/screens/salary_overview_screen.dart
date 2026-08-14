@@ -143,11 +143,15 @@ class SalaryOverviewScreen extends ConsumerWidget {
                       final filteredSalaries = memberId != null 
                           ? computedSalaries.where((s) => s['userId'] == memberId).toList()
                           : computedSalaries;
+                      final selectedMemberName = memberId != null
+                          ? members.where((m) => m.userId == memberId).firstOrNull?.name
+                          : null;
                       await ExcelExportService.exportMonthlySalary(
                         storeName: store?.name ?? '',
                         themeColorHex: store?.themeColor ?? '#C8102E',
                         computedSalaries: filteredSalaries,
                         suffix: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : 'Filter',
+                        memberName: selectedMemberName,
                       );
                     } catch (e) {
                       if (context.mounted) {

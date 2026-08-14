@@ -81,6 +81,7 @@ class AttendanceTableScreen extends ConsumerWidget {
                           store: store,
                           startDate: !isMonth ? startDate : null,
                           endDate: !isMonth ? endDate : null,
+                          memberName: memberId != null ? filteredMembers.first.name : null,
                         );
                       } catch (e) {
                         if (context.mounted) {
