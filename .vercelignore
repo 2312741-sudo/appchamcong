@@ -1,0 +1,10 @@
+android/
+ios/
+test/
+google-cloud-sdk/
+.git/
+.dart_tool/
+analyze_out.txt
+flutter_01.png
+logo.jpg
+ios_permissions.md
