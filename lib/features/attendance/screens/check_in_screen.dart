@@ -427,11 +427,15 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
 
     final entries = <ProductionTaskEntry>[];
     for (final t in selectedTasks) {
-      final valStr = _controllers[t.id]?.text ?? '0';
-      final val = double.tryParse(valStr) ?? 0.0;
-      if (val <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vui lòng nhập số lượng hợp lệ cho ${t.name}')));
-        return;
+      final hasUnit = t.unitLabel.trim().isNotEmpty;
+      double val = 1.0;
+      if (hasUnit) {
+        final valStr = _controllers[t.id]?.text ?? '0';
+        val = double.tryParse(valStr) ?? 0.0;
+        if (val <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vui lòng nhập số lượng hợp lệ cho ${t.name}')));
+          return;
+        }
       }
       entries.add(ProductionTaskEntry(
         taskId: t.id,
@@ -513,7 +517,7 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
                     title: Text(t.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: isSelected ? Padding(
                       padding: const EdgeInsets.only(top: 8.0),
-                      child: Row(
+                      child: t.unitLabel.trim().isNotEmpty ? Row(
                         children: [
                           Expanded(
                             child: TextField(
@@ -521,7 +525,7 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               decoration: InputDecoration(
                                 isDense: true,
-                                hintText: 'Nhập số lượng...',
+                                hintText: 'Nhập số lượng (${t.unitLabel})...',
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               ),
@@ -529,6 +533,12 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
                           ),
                           const SizedBox(width: 12),
                           Text(t.unitLabel, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey)),
+                        ],
+                      ) : const Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Color(0xFF1A6B5A), size: 16),
+                          SizedBox(width: 6),
+                          Text('Đã hoàn thành', style: TextStyle(color: Color(0xFF1A6B5A), fontSize: 12, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ) : null,
