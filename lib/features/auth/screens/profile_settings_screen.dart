@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/member_model.dart';
+import '../providers/auth_notifier.dart';
 import '../../store/providers/store_provider.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
@@ -215,9 +218,172 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   ),
                 ),
               ],
+
+              const SizedBox(height: 32),
+
+              // Danger Zone: Account Deletion (Apple Guideline 5.1.1(v))
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Quản lý tài khoản',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Xóa tài khoản vĩnh viễn khỏi hệ thống. Hành động này không thể hoàn tác.',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => _showDeleteAccountDialog(context),
+                      icon: const Icon(Icons.delete_forever_rounded, color: AppColors.danger, size: 18),
+                      label: Text(
+                        'Xóa tài khoản',
+                        style: GoogleFonts.beVietnamPro(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.danger),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final passwordController = TextEditingController();
+    bool obscurePassword = true;
+    bool isDeleting = false;
+    String? localError;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Xác nhận xóa tài khoản',
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, color: AppColors.danger),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Toàn bộ thông tin cá nhân và dữ liệu liên quan sẽ bị xóa vĩnh viễn. Vui lòng nhập mật khẩu để xác thực:',
+                style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.neutral),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Mật khẩu của bạn',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  suffixIcon: IconButton(
+                    icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                  ),
+                ),
+              ),
+              if (localError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  localError!,
+                  style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.danger),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isDeleting ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: isDeleting
+                  ? null
+                  : () async {
+                      if (passwordController.text.trim().isEmpty) {
+                        setDialogState(() => localError = 'Vui lòng nhập mật khẩu');
+                        return;
+                      }
+                      setDialogState(() {
+                        isDeleting = true;
+                        localError = null;
+                      });
+
+                      final success = await ref
+                          .read(authNotifierProvider.notifier)
+                          .deleteAccount(password: passwordController.text.trim());
+
+                      if (!dialogCtx.mounted) return;
+
+                      if (success) {
+                        Navigator.pop(dialogCtx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Tài khoản đã được xóa vĩnh viễn'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                          context.go(AppRoutes.login);
+                        }
+                      } else {
+                        final errMsg = ref.read(authNotifierProvider).errorMessage ?? 'Không thể xóa tài khoản';
+                        setDialogState(() {
+                          isDeleting = false;
+                          localError = errMsg;
+                        });
+                      }
+                    },
+              child: isDeleting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Xóa vĩnh viễn'),
+            ),
+          ],
+        ),
       ),
     );
   }

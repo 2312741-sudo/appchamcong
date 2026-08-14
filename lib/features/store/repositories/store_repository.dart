@@ -43,12 +43,27 @@ class StoreRepository {
     String networkIP,
     double? lat,
     double? lng,
-    int radiusMeters,
-  ) async {
+    int radiusMeters, {
+    String? wifiName,
+    List<StoreWifi> wifis = const [],
+  }) async {
     try {
       final uid = _getUid();
       final code = _generateCode();
       final now = DateTime.now().toUtc();
+
+      final resolvedWifis = List<StoreWifi>.from(wifis);
+      if (resolvedWifis.isEmpty && networkIP.trim().isNotEmpty) {
+        resolvedWifis.add(
+          StoreWifi(
+            name: wifiName?.trim().isNotEmpty == true
+                ? wifiName!.trim()
+                : 'WiFi Chính',
+            ip: networkIP.trim(),
+            createdAt: now,
+          ),
+        );
+      }
 
       final storeRef = _stores.doc();
       final storeData = {
@@ -57,6 +72,7 @@ class StoreRepository {
         'ownerId': uid,
         'address': address.trim().isEmpty ? null : address.trim(),
         'networkIP': networkIP.trim().isEmpty ? null : networkIP.trim(),
+        'wifis': resolvedWifis.map((w) => w.toJson()).toList(),
         'latitude': lat,
         'longitude': lng,
         'radiusMeters': radiusMeters,

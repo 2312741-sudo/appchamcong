@@ -24,17 +24,19 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập camera để quét mã QR tham gia cửa hàng.</string>
+	<string>Ứng dụng cần quyền truy cập camera để quét mã QR tham gia cửa hàng và xác thực chấm công.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Ứng dụng cần quyền lưu ảnh vào thư viện.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập vị trí để xác thực chấm công.</string>
+	<string>Ứng dụng cần quyền lưu ảnh vào thư viện để tải về mã QR cửa hàng.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập vị trí khi dùng ứng dụng để xác thực bạn có mặt tại cửa hàng khi chấm công.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập vị trí để xác thực bạn có mặt tại cửa hàng khi chấm công.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập vị trí để xác thực chấm công tại cửa hàng.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>

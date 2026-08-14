@@ -32,18 +32,30 @@ class DepartmentDefinition extends Equatable {
 class StoreWifi extends Equatable {
   final String name;
   final String ip;
+  final DateTime? createdAt;
 
-  const StoreWifi({required this.name, required this.ip});
+  const StoreWifi({
+    required this.name,
+    required this.ip,
+    this.createdAt,
+  });
 
   factory StoreWifi.fromJson(Map<String, dynamic> json) => StoreWifi(
-    name: json['name'] as String? ?? '',
+    name: json['name'] as String? ?? 'WiFi',
     ip: json['ip'] as String? ?? '',
+    createdAt: json['createdAt'] is Timestamp
+        ? (json['createdAt'] as Timestamp).toDate()
+        : (json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null),
   );
 
-  Map<String, dynamic> toJson() => {'name': name, 'ip': ip};
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'ip': ip,
+    'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+  };
 
   @override
-  List<Object?> get props => [name, ip];
+  List<Object?> get props => [name, ip, createdAt];
 }
 
 class StoreModel extends Equatable {
@@ -90,13 +102,34 @@ class StoreModel extends Equatable {
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
+    final legacyIp = json['networkIP'] as String?;
+    final rawWifis = (json['wifis'] as List<dynamic>?)
+            ?.map((e) => StoreWifi.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    // Auto-migration: if legacy networkIP exists and is not yet in wifis list, include it
+    final resolvedWifis = List<StoreWifi>.from(rawWifis);
+    if (legacyIp != null && legacyIp.trim().isNotEmpty) {
+      if (!resolvedWifis.any((w) => w.ip.trim() == legacyIp.trim())) {
+        resolvedWifis.insert(
+          0,
+          StoreWifi(
+            name: 'WiFi Chính',
+            ip: legacyIp.trim(),
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    }
+
     return StoreModel(
       id: id,
       name: json['name'] as String? ?? '',
       code: json['code'] as String? ?? '',
       ownerId: json['ownerId'] as String? ?? '',
       address: json['address'] as String?,
-      networkIP: json['networkIP'] as String?,
+      networkIP: legacyIp,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       radiusMeters: (json['radiusMeters'] as int?) ?? 100,
@@ -118,10 +151,7 @@ class StoreModel extends Equatable {
       giaoHangEnabled: json['giaoHangEnabled'] as bool? ?? true,
       themeColor: json['themeColor'] as String?,
       departmentSelectionEnabled: json['departmentSelectionEnabled'] as bool? ?? true,
-      wifis: (json['wifis'] as List<dynamic>?)
-              ?.map((e) => StoreWifi.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      wifis: resolvedWifis,
     );
   }
 

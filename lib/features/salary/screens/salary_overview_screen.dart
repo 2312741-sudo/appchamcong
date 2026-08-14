@@ -152,6 +152,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
                         computedSalaries: filteredSalaries,
                         suffix: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : 'Filter',
                         memberName: selectedMemberName,
+                        context: context,
                       );
                     } catch (e) {
                       if (context.mounted) {

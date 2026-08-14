@@ -35,11 +35,8 @@ dependencies:
   cached_network_image: ^3.4.1
   fl_chart: ^0.69.0
   intl: any
-  table_calendar: ^3.1.2
   # Notifications
   flutter_local_notifications: ^18.0.1
-  # Storage
-  hive_flutter: ^1.1.0
   # Utils
   google_fonts: ^6.2.1
   shimmer: ^3.0.0
@@ -47,7 +44,6 @@ dependencies:
   equatable: ^2.0.5
   image_picker: ^1.1.2
   flutter_animate: ^4.5.0
-  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:

@@ -218,6 +218,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ── Delete Account ──────────────────────────────────────────────────────
+
+  Future<bool> deleteAccount({required String password}) async {
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      await _repository.deleteAccount(password: password);
+      state = state.copyWith(
+        isLoading: false,
+        successMessage: 'Tài khoản đã được xóa thành công',
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthRepository.parseFirebaseAuthError(e),
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Có lỗi khi xóa tài khoản: $e',
+      );
+      return false;
+    }
+  }
+
   // ── Clear Error/Success ─────────────────────────────────────────────────
 
   void clearError() {

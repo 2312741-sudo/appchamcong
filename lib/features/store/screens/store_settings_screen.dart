@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/location_utils.dart';
 import '../../../models/store_model.dart';
+import '../../../app/router.dart';
 import '../providers/store_provider.dart';
 
 class StoreSettingsScreen extends ConsumerStatefulWidget {
@@ -24,8 +24,10 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   final _addressCtrl = TextEditingController();
   final _deptNameCtrl = TextEditingController();
   final _deptShortCtrl = TextEditingController();
+  final _wifiNameCtrl = TextEditingController();
   
   String? _networkIP;
+  String? _detectedSsid;
   bool _isFetchingIP = false;
   List<StoreWifi> _wifis = [];
 
@@ -50,6 +52,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _addressCtrl.dispose();
     _deptNameCtrl.dispose();
     _deptShortCtrl.dispose();
+    _wifiNameCtrl.dispose();
     _deliveryAllowanceCtrl.dispose();
     _giaoHangAllowanceCtrl.dispose();
     super.dispose();
@@ -76,19 +79,28 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   Future<void> _fetchNetworkIP() async {
     if (mounted) setState(() => _isFetchingIP = true);
     try {
-      final request = await HttpClient().getUrl(Uri.parse('https://api.ipify.org?format=json'));
-      final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
-      final data = jsonDecode(responseBody);
+      final details = await LocationUtils.getCurrentWifiDetails();
+      if (details.ip == null || details.ip!.isEmpty) {
+        throw Exception('Không lấy được IP mạng. Vui lòng đảm bảo thiết bị đang kết nối WiFi hoặc internet.');
+      }
       
       if (mounted) {
         setState(() {
-          _networkIP = data['ip'];
+          _networkIP = details.ip;
+          if (details.ssid != null && details.ssid!.isNotEmpty) {
+            _detectedSsid = details.ssid;
+            _wifiNameCtrl.text = details.ssid!;
+          } else {
+            _detectedSsid = null;
+            _wifiNameCtrl.text = 'WiFi ${_wifis.length + 1}';
+          }
         });
-        _showSuccess('Lấy IP mạng thành công');
+        _showSuccess(_detectedSsid != null
+            ? 'Đã lấy WiFi: $_detectedSsid'
+            : 'Đã lấy IP mạng thành công');
       }
     } catch (e) {
-      _showError('Không thể lấy IP mạng: $e');
+      _showError('Không thể lấy thông tin WiFi: $e');
     } finally {
       if (mounted) setState(() => _isFetchingIP = false);
     }
@@ -253,6 +265,63 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     }
   }
 
+  void _showEditWifiDialog(int index, StoreWifi wifi) {
+    final ctrl = TextEditingController(text: wifi.name);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Đổi tên nhận diện WiFi',
+            style: TextStyle(
+                fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('IP: ${wifi.ip}',
+                style: const TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    color: AppColors.textSecondary,
+                    fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(
+                labelText: 'Tên WiFi',
+                hintText: 'Nhập tên nhận diện...',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Huỷ',
+                  style: TextStyle(fontFamily: 'BeVietnamPro'))),
+          ElevatedButton(
+            onPressed: () {
+              final newName = ctrl.text.trim();
+              if (newName.isNotEmpty) {
+                setState(() {
+                  _wifis[index] = StoreWifi(
+                    name: newName,
+                    ip: wifi.ip,
+                    createdAt: wifi.createdAt,
+                  );
+                });
+                _showSuccess('Đã đổi tên WiFi');
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -322,8 +391,6 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                         : null,
                   ),
                   const SizedBox(height: 14),
-                  const _Label('Địa chỉ'),
-                  const SizedBox(height: 6),
                   _Field(
                     controller: _addressCtrl,
                     hint: 'Địa chỉ cửa hàng',
@@ -346,7 +413,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                           )
                         : const Icon(Icons.wifi_rounded),
                     label: Text(
-                      _isFetchingIP ? 'Đang lấy IP...' : 'Lấy IP mạng hiện tại',
+                      _isFetchingIP ? 'Đang lấy thông tin...' : 'Lấy WiFi mạng hiện tại',
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
@@ -365,62 +432,196 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   if (_networkIP != null) ...[
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _detectedSsid != null
+                              ? AppColors.success.withOpacity(0.5)
+                              : Colors.orange.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppColors.success, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            'IP hiện tại: $_networkIP',
+                          Row(
+                            children: [
+                              Icon(
+                                _detectedSsid != null
+                                    ? Icons.wifi_rounded
+                                    : Icons.wifi_find_rounded,
+                                color: _detectedSsid != null
+                                    ? AppColors.success
+                                    : Colors.orange,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _detectedSsid != null
+                                      ? 'Đã nhận diện: $_detectedSsid'
+                                      : 'Chưa đọc được SSID tự động (có thể tự đặt tên)',
+                                  style: TextStyle(
+                                    fontFamily: 'BeVietnamPro',
+                                    fontSize: 13,
+                                    color: _detectedSsid != null
+                                        ? AppColors.success
+                                        : Colors.orange.shade800,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close, color: AppColors.danger, size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => setState(() {
+                                  _networkIP = null;
+                                  _detectedSsid = null;
+                                  _wifiNameCtrl.clear();
+                                }),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _wifiNameCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Tên nhận diện WiFi',
+                              hintText: 'VD: WiFi Tầng 1 / Quầy Thu Ngân',
+                              prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              isDense: true,
+                            ),
                             style: const TextStyle(
                               fontFamily: 'BeVietnamPro',
-                              fontSize: 12,
-                              color: AppColors.success,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const Spacer(),
-                          if (_wifis.length < 3)
-                            TextButton(
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.router_rounded,
+                                    size: 16, color: AppColors.textSecondary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'IP Router (WAN): $_networkIP',
+                                  style: const TextStyle(
+                                    fontFamily: 'BeVietnamPro',
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
                               onPressed: () {
-                                if (_wifis.any((w) => w.ip == _networkIP)) {
-                                  _showError('IP này đã có trong danh sách');
+                                if (_wifis.length >= 10) {
+                                  _showError('Đã đạt tối đa 10 địa chỉ WiFi cho phép.');
                                   return;
                                 }
+                                if (_wifis.any((w) => w.ip.trim() == _networkIP!.trim())) {
+                                  _showError('Địa chỉ IP này đã tồn tại trong danh sách.');
+                                  return;
+                                }
+                                final nameToSave = _wifiNameCtrl.text.trim().isNotEmpty
+                                    ? _wifiNameCtrl.text.trim()
+                                    : (_detectedSsid ?? 'WiFi ${_wifis.length + 1}');
                                 setState(() {
-                                  _wifis.add(StoreWifi(name: 'WiFi ${_wifis.length + 1}', ip: _networkIP!));
+                                  _wifis.add(StoreWifi(
+                                    name: nameToSave,
+                                    ip: _networkIP!,
+                                    createdAt: DateTime.now(),
+                                  ));
+                                  _networkIP = null;
+                                  _detectedSsid = null;
+                                  _wifiNameCtrl.clear();
                                 });
+                                _showSuccess('Đã thêm "$nameToSave" vào danh sách');
                               },
-                              child: const Text('Thêm vào DS'),
+                              icon: const Icon(Icons.add_rounded, size: 18),
+                              label: const Text('Thêm vào danh sách cho phép (Tối đa 10)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 11),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
-                          IconButton(
-                            icon: const Icon(Icons.close, color: AppColors.danger, size: 20),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () => setState(() => _networkIP = null),
-                          )
+                          ),
                         ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  const _Label('Danh sách WiFi cho phép chấm công (Tối đa 3)'),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _Label('Danh sách WiFi cho phép (${_wifis.length}/10)'),
+                      if (_wifis.isNotEmpty)
+                        Text(
+                          '${10 - _wifis.length} vị trí còn lại',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   if (_wifis.isEmpty)
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: const Text('Chưa có WiFi nào. NV có thể chấm công bằng IP hiện tại nếu IP trên còn lưu.', style: TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary, fontSize: 13)),
+                      child: Column(
+                        children: const [
+                          Icon(Icons.wifi_off_rounded, color: AppColors.textSecondary, size: 32),
+                          SizedBox(height: 8),
+                          Text(
+                            'Chưa cấu hình WiFi nào.\nKết nối mạng tại điểm làm việc và nhấn "Lấy WiFi mạng hiện tại" để thêm.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     )
                   else
                     ..._wifis.asMap().entries.map((entry) {
@@ -428,28 +629,69 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       final wifi = entry.value;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.wifi, color: AppColors.primary, size: 20),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${idx + 1}',
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(wifi.name, style: const TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
-                                  Text(wifi.ip, style: const TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary, fontSize: 12)),
+                                  Text(
+                                    wifi.name,
+                                    style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'IP: ${wifi.ip}',
+                                    style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                              onPressed: () => setState(() => _wifis.removeAt(idx)),
+                              icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+                              tooltip: 'Đổi tên WiFi',
+                              onPressed: () => _showEditWifiDialog(idx, wifi),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 20),
+                              tooltip: 'Xoá WiFi này',
+                              onPressed: () {
+                                setState(() => _wifis.removeAt(idx));
+                                _showSuccess('Đã xoá WiFi');
+                              },
                             ),
                           ],
                         ),
@@ -612,7 +854,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () =>
-                                context.push('/qr-display'),
+                                context.push(AppRoutes.qrDisplay),
                             icon: const Icon(Icons.open_in_full_rounded),
                             label: const Text('Xem mã QR toàn màn hình'),
                             style: ElevatedButton.styleFrom(

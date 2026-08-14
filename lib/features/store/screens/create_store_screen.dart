@@ -1,10 +1,9 @@
-import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/location_utils.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
 import '../../../app/router.dart';
@@ -20,8 +19,10 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _wifiNameCtrl = TextEditingController();
 
   String? _networkIP;
+  String? _detectedSsid;
   bool _isFetchingIP = false;
 
   double _radius = 100;
@@ -35,21 +36,31 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _addressCtrl.dispose();
+    _wifiNameCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _fetchNetworkIP() async {
     setState(() => _isFetchingIP = true);
     try {
-      final request = await HttpClient().getUrl(Uri.parse('https://api.ipify.org?format=json'));
-      final response = await request.close();
-      final responseBody = await response.transform(utf8.decoder).join();
-      final data = jsonDecode(responseBody);
+      final details = await LocationUtils.getCurrentWifiDetails();
+      if (details.ip == null || details.ip!.isEmpty) {
+        throw Exception('Không lấy được IP mạng. Vui lòng đảm bảo kết nối internet.');
+      }
       
       setState(() {
-        _networkIP = data['ip'];
+        _networkIP = details.ip;
+        if (details.ssid != null && details.ssid!.isNotEmpty) {
+          _detectedSsid = details.ssid;
+          _wifiNameCtrl.text = details.ssid!;
+        } else {
+          _detectedSsid = null;
+          _wifiNameCtrl.text = 'WiFi Chính';
+        }
       });
-      _showSuccess('Lấy IP mạng thành công');
+      _showSuccess(_detectedSsid != null
+          ? 'Đã lấy WiFi: $_detectedSsid'
+          : 'Đã lấy IP mạng thành công');
     } catch (e) {
       _showError('Không thể lấy IP mạng: $e');
     } finally {
@@ -127,6 +138,9 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
         _lat,
         _lng,
         _radius.round(),
+        wifiName: _wifiNameCtrl.text.trim().isNotEmpty
+            ? _wifiNameCtrl.text.trim()
+            : 'WiFi Chính',
       );
 
       await userRepo.updateCurrentStoreId(user.id, store.id);
@@ -280,24 +294,76 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                 if (_networkIP != null) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _detectedSsid != null
+                            ? AppColors.success.withOpacity(0.5)
+                            : Colors.orange.withOpacity(0.5),
+                      ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.check_circle_rounded,
-                            color: AppColors.success, size: 16),
-                        const SizedBox(width: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              _detectedSsid != null
+                                  ? Icons.wifi_rounded
+                                  : Icons.wifi_find_rounded,
+                              color: _detectedSsid != null
+                                  ? AppColors.success
+                                  : Colors.orange,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _detectedSsid != null
+                                    ? 'Đã nhận diện: $_detectedSsid'
+                                    : 'Chưa đọc được SSID tự động (có thể tự đặt tên)',
+                                style: TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 13,
+                                  color: _detectedSsid != null
+                                      ? AppColors.success
+                                      : Colors.orange.shade800,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _wifiNameCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'Tên nhận diện WiFi',
+                            hintText: 'VD: WiFi Chính / Cửa hàng',
+                            prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            isDense: true,
+                          ),
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
                         Text(
-                          'IP: $_networkIP',
+                          'IP Router (WAN): $_networkIP',
                           style: const TextStyle(
                             fontFamily: 'BeVietnamPro',
                             fontSize: 12,
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],

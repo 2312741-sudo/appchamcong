@@ -58,10 +58,30 @@ class AttendanceRepository {
     }
   }
 
-  Future<void> checkOut(String storeId, String userId) async {
+  Future<void> checkOut(
+    String storeId,
+    String userId, {
+    bool isProductionShift = false,
+  }) async {
     try {
       final date = _todayDate();
       final now = DateTime.now().toUtc();
+
+      // If user is in a production shift, verify that a production report was submitted today
+      if (isProductionShift) {
+        final reportsQuery = await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('production_reports')
+            .where('userId', isEqualTo: userId)
+            .where('date', isEqualTo: date)
+            .limit(1)
+            .get();
+
+        if (reportsQuery.docs.isEmpty) {
+          throw Exception('Bắt buộc phải hoàn thành và gửi báo cáo sản xuất trước khi ra ca.');
+        }
+      }
 
       final query = await _attendances(storeId)
           .where('userId', isEqualTo: userId)
@@ -83,6 +103,7 @@ class AttendanceRepository {
         'totalHours': double.parse(totalHours.toStringAsFixed(2)),
       });
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('Chấm ra thất bại: $e');
     }
   }

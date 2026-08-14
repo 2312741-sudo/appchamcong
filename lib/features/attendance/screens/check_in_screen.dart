@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/location_utils.dart';
+import '../../../core/utils/department_utils.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/store_model.dart';
 import '../../../models/production_model.dart';
@@ -68,32 +69,39 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       final repo = ref.read(attendanceRepositoryProvider);
       
       if (isCheckedIn) {
-        // Handle checkout - check if user is in a production (SX) department shift today
-        bool isInSXShift = false;
-        final mySchedule = ref.read(myScheduleProvider);
-        if (mySchedule != null) {
-          final todayWeekday = DateTime.now().weekday; // 1=Mon, 7=Sun
-          final todayShiftEntries = mySchedule.shiftForDay(todayWeekday);
-          // Each entry can be 'shiftId' or 'shiftId|deptId'
-          final sxDept = store.departments.where(
-            (d) => d.shortName.toUpperCase() == 'SX',
-          ).firstOrNull;
-          if (sxDept != null) {
-            for (final entry in todayShiftEntries) {
-              if (entry.contains('|')) {
-                final deptId = entry.split('|')[1];
-                if (deptId == sxDept.id) {
-                  isInSXShift = true;
-                  break;
-                }
-              }
+        // 1. Resolve member's default department ID
+        final membersList = ref.read(storeMembersProvider).valueOrNull ?? [];
+        final currentMember = membersList.where((m) => m.userId == userId).firstOrNull;
+        final memberDepartmentId = currentMember?.department;
+
+        // 2. Resolve today's shift entries from schedule
+        List<String> todayShiftEntries = [];
+        try {
+          final weekStart = ref.read(currentWeekStartProvider);
+          final scheduleRepo = ref.read(scheduleRepositoryProvider);
+          final schedule = await scheduleRepo.getWeekSchedule(store.id, weekStart);
+          if (schedule != null) {
+            final userDaySchedule = schedule.getScheduleForUser(userId);
+            if (userDaySchedule != null) {
+              final todayWeekday = DateTime.now().weekday; // 1=Mon, 7=Sun
+              todayShiftEntries = userDaySchedule.shiftForDay(todayWeekday);
             }
           }
-        }
+        } catch (_) {}
+
+        // 3. Robust check: is user in an SX shift or SX department today?
+        final isInSXShift = DepartmentUtils.isUserInProductionShiftToday(
+          userId: userId,
+          store: store,
+          memberDepartmentId: memberDepartmentId,
+          todayShiftEntries: todayShiftEntries,
+        );
 
         if (isInSXShift) {
-          // User is in a production shift today → show production checklist
-          final shifts = ref.read(storeShiftsProvider);
+          // Find matching shift definition
+          final shifts = store.customShifts.isNotEmpty 
+              ? store.customShifts 
+              : ref.read(storeShiftsProvider);
           final nowMinutes = _currentTime.hour * 60 + _currentTime.minute;
           ShiftDefinition? currentShift;
           for (final s in shifts) {
@@ -110,17 +118,20 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
             startHour: 8, startMinute: 0, endHour: 17, endMinute: 0,
           );
 
-          final List<ProductionTask> tasks = ref.read(activeProductionTasksProvider).valueOrNull ?? <ProductionTask>[];
+          // Always fetch active tasks async with kDefaultProductionTasks fallback
+          final productionRepo = ref.read(productionRepositoryProvider);
+          final tasks = await productionRepo.getActiveTasks(store.id);
 
-          if (tasks.isNotEmpty) {
-            setState(() => _isLoading = false);
-            final result = await _showProductionChecklist(context, tasks, currentShift, store, userId);
-            if (result != true) return; // User cancelled checkout
-            setState(() => _isLoading = true);
+          setState(() => _isLoading = false);
+          final result = await _showProductionChecklist(context, tasks, currentShift, store, userId);
+          if (result != true) {
+            // User cancelled/closed checklist modal -> halt checkout
+            return;
           }
+          setState(() => _isLoading = true);
         }
 
-        await repo.checkOut(store.id, userId);
+        await repo.checkOut(store.id, userId, isProductionShift: isInSXShift);
         _showSuccess('Chấm ra thành công!');
         return;
       }
@@ -129,15 +140,24 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       bool canCheckIn = false;
 
       if (_selectedMethod == CheckInMethod.wifi) {
-        if (!store.hasWifi) throw Exception('Cửa hàng chưa cấu hình WiFi.');
         final allowedIPs = <String>[];
-        if (store.networkIP != null && store.networkIP!.isNotEmpty) allowedIPs.add(store.networkIP!);
+        if (store.networkIP != null && store.networkIP!.trim().isNotEmpty) {
+          allowedIPs.add(store.networkIP!.trim());
+        }
         for (final wifi in store.wifis) {
-          if (wifi.ip.isNotEmpty) allowedIPs.add(wifi.ip);
+          if (wifi.ip.trim().isNotEmpty && !allowedIPs.contains(wifi.ip.trim())) {
+            allowedIPs.add(wifi.ip.trim());
+          }
         }
 
-        final isWifiCorrect = await LocationUtils.isOnStoreNetwork(allowedIPs);
-        if (!isWifiCorrect) throw Exception('Sai mạng WiFi! Vui lòng kết nối đúng mạng WiFi của cửa hàng.');
+        if (allowedIPs.isEmpty) {
+          if (!store.hasWifi) throw Exception('Cửa hàng chưa cấu hình WiFi chấm công.');
+        } else {
+          final isWifiCorrect = await LocationUtils.isOnStoreNetwork(allowedIPs);
+          if (!isWifiCorrect) {
+            throw Exception('Bạn chưa kết nối đúng mạng WiFi của cửa hàng (hoặc đang dùng 4G/5G). Vui lòng kết nối WiFi tại nơi làm việc để chấm công.');
+          }
+        }
         canCheckIn = true;
       } else if (_selectedMethod == CheckInMethod.gps) {
         if (store.latitude == null || store.longitude == null) throw Exception('Cửa hàng chưa cấu hình Vị trí.');
@@ -448,7 +468,8 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
 
     setState(() => _isSubmitting = true);
     try {
-      final member = ref.read(storeMembersProvider).valueOrNull?.firstWhere((m) => m.userId == widget.userId);
+      final members = ref.read(storeMembersProvider).valueOrNull ?? [];
+      final member = members.where((m) => m.userId == widget.userId).firstOrNull;
       final memberName = member?.name ?? 'Nhân viên';
       final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 

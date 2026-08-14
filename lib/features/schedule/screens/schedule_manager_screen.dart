@@ -264,7 +264,9 @@ class _ScheduleManagerScreenState
                   weekStart: _currentWeek,
                   members: members,
                   schedule: schedule,
+                  store: store,
                   storeName: store.name,
+                  context: context,
                 );
               } catch (e) {
                 if (context.mounted) {

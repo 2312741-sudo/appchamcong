@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/auth_provider.dart';
 import '../../../app/router.dart';
 import '../../store/providers/user_repository.dart';
 import '../../store/providers/store_provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/notification_service.dart';
@@ -23,117 +24,114 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Single entry point: wait for auth then navigate
-    _waitAndNavigate();
+    // Start navigation flow immediately without artificial delays
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuthAndNavigate();
+    });
   }
 
-  Future<void> _waitAndNavigate() async {
-    // Give splash screen time to render
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (!mounted) return;
-
-    // Wait for auth state to resolve (max 10 seconds)
-    for (int i = 0; i < 20; i++) {
-      final authState = ref.read(authStateChangesProvider);
-      if (!authState.isLoading) break;
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-    }
-
-    _navigate();
-  }
-
-  Future<void> _navigate() async {
+  Future<void> _checkAuthAndNavigate() async {
     if (_hasNavigated || !mounted) return;
-    _hasNavigated = true;
 
-    final authState = ref.read(authStateChangesProvider);
-    final user = authState.valueOrNull;
-
-    // Not logged in
-    if (user == null) {
-      if (mounted) context.go(AppRoutes.welcome);
-      return;
-    }
-
-    // Initialize notifications after confirming user is logged in
     try {
-      await NotificationService().initialize();
-      await NotificationService().saveTokenForUser(user.uid);
-    } catch (_) {}
+      // 1. Await auth state (cached locally by Firebase Auth)
+      final authState = await ref.read(authStateChangesProvider.future);
+      if (!mounted || _hasNavigated) return;
 
-    // Wait for user model to load (max 5 seconds)
-    for (int i = 0; i < 10; i++) {
-      final userAsync = ref.read(currentUserProvider);
-      if (!userAsync.isLoading) break;
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-    }
+      // Not logged in -> Go to Welcome screen immediately
+      if (authState == null) {
+        _navigateTo(AppRoutes.welcome);
+        return;
+      }
 
-    final userModel = ref.read(currentUserProvider).valueOrNull;
+      // 2. Initialize push notifications in background (non-blocking)
+      unawaited(() async {
+        try {
+          await NotificationService().initialize();
+          await NotificationService().saveTokenForUser(authState.uid);
+        } catch (_) {}
+      }());
 
-    if (!mounted) return;
+      // 3. Await current user model with a fast timeout
+      final userModel = await ref
+          .read(currentUserProvider.future)
+          .timeout(const Duration(seconds: 4), onTimeout: () => null);
 
-    // No user document in Firestore
-    if (userModel == null) {
-      context.go(AppRoutes.profileSetup);
-      return;
-    }
+      if (!mounted || _hasNavigated) return;
 
-    // User has no store assigned
-    if (!userModel.hasStore) {
+      // No user profile in Firestore
+      if (userModel == null) {
+        _navigateTo(AppRoutes.profileSetup);
+        return;
+      }
+
+      // User has no store assigned
+      if (!userModel.hasStore) {
+        try {
+          final stores = await ref
+              .read(userStoresProvider.future)
+              .timeout(const Duration(seconds: 3), onTimeout: () => []);
+          if (stores.isNotEmpty && mounted && !_hasNavigated) {
+            final userRepo = ref.read(userRepositoryProvider);
+            await userRepo.updateCurrentStoreId(userModel.id, stores.first.id);
+            ref.invalidate(currentUserProvider);
+            _navigateTo(AppRoutes.splash);
+            return;
+          }
+        } catch (_) {}
+        _navigateTo(AppRoutes.welcome);
+        return;
+      }
+
+      // 4. Resolve member role and status
       try {
-        final stores = await ref.read(userStoresProvider.future);
-        if (stores.isNotEmpty && mounted) {
-          final userRepo = ref.read(userRepositoryProvider);
-          await userRepo.updateCurrentStoreId(userModel.id, stores.first.id);
-          // Refresh and navigate
-          ref.invalidate(currentUserProvider);
-          if (mounted) context.go(AppRoutes.splash);
+        final memberDoc = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(userModel.currentStoreId)
+            .collection('members')
+            .doc(userModel.id)
+            .get()
+            .timeout(const Duration(seconds: 3));
+
+        if (!mounted || _hasNavigated) return;
+
+        if (memberDoc.exists) {
+          final role = memberDoc.data()?['role'] as String?;
+          final status = memberDoc.data()?['status'] as String?;
+
+          if (status == 'pending') {
+            _navigateTo(AppRoutes.pendingApproval);
+            return;
+          }
+          if (status == 'kicked') {
+            _navigateTo(AppRoutes.welcome);
+            return;
+          }
+
+          if (role == 'owner') {
+            _navigateTo(AppRoutes.ownerDashboard);
+          } else if (role == 'manager') {
+            _navigateTo(AppRoutes.managerDashboard);
+          } else {
+            _navigateTo(AppRoutes.employeeDashboard);
+          }
           return;
         }
       } catch (_) {}
-      if (mounted) context.go(AppRoutes.welcome);
-      return;
-    }
 
-    // User has a store - determine role and navigate
-    try {
-      final memberDoc = await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(userModel.currentStoreId)
-          .collection('members')
-          .doc(userModel.id)
-          .get();
-
-      if (!mounted) return;
-
-      if (memberDoc.exists) {
-        final role = memberDoc.data()?['role'] as String?;
-        final status = memberDoc.data()?['status'] as String?;
-
-        if (status == 'pending') {
-          context.go(AppRoutes.pendingApproval);
-          return;
-        }
-        if (status == 'kicked') {
-          context.go(AppRoutes.welcome);
-          return;
-        }
-
-        if (role == 'owner') {
-          context.go(AppRoutes.ownerDashboard);
-        } else if (role == 'manager') {
-          context.go(AppRoutes.managerDashboard);
-        } else {
-          context.go(AppRoutes.employeeDashboard);
-        }
-        return;
+      // Fallback
+      _navigateTo(AppRoutes.employeeDashboard);
+    } catch (_) {
+      if (mounted && !_hasNavigated) {
+        _navigateTo(AppRoutes.welcome);
       }
-    } catch (_) {}
+    }
+  }
 
-    // Fallback
-    if (mounted) context.go(AppRoutes.employeeDashboard);
+  void _navigateTo(String route) {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
+    context.go(route);
   }
 
   @override

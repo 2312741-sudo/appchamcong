@@ -13,6 +13,7 @@ import '../features/store/screens/join_qr_screen.dart';
 import '../features/store/screens/pending_approval_screen.dart';
 import '../features/store/screens/store_settings_screen.dart';
 import '../features/store/screens/shift_settings_screen.dart';
+import '../features/store/screens/qr_display_screen.dart';
 import '../features/attendance/screens/check_in_screen.dart';
 import '../features/attendance/screens/attendance_history_screen.dart';
 import '../features/attendance/screens/attendance_table_screen.dart';
@@ -65,6 +66,7 @@ class AppRoutes {
   static const String pendingMembers = '/pending-members';
   static const String storeSettings = '/store-settings';
   static const String shiftSettings = '/shift-settings';
+  static const String qrDisplay = '/qr-display';
   static const String profileSettings = '/profile-settings';
 }
 
@@ -275,6 +277,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.shiftSettings,
         name: 'shift-settings',
         builder: (context, state) => const ShiftSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.qrDisplay,
+        name: 'qr-display',
+        builder: (context, state) => const QrDisplayScreen(),
       ),
       GoRoute(
         path: AppRoutes.profileSettings,

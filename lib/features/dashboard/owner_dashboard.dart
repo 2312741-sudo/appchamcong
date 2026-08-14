@@ -265,7 +265,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                 const SizedBox(height: 10),
                 _ToolCard(icon: Icons.account_balance_wallet_rounded, label: 'Duyệt tạm ứng', sub: 'Xem yêu cầu ứng lương', color: const Color(0xFFB8860B), onTap: () => GoRouter.of(context).push(AppRoutes.manageAdvances)),
                 const SizedBox(height: 10),
-                _ToolCard(icon: Icons.qr_code_rounded, label: 'QR chấm công', sub: 'Chia sẻ mã QR cho NV', color: const Color(0xFF7B1FA2), onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
+                _ToolCard(icon: Icons.qr_code_rounded, label: 'QR chấm công', sub: 'Chia sẻ mã QR cho NV', color: const Color(0xFF7B1FA2), onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
               ],
             ),
           ),
@@ -338,7 +338,7 @@ class _OwnerSettingsTab extends ConsumerWidget {
           _SettingsSection(title: 'Cửa hàng', items: [
             _SettingsItem(icon: Icons.store_rounded, label: 'Cài đặt cửa hàng', sub: store.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
             _SettingsItem(icon: Icons.schedule_rounded, label: 'Quản lý ca làm', onTap: () => GoRouter.of(context).push(AppRoutes.shiftSettings)),
-            _SettingsItem(icon: Icons.qr_code_rounded, label: 'Mã QR cửa hàng', onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
+            _SettingsItem(icon: Icons.qr_code_rounded, label: 'Mã QR cửa hàng', onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
           ]),
           const SizedBox(height: 12),
           _SettingsSection(title: 'Tài khoản', items: [

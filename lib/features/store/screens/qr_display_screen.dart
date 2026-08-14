@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/share_utils.dart';
 import '../providers/store_provider.dart';
 
 class QrDisplayScreen extends ConsumerWidget {
@@ -187,9 +187,10 @@ class QrDisplayScreen extends ConsumerWidget {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Share.share(
+                            ShareUtils.shareText(
                               'Tham gia cửa hàng "${store.name}" với mã: ${store.code}\n\nTải ứng dụng Chấm Công Trạm để tham gia!',
                               subject: 'Mời tham gia ${store.name}',
+                              context: context,
                             );
                           },
                           icon: const Icon(Icons.share_rounded, size: 18),
