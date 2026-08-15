@@ -249,18 +249,14 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.neutral, size: 20),
           onPressed: () => context.pop(),
         ),
-        title: Row(
-          children: [
-            Text(
-              isSelf ? storeName : displayName,
-              style: GoogleFonts.beVietnamPro(
-                color: const Color(0xFF0066CC),
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
+        title: Text(
+          isSelf ? storeName : displayName,
+          style: GoogleFonts.beVietnamPro(
+            color: const Color(0xFF0066CC),
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
         ),
         actions: [
           IconButton(
@@ -270,6 +266,12 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: isSelf
+          ? _buildBottomActionBar(
+              context: context,
+              attendance: todayAttendanceAsync?.valueOrNull,
+            )
+          : null,
       body: salaryDataAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -319,86 +321,73 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
             }
           }
 
-          return Column(
-            children: [
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(memberSalaryDataProvider);
-                    ref.invalidate(storeAdvancesProvider);
-                  },
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    children: [
-                      // Pending Advance Alert (if any)
-                      if (pendingAdvance > 0)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF8E1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFFFD54F)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.hourglass_top_rounded, color: Color(0xFFF57F17), size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Đang có yêu cầu ứng ${_formatCurrency(pendingAdvance)} chờ duyệt.',
-                                  style: GoogleFonts.beVietnamPro(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFFF57F17),
-                                  ),
-                                ),
-                              ),
-                            ],
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(memberSalaryDataProvider);
+              ref.invalidate(storeAdvancesProvider);
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              children: [
+                // Pending Advance Alert (if any)
+                if (pendingAdvance > 0)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFD54F)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.hourglass_top_rounded, color: Color(0xFFF57F17), size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Đang có yêu cầu ứng ${_formatCurrency(pendingAdvance)} chờ duyệt.',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFF57F17),
+                            ),
                           ),
                         ),
-
-                      // Card 1: Tổng quan Tiền Công Tháng
-                      _buildSummaryCard(
-                        monthStr: _selectedMonth.month.toString().padLeft(2, '0'),
-                        totalSalary: totalSalary,
-                        totalAdvance: approvedAdvance,
-                        totalDeductions: totalDeductions,
-                        totalPaid: totalPaid,
-                        netUnpaid: netUnpaid,
-                        member: member,
-                        totalHours: totalHours,
-                        deliveryPay: deliveryPay,
-                        giaoHangPay: giaoHangPay,
-                        storeId: storeId,
-                        targetUid: targetUserId,
-                        isSelf: isSelf,
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Card 2: Lịch Chấm Công & Tiền Mỗi Ngày
-                      _buildCalendarCard(
-                        context: context,
-                        targetUserId: targetUserId,
-                        dailyEarningsMap: dailyEarningsMap,
-                        dailyHoursMap: dailyHoursMap,
-                        dailyAttendancesMap: dailyAttendancesMap,
-                        totalHours: totalHours,
-                        hourlyRate: hourlyRate,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ),
 
-              // Bottom Bar (for employee self view)
-              if (isSelf)
-                _buildBottomActionBar(
-                  context: context,
-                  attendance: todayAttendanceAsync?.valueOrNull,
+                // Card 1: Tổng quan Tiền Công Tháng
+                _buildSummaryCard(
+                  monthStr: _selectedMonth.month.toString().padLeft(2, '0'),
+                  totalSalary: totalSalary,
+                  totalAdvance: approvedAdvance,
+                  totalDeductions: totalDeductions,
+                  totalPaid: totalPaid,
+                  netUnpaid: netUnpaid,
+                  member: member,
+                  totalHours: totalHours,
+                  deliveryPay: deliveryPay,
+                  giaoHangPay: giaoHangPay,
+                  storeId: storeId,
+                  targetUid: targetUserId,
+                  isSelf: isSelf,
                 ),
-            ],
+
+                const SizedBox(height: 16),
+
+                // Card 2: Lịch Chấm Công & Tiền Mỗi Ngày
+                _buildCalendarCard(
+                  context: context,
+                  targetUserId: targetUserId,
+                  dailyEarningsMap: dailyEarningsMap,
+                  dailyHoursMap: dailyHoursMap,
+                  dailyAttendancesMap: dailyAttendancesMap,
+                  totalHours: totalHours,
+                  hourlyRate: hourlyRate,
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -677,6 +666,10 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
     final workingDaysCount = dailyHoursMap.values.where((h) => h > 0).length;
     final offDaysCount = (daysInMonth - workingDaysCount).clamp(0, daysInMonth);
 
+    // Build weeks matrix
+    final totalCells = leadingEmptyCount + daysInMonth;
+    final totalWeeks = (totalCells / 7).ceil();
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -795,68 +788,81 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
 
           const SizedBox(height: 10),
 
-          // Calendar Grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: leadingEmptyCount + daysInMonth,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              childAspectRatio: 0.85,
-            ),
-            itemBuilder: (ctx, index) {
-              if (index < leadingEmptyCount) {
-                return const SizedBox();
-              }
+          // Calendar Grid using structured Rows
+          Column(
+            children: List.generate(totalWeeks, (weekIndex) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: List.generate(7, (dayIndex) {
+                    final cellIndex = weekIndex * 7 + dayIndex;
+                    if (cellIndex < leadingEmptyCount || cellIndex >= totalCells) {
+                      return const Expanded(child: SizedBox(height: 52));
+                    }
 
-              final dayNum = index - leadingEmptyCount + 1;
-              final workedHours = dailyHoursMap[dayNum] ?? 0.0;
-              final dailyEarnings = dailyEarningsMap[dayNum] ?? 0.0;
-              final isWorkingDay = workedHours > 0;
-              final dayAttendances = dailyAttendancesMap[dayNum] ?? [];
+                    final dayNum = cellIndex - leadingEmptyCount + 1;
+                    final workedHours = dailyHoursMap[dayNum] ?? 0.0;
+                    final dailyEarnings = dailyEarningsMap[dayNum] ?? 0.0;
+                    final isWorkingDay = workedHours > 0;
+                    final dayAttendances = dailyAttendancesMap[dayNum] ?? [];
 
-              return InkWell(
-                onTap: isWorkingDay
-                    ? () => _showDayDetailDialog(context, dayNum, month, year, workedHours, dailyEarnings, dayAttendances)
-                    : null,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isWorkingDay ? const Color(0xFF70B843) : const Color(0xFFE5E7EB),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$dayNum',
-                        style: GoogleFonts.beVietnamPro(
-                          color: isWorkingDay ? Colors.white : const Color(0xFF4B5563),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                    return Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                        child: InkWell(
+                          onTap: isWorkingDay
+                              ? () => _showDayDetailDialog(
+                                    context,
+                                    dayNum,
+                                    month,
+                                    year,
+                                    workedHours,
+                                    dailyEarnings,
+                                    dayAttendances,
+                                  )
+                              : null,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: isWorkingDay ? const Color(0xFF70B843) : const Color(0xFFE5E7EB),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '$dayNum',
+                                  style: GoogleFonts.beVietnamPro(
+                                    color: isWorkingDay ? Colors.white : const Color(0xFF4B5563),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                if (isWorkingDay)
+                                  Text(
+                                    _formatCompactCurrency(dailyEarnings),
+                                    style: GoogleFonts.beVietnamPro(
+                                      color: Colors.white.withOpacity(0.95),
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                      if (isWorkingDay)
-                        Text(
-                          _formatCompactCurrency(dailyEarnings),
-                          style: GoogleFonts.beVietnamPro(
-                            color: Colors.white.withOpacity(0.95),
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
+                    );
+                  }),
                 ),
               );
-            },
+            }),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
           const SizedBox(height: 12),
 
@@ -1005,6 +1011,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
     final isDone = attendance != null && !attendance.isActive;
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
@@ -1017,10 +1024,10 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
         ],
       ),
       child: SafeArea(
-        top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Column(
@@ -1042,7 +1049,10 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       isActive
                           ? 'Vào ca: ${DateFormat('HH:mm').format(attendance.checkIn)}'
@@ -1051,10 +1061,13 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         color: AppColors.textSecondary,
                         fontSize: 11.5,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () => context.push(AppRoutes.checkIn),
                 icon: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 20),
@@ -1081,41 +1094,52 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
   }
 }
 
-// ─── HELPER: DASHED LINE DIVIDER ───────────────────────────────────────────
+// ─── HELPER: BULLETPROOF DASHED LINE DIVIDER (CUSTOM PAINTER) ──────────────
 
 class _DashedLine extends StatelessWidget {
   final Color color;
-  final double height;
+  const _DashedLine({this.color = const Color(0xFFD1D5DB)});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 1,
+      child: CustomPaint(
+        painter: _DashedLinePainter(color: color),
+      ),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
   final double dashWidth;
   final double dashSpace;
 
-  const _DashedLine({
-    this.color = const Color(0xFFD1D5DB),
-    this.height = 1,
+  const _DashedLinePainter({
+    required this.color,
     this.dashWidth = 4,
     this.dashSpace = 4,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final boxWidth = constraints.constrainWidth();
-        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
-        return Flex(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          direction: Axis.horizontal,
-          children: List.generate(dashCount, (_) {
-            return SizedBox(
-              width: dashWidth,
-              height: height,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: color),
-              ),
-            );
-          }),
-        );
-      },
-    );
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0) return;
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    double startX = 0;
+    while (startX < size.width) {
+      final endX = (startX + dashWidth).clamp(0.0, size.width);
+      canvas.drawLine(Offset(startX, 0), Offset(endX, 0), paint);
+      startX += dashWidth + dashSpace;
+    }
   }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
