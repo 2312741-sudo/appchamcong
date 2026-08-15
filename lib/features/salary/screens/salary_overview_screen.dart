@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
@@ -204,7 +206,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final data = computedSalaries[index];
-                          return _buildSalaryCard(data, currencyFormat);
+                          return _buildSalaryCard(context, data, currencyFormat);
                         },
                         childCount: computedSalaries.length,
                       ),
@@ -233,7 +235,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSalaryCard(Map<String, dynamic> data, NumberFormat currencyFormat) {
+  Widget _buildSalaryCard(BuildContext context, Map<String, dynamic> data, NumberFormat currencyFormat) {
     final member = data['member'] as MemberModel;
     final deliveryCount = data['deliveryCount'] as int;
     final giaoHangCount = data['giaoHangCount'] as int;
@@ -241,13 +243,26 @@ class SalaryOverviewScreen extends ConsumerWidget {
     final netSalary = data['netSalary'] as double;
     final calculatedSalary = netSalary + advanceTotal; // Recover the calculated salary before advance
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return InkWell(
+      onTap: () {
+        context.push(
+          Uri(
+            path: AppRoutes.salary,
+            queryParameters: {
+              'userId': member.userId,
+              'memberName': member.name,
+            },
+          ).toString(),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             children: [
               CircleAvatar(
@@ -311,6 +326,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

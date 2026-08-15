@@ -90,3 +90,11 @@ final myAdvancesProvider = Provider.family<List<AdvanceRequestModel>, String>((r
     data: (list) => list.where((a) => a.userId == uid).toList(),
   ) ?? [];
 });
+
+final userAdvancesProvider = Provider.family<List<AdvanceRequestModel>, ({String userId, String month})>((ref, args) {
+  final advancesAsync = ref.watch(storeAdvancesProvider(args.month));
+  return advancesAsync.whenOrNull(
+    data: (list) => list.where((a) => a.userId == args.userId).toList(),
+  ) ?? [];
+});
+

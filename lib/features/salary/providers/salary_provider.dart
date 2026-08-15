@@ -256,3 +256,51 @@ final allMonthlySpecialCountsProvider = FutureProvider.family<Map<String, ({int 
   final repo = ref.read(salaryRepositoryProvider);
   return repo.getAllMonthlySpecialCounts(storeId, month);
 });
+
+final memberMonthAttendancesProvider = FutureProvider.family<List<AttendanceModel>, ({String userId, String month})>((ref, args) async {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return [];
+  final repo = ref.read(salaryRepositoryProvider);
+  return repo.getMonthAttendances(storeId, args.userId, args.month);
+});
+
+final memberSalaryDataProvider = FutureProvider.family<Map<String, dynamic>, ({String userId, String month})>((ref, args) async {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return {};
+  final repo = ref.read(salaryRepositoryProvider);
+  final members = await repo.getActiveMembers(storeId);
+  final member = members.cast<MemberModel?>().firstWhere(
+    (m) => m?.userId == args.userId,
+    orElse: () => null,
+  );
+  if (member == null) return {};
+  final attendances = await repo.getMonthAttendances(storeId, args.userId, args.month);
+  final totalHours = repo.calculateTotalHours(attendances);
+  final specialCounts = await repo.getMonthlySpecialCounts(storeId, args.userId, args.month);
+  
+  final storeSnap = await FirebaseFirestore.instance.collection('stores').doc(storeId).get();
+  final deliveryAllowance = (storeSnap.data()?['deliveryAllowance'] as num?)?.toDouble() ?? 0.0;
+  final giaoHangAllowance = (storeSnap.data()?['giaoHangAllowance'] as num?)?.toDouble() ?? 0.0;
+
+  final totalSalary = repo.calculateSalary(
+    member,
+    totalHours,
+    deliveryCount: specialCounts.delivery,
+    deliveryAllowance: deliveryAllowance,
+    giaoHangCount: specialCounts.giaoHang,
+    giaoHangAllowance: giaoHangAllowance,
+  );
+
+  return {
+    'member': member,
+    'attendances': attendances,
+    'totalHours': totalHours,
+    'specialCounts': specialCounts,
+    'salary': totalSalary,
+    'deliveryPay': specialCounts.delivery * deliveryAllowance,
+    'giaoHangPay': specialCounts.giaoHang * giaoHangAllowance,
+    'deliveryAllowance': deliveryAllowance,
+    'giaoHangAllowance': giaoHangAllowance,
+  };
+});
+

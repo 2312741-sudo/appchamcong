@@ -196,8 +196,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.attendanceHistory,
         name: 'attendance-history',
         builder: (context, state) {
-          final userId = state.uri.queryParameters['userId'];
-          return AttendanceHistoryScreen(userId: userId);
+          final extra = state.extra as Map<String, dynamic>?;
+          final userId = extra?['userId'] as String? ?? state.uri.queryParameters['userId'];
+          final month = extra?['month'] as String? ?? state.uri.queryParameters['month'];
+          return AttendanceHistoryScreen(userId: userId, month: month);
         },
       ),
       GoRoute(
@@ -233,7 +235,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.salary,
         name: 'salary',
-        builder: (context, state) => const SalaryDetailScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final userId = extra?['userId'] as String? ?? state.uri.queryParameters['userId'];
+          final memberName = extra?['memberName'] as String? ?? state.uri.queryParameters['memberName'];
+          return SalaryDetailScreen(userId: userId, memberName: memberName);
+        },
       ),
       GoRoute(
         path: AppRoutes.salaryOverview,

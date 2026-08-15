@@ -1,24 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/member_model.dart';
 import '../../../models/advance_request_model.dart';
 import '../../store/providers/store_provider.dart';
+import '../../attendance/providers/attendance_provider.dart';
 import '../providers/salary_provider.dart';
 
 class SalaryDetailScreen extends ConsumerStatefulWidget {
-  const SalaryDetailScreen({super.key});
+  final String? userId;
+  final String? memberName;
+
+  const SalaryDetailScreen({
+    super.key,
+    this.userId,
+    this.memberName,
+  });
 
   @override
-  ConsumerState<SalaryDetailScreen> createState() =>
-      _SalaryDetailScreenState();
+  ConsumerState<SalaryDetailScreen> createState() => _SalaryDetailScreenState();
 }
 
 class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
   late DateTime _selectedMonth;
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -32,10 +43,35 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
 
   String _formatCurrency(double amount) {
     final n = amount.round();
-    final formatted = NumberFormat('#,###', 'vi_VN')
-        .format(n)
-        .replaceAll(',', '.');
-    return '$formatted ₫';
+    final formatted = NumberFormat('#,###', 'vi_VN').format(n).replaceAll(',', '.');
+    return '$formatted đ';
+  }
+
+  String _formatCompactCurrency(double amount) {
+    if (amount <= 0) return '';
+    if (amount >= 1000000) {
+      final val = amount / 1000000.0;
+      return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}M';
+    } else if (amount >= 1000) {
+      final val = amount / 1000.0;
+      return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}K';
+    }
+    return amount.round().toString();
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+    });
+  }
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    final next = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+    if (next.isAfter(DateTime(now.year + 1, 12))) return;
+    setState(() {
+      _selectedMonth = next;
+    });
   }
 
   Future<void> _pickMonth() async {
@@ -45,14 +81,17 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
       builder: (ctx) {
         DateTime temp = _selectedMonth;
         return AlertDialog(
-          title: Text('Chọn tháng',
-              style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Chọn tháng',
+            style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18),
+          ),
           content: SizedBox(
-            height: 200,
-            width: 280,
+            height: 220,
+            width: 300,
             child: YearPicker(
-              firstDate: DateTime(now.year - 2),
-              lastDate: now,
+              firstDate: DateTime(now.year - 3),
+              lastDate: DateTime(now.year + 2),
               selectedDate: temp,
               onChanged: (d) {
                 setState(() {
@@ -67,7 +106,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
     );
   }
 
-  void _showAdvanceRequestModal(BuildContext context, String storeId, String userId) {
+  void _showAdvanceRequestModal(BuildContext context, String storeId, String targetUid) {
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
 
@@ -75,31 +114,44 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 16, right: 16, top: 24),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Xin ứng lương', style: GoogleFonts.beVietnamPro(fontSize: 18, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Xin ứng lương',
+                  style: GoogleFonts.beVietnamPro(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.neutral),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: amountCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Số tiền muốn ứng (VNĐ)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.money),
+                hintText: 'Ví dụ: 1000000',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.payments_outlined, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: noteCtrl,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Lý do (không bắt buộc)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.notes),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.notes_rounded, color: AppColors.textSecondary),
               ),
             ),
             const SizedBox(height: 24),
@@ -110,39 +162,51 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () async {
-                  final amount = double.tryParse(amountCtrl.text);
+                  final amount = double.tryParse(amountCtrl.text.replaceAll(RegExp(r'[^0-9]'), ''));
                   if (amount == null || amount <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
+                    );
                     return;
                   }
-                  
+
                   final request = AdvanceRequestModel(
                     id: '',
                     storeId: storeId,
-                    userId: userId,
+                    userId: targetUid,
                     month: _monthKey,
                     amount: amount,
                     status: AdvanceStatus.pending,
                     requestDate: DateTime.now(),
                     note: noteCtrl.text.trim(),
                   );
-                  
+
                   try {
                     await ref.read(storeRepositoryProvider).createAdvanceRequest(request);
                     if (context.mounted) {
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã gửi yêu cầu ứng lương thành công'), backgroundColor: AppColors.success));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã gửi yêu cầu ứng lương thành công'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.danger));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.danger),
+                      );
                     }
                   }
                 },
-                child: Text('Gửi yêu cầu', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Gửi yêu cầu',
+                  style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -154,355 +218,904 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch all providers unconditionally at the top level
-    final memberAsync = ref.watch(myMemberDataProvider);
-    final salaryAsync = ref.watch(myMonthlySalaryProvider(_monthKey));
-    final attendancesAsync = ref.watch(myMonthAttendancesProvider(_monthKey));
-    final specialCountsAsync = ref.watch(myMonthSpecialCountsProvider(_monthKey));
-    final storeAsync = ref.watch(currentStoreProvider);
-    final advancesAsync = ref.watch(myAdvancesProvider(_monthKey));
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final targetUserId = widget.userId ?? currentUid;
+    final isSelf = targetUserId == currentUid;
+
+    final store = ref.watch(currentStoreProvider).valueOrNull;
+    final storeId = ref.watch(currentStoreIdProvider);
+
+    if (storeId == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final salaryDataAsync = ref.watch(
+      memberSalaryDataProvider((userId: targetUserId, month: _monthKey)),
+    );
+    final advances = ref.watch(
+      userAdvancesProvider((userId: targetUserId, month: _monthKey)),
+    );
+    final todayAttendanceAsync = isSelf ? ref.watch(myTodayAttendanceProvider) : null;
+
+    final storeName = (store?.name ?? 'TRẠM CHANH').toUpperCase();
+    final displayName = widget.memberName ?? storeName;
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFFF6F7FA),
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        title: GestureDetector(
-          onTap: _pickMonth,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Lương Tháng ${_selectedMonth.month}/${_selectedMonth.year}',
-                style: GoogleFonts.beVietnamPro(
-                    color: Colors.white, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(width: 4),
-              const Icon(Icons.arrow_drop_down, color: Colors.white),
-            ],
-          ),
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.neutral, size: 20),
+          onPressed: () => context.pop(),
         ),
-        elevation: 0,
-      ),
-      body: Builder(
-        builder: (context) {
-          if (memberAsync.isLoading || salaryAsync.isLoading || attendancesAsync.isLoading || specialCountsAsync.isLoading || storeAsync.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (memberAsync.hasError || salaryAsync.hasError || attendancesAsync.hasError || specialCountsAsync.hasError || storeAsync.hasError) {
-            final e = memberAsync.error ?? salaryAsync.error ?? attendancesAsync.error ?? specialCountsAsync.error ?? storeAsync.error;
-            return Center(child: Text('Lỗi: $e'));
-          }
-
-          final member = memberAsync.valueOrNull;
-          if (member == null) return const Center(child: Text('Không tìm thấy thông tin nhân viên'));
-
-          final salary = salaryAsync.valueOrNull ?? 0.0;
-          final attendances = attendancesAsync.valueOrNull ?? [];
-          final specialCounts = specialCountsAsync.valueOrNull ?? (delivery: 0, giaoHang: 0);
-          final store = storeAsync.valueOrNull;
-          
-          final advances = advancesAsync; // It is already a List<AdvanceRequestModel>
-
-          final totalHours = attendances.fold(0.0, (sum, a) => sum + a.totalHours);
-          final deliveryAllowance = (store?.deliveryAllowance ?? 0).toDouble();
-          final giaoHangAllowance = (store?.giaoHangAllowance ?? 0).toDouble();
-
-          final totalAdvance = advances.where((a) => a.status == AdvanceStatus.approved).fold(0.0, (sum, a) => sum + a.amount);
-          final hasPending = advances.any((a) => a.status == AdvanceStatus.pending);
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(myMonthlySalaryProvider);
-              ref.invalidate(myMonthAttendancesProvider);
-              ref.invalidate(myMonthSpecialCountsProvider);
-              ref.invalidate(myAdvancesProvider);
-              ref.invalidate(currentStoreProvider);
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildSalaryCard(member, salary, totalHours, specialCounts.delivery, deliveryAllowance, specialCounts.giaoHang, giaoHangAllowance, totalAdvance),
-                const SizedBox(height: 16),
-                if (hasPending)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFFFFF3CD), borderRadius: BorderRadius.circular(8)),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Color(0xFF856404), size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text('Bạn đang có yêu cầu ứng lương chờ duyệt.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: const Color(0xFF856404))),
-                        ),
-                      ],
-                    ),
-                  ),
-                _buildStatsRow(
-                  attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length,
-                  totalHours,
-                  (DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month) - attendances.where((a) => a.totalHours > 0).map((a) => a.date).toSet().length).clamp(0, 31),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.money, color: Colors.white),
-                    label: const Text('Xin ứng lương', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    onPressed: () => _showAdvanceRequestModal(context, ref.read(currentStoreIdProvider)!, member.userId),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildDailyBreakdown(attendances),
-              ],
+        title: Row(
+          children: [
+            Text(
+              isSelf ? storeName : displayName,
+              style: GoogleFonts.beVietnamPro(
+                color: const Color(0xFF0066CC),
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: 0.5,
+              ),
             ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined, color: AppColors.neutral),
+            onPressed: _pickMonth,
+            tooltip: 'Chọn tháng',
+          ),
+        ],
+      ),
+      body: salaryDataAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Lỗi: $e')),
+        data: (data) {
+          final member = data['member'] as MemberModel?;
+          if (member == null) {
+            return const Center(child: Text('Không tìm thấy dữ liệu nhân viên'));
+          }
+
+          final attendances = (data['attendances'] as List<AttendanceModel>?) ?? [];
+          final totalSalary = (data['salary'] as double?) ?? 0.0;
+          final totalHours = (data['totalHours'] as double?) ?? 0.0;
+          final deliveryPay = (data['deliveryPay'] as double?) ?? 0.0;
+          final giaoHangPay = (data['giaoHangPay'] as double?) ?? 0.0;
+
+          final approvedAdvance = advances
+              .where((a) => a.status == AdvanceStatus.approved)
+              .fold(0.0, (sum, a) => sum + a.amount);
+          final pendingAdvance = advances
+              .where((a) => a.status == AdvanceStatus.pending)
+              .fold(0.0, (sum, a) => sum + a.amount);
+
+          const totalDeductions = 0.0;
+          const totalPaid = 0.0;
+          final netUnpaid = (totalSalary - approvedAdvance - totalDeductions - totalPaid).clamp(0.0, double.infinity);
+
+          // Build daily earnings map
+          final dailyEarningsMap = <int, double>{};
+          final dailyHoursMap = <int, double>{};
+          final dailyAttendancesMap = <int, List<AttendanceModel>>{};
+
+          final hourlyRate = member.isFulltime
+              ? (member.standardHoursPerMonth > 0
+                  ? member.baseMonthlySalary / member.standardHoursPerMonth
+                  : 0.0)
+              : member.baseHourlyRate;
+
+          for (final a in attendances) {
+            final parts = a.date.split('-');
+            if (parts.length == 3) {
+              final day = int.tryParse(parts[2]);
+              if (day != null) {
+                dailyHoursMap[day] = (dailyHoursMap[day] ?? 0.0) + a.totalHours;
+                dailyEarningsMap[day] = (dailyEarningsMap[day] ?? 0.0) + (a.totalHours * hourlyRate);
+                dailyAttendancesMap.putIfAbsent(day, () => []).add(a);
+              }
+            }
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(memberSalaryDataProvider);
+                    ref.invalidate(storeAdvancesProvider);
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    children: [
+                      // Pending Advance Alert (if any)
+                      if (pendingAdvance > 0)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8E1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFFD54F)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.hourglass_top_rounded, color: Color(0xFFF57F17), size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Đang có yêu cầu ứng ${_formatCurrency(pendingAdvance)} chờ duyệt.',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFFF57F17),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Card 1: Tổng quan Tiền Công Tháng
+                      _buildSummaryCard(
+                        monthStr: _selectedMonth.month.toString().padLeft(2, '0'),
+                        totalSalary: totalSalary,
+                        totalAdvance: approvedAdvance,
+                        totalDeductions: totalDeductions,
+                        totalPaid: totalPaid,
+                        netUnpaid: netUnpaid,
+                        member: member,
+                        totalHours: totalHours,
+                        deliveryPay: deliveryPay,
+                        giaoHangPay: giaoHangPay,
+                        storeId: storeId,
+                        targetUid: targetUserId,
+                        isSelf: isSelf,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Card 2: Lịch Chấm Công & Tiền Mỗi Ngày
+                      _buildCalendarCard(
+                        context: context,
+                        targetUserId: targetUserId,
+                        dailyEarningsMap: dailyEarningsMap,
+                        dailyHoursMap: dailyHoursMap,
+                        dailyAttendancesMap: dailyAttendancesMap,
+                        totalHours: totalHours,
+                        hourlyRate: hourlyRate,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Bottom Bar (for employee self view)
+              if (isSelf)
+                _buildBottomActionBar(
+                  context: context,
+                  attendance: todayAttendanceAsync?.valueOrNull,
+                ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildSalaryCard(
-      MemberModel member, double salary, double totalHours, int deliveryCount, double deliveryAllowance, int giaoHangCount, double giaoHangAllowance, double totalAdvance) {
-    final standardHours = member.standardHoursPerMonth;
-    final progress = standardHours > 0 ? (totalHours / standardHours).clamp(0.0, 1.0) : 0.0;
-    final netSalary = salary - totalAdvance;
+  // ─── CARD 1: TỔNG QUAN TIỀN CÔNG THÁNG ────────────────────────────────────
 
+  Widget _buildSummaryCard({
+    required String monthStr,
+    required double totalSalary,
+    required double totalAdvance,
+    required double totalDeductions,
+    required double totalPaid,
+    required double netUnpaid,
+    required MemberModel member,
+    required double totalHours,
+    required double deliveryPay,
+    required double giaoHangPay,
+    required String storeId,
+    required String targetUid,
+    required bool isSelf,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A6B5A), Color(0xFF0D4A3D)],
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withOpacity(0.3),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Thực nhận tháng này', style: GoogleFonts.beVietnamPro(color: Colors.white70, fontSize: 14)),
-          const SizedBox(height: 8),
-          Text(_formatCurrency(netSalary), style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 16),
+          // Header inside Card
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Tổng thu nhập:', style: TextStyle(color: Colors.white70)),
               Text(
-                _formatCurrency(salary),
-                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                'Tiền Công Tháng $monthStr',
+                style: GoogleFonts.beVietnamPro(
+                  color: const Color(0xFF0066CC),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              InkWell(
+                onTap: _pickMonth,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Tháng khác',
+                        style: GoogleFonts.beVietnamPro(
+                          color: const Color(0xFF0066CC),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF0066CC), size: 16),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          if (deliveryCount > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('🛵 Chở hàng ($deliveryCount ca):', style: const TextStyle(color: Colors.white70)),
-                Text(
-                  '+${_formatCurrency(deliveryCount * deliveryAllowance)}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
-                ),
-              ],
-            ),
-          ],
-          if (giaoHangCount > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('📦 Giao hàng ($giaoHangCount ca):', style: const TextStyle(color: Colors.white70)),
-                Text(
-                  '+${_formatCurrency(giaoHangCount * giaoHangAllowance)}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.accent),
-                ),
-              ],
-            ),
-          ],
-          if (totalAdvance > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Đã tạm ứng:', style: TextStyle(color: Colors.white70)),
-                Text(
-                  '-${_formatCurrency(totalAdvance)}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.danger),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
-              minHeight: 6,
-            ),
+
+          const SizedBox(height: 12),
+          const _DashedLine(),
+          const SizedBox(height: 12),
+
+          // Row: Tổng lương
+          _buildSummaryRow(
+            label: 'Tổng lương',
+            value: _formatCurrency(totalSalary),
+            valueColor: const Color(0xFF0066CC),
+            isBold: true,
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${(progress * 100).toStringAsFixed(0)}% giờ chuẩn',
-            style: GoogleFonts.beVietnamPro(color: Colors.white54, fontSize: 11),
+
+          const SizedBox(height: 10),
+          const _DashedLine(),
+          const SizedBox(height: 10),
+
+          // Row: Tổng đã ứng
+          _buildSummaryRow(
+            label: 'Tổng đã ứng',
+            value: _formatCurrency(totalAdvance),
+            valueColor: const Color(0xFFCB2D2E),
+          ),
+
+          const SizedBox(height: 10),
+          const _DashedLine(),
+          const SizedBox(height: 10),
+
+          // Row: Tổng tiền trừ
+          _buildSummaryRow(
+            label: 'Tổng tiền trừ',
+            value: _formatCurrency(totalDeductions),
+            valueColor: const Color(0xFFCB2D2E),
+          ),
+
+          const SizedBox(height: 10),
+          const _DashedLine(),
+          const SizedBox(height: 10),
+
+          // Row: Tổng đã thanh toán
+          _buildSummaryRow(
+            label: 'Tổng đã thanh toán',
+            value: _formatCurrency(totalPaid),
+            valueColor: const Color(0xFFCB2D2E),
+          ),
+
+          const SizedBox(height: 10),
+          const _DashedLine(),
+          const SizedBox(height: 12),
+
+          // Row: Tổng chưa nhận
+          _buildSummaryRow(
+            label: 'Tổng chưa nhận',
+            value: _formatCurrency(netUnpaid),
+            valueColor: AppColors.neutral,
+            isBold: true,
+            fontSize: 17,
+          ),
+
+          const SizedBox(height: 8),
+
+          // Expandable Breakdown
+          if (_isExpanded) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                children: [
+                  _buildSubRow('Loại nhân viên', member.isFulltime ? 'Full-time' : 'Part-time'),
+                  const SizedBox(height: 6),
+                  _buildSubRow(
+                    'Mức lương',
+                    member.isFulltime
+                        ? '${_formatCurrency(member.baseMonthlySalary)}/tháng'
+                        : '${_formatCurrency(member.baseHourlyRate)}/giờ',
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSubRow('Tổng giờ làm', '${totalHours.toStringAsFixed(1)} giờ'),
+                  if (deliveryPay > 0) ...[
+                    const SizedBox(height: 6),
+                    _buildSubRow('Phụ cấp chở hàng', '+${_formatCurrency(deliveryPay)}'),
+                  ],
+                  if (giaoHangPay > 0) ...[
+                    const SizedBox(height: 6),
+                    _buildSubRow('Phụ cấp giao hàng', '+${_formatCurrency(giaoHangPay)}'),
+                  ],
+                  const SizedBox(height: 12),
+                  if (isSelf)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.payments_outlined, size: 16, color: AppColors.primary),
+                        label: Text(
+                          'Xin ứng lương',
+                          style: GoogleFonts.beVietnamPro(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onPressed: () => _showAdvanceRequestModal(context, storeId, targetUid),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+
+          // Toggle Expand Button
+          Center(
+            child: TextButton.icon(
+              onPressed: () => setState(() => _isExpanded = !_isExpanded),
+              icon: Icon(
+                _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                color: AppColors.textSecondary,
+                size: 18,
+              ),
+              label: Text(
+                _isExpanded ? 'Thu gọn' : 'Xem thêm',
+                style: GoogleFonts.beVietnamPro(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatsRow(int workedDays, double totalHours, int absentDays) {
+  Widget _buildSummaryRow({
+    required String label,
+    required String value,
+    required Color valueColor,
+    bool isBold = false,
+    double fontSize = 14,
+  }) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _StatCard(label: 'Ngày làm', value: '$workedDays ngày', icon: Icons.today),
-        const SizedBox(width: 10),
-        _StatCard(label: 'Tổng giờ', value: '${totalHours.toStringAsFixed(1)}h', icon: Icons.access_time),
-        const SizedBox(width: 10),
-        _StatCard(label: 'Ngày vắng', value: '$absentDays ngày', icon: Icons.event_busy, isAlert: absentDays > 0),
+        Text(
+          label,
+          style: GoogleFonts.beVietnamPro(
+            color: isBold ? AppColors.neutral : const Color(0xFF4B5563),
+            fontSize: fontSize,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.beVietnamPro(
+            color: valueColor,
+            fontSize: fontSize,
+            fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildDailyBreakdown(List<AttendanceModel> attendances) {
-    if (attendances.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-        child: Center(child: Text('Chưa có dữ liệu chấm công tháng này', style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary, fontSize: 14))),
-      );
-    }
+  Widget _buildSubRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary)),
+        Text(value, style: GoogleFonts.beVietnamPro(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.neutral)),
+      ],
+    );
+  }
 
-    final sorted = List<AttendanceModel>.from(attendances)..sort((a, b) => a.date.compareTo(b.date));
+  // ─── CARD 2: LỊCH CHẤM CÔNG & TIỀN MỖI NGÀY ───────────────────────────────
+
+  Widget _buildCalendarCard({
+    required BuildContext context,
+    required String targetUserId,
+    required Map<int, double> dailyEarningsMap,
+    required Map<int, double> dailyHoursMap,
+    required Map<int, List<AttendanceModel>> dailyAttendancesMap,
+    required double totalHours,
+    required double hourlyRate,
+  }) {
+    final year = _selectedMonth.year;
+    final month = _selectedMonth.month;
+    final daysInMonth = DateUtils.getDaysInMonth(year, month);
+    final firstDayWeekday = DateTime(year, month, 1).weekday; // 1 = Monday, 7 = Sunday
+    final leadingEmptyCount = firstDayWeekday - 1; // 0 for Monday
+
+    final workingDaysCount = dailyHoursMap.values.where((h) => h > 0).length;
+    final offDaysCount = (daysInMonth - workingDaysCount).clamp(0, daysInMonth);
 
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Chi tiết ngày làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 15)),
+          // Navigation Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  InkWell(
+                    onTap: _prevMonth,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.chevron_left_rounded, size: 18, color: AppColors.neutral),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tháng ${month.toString().padLeft(2, '0')}/$year',
+                    style: GoogleFonts.beVietnamPro(
+                      color: AppColors.neutral,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: _nextMonth,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.neutral),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Button "Xem chi tiết >"
+              InkWell(
+                onTap: () {
+                  context.push(
+                    Uri(
+                      path: AppRoutes.attendanceHistory,
+                      queryParameters: {
+                        'userId': targetUserId,
+                        'month': _monthKey,
+                      },
+                    ).toString(),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Xem chi tiết',
+                        style: GoogleFonts.beVietnamPro(
+                          color: const Color(0xFF0066CC),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF0066CC), size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          ...sorted.asMap().entries.map((entry) => _AttendanceRow(attendance: entry.value, isLast: entry.key == sorted.length - 1)),
+
+          const SizedBox(height: 16),
+
+          // Day Headers: T2 -> CN
+          Row(
+            children: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((day) {
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    day,
+                    style: GoogleFonts.beVietnamPro(
+                      color: const Color(0xFF6B7280),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Calendar Grid
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: leadingEmptyCount + daysInMonth,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: 0.85,
+            ),
+            itemBuilder: (ctx, index) {
+              if (index < leadingEmptyCount) {
+                return const SizedBox();
+              }
+
+              final dayNum = index - leadingEmptyCount + 1;
+              final workedHours = dailyHoursMap[dayNum] ?? 0.0;
+              final dailyEarnings = dailyEarningsMap[dayNum] ?? 0.0;
+              final isWorkingDay = workedHours > 0;
+              final dayAttendances = dailyAttendancesMap[dayNum] ?? [];
+
+              return InkWell(
+                onTap: isWorkingDay
+                    ? () => _showDayDetailDialog(context, dayNum, month, year, workedHours, dailyEarnings, dayAttendances)
+                    : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isWorkingDay ? const Color(0xFF70B843) : const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$dayNum',
+                        style: GoogleFonts.beVietnamPro(
+                          color: isWorkingDay ? Colors.white : const Color(0xFF4B5563),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (isWorkingDay)
+                        Text(
+                          _formatCompactCurrency(dailyEarnings),
+                          style: GoogleFonts.beVietnamPro(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 12),
+
+          // Legend at bottom
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF70B843),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Đi làm: $workingDaysCount ngày',
+                    style: GoogleFonts.beVietnamPro(fontSize: 11.5, color: const Color(0xFF4B5563), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF9CA3AF),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Nghỉ: $offDaysCount ngày',
+                    style: GoogleFonts.beVietnamPro(fontSize: 11.5, color: const Color(0xFF4B5563), fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 13, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${totalHours.toStringAsFixed(1)}h',
+                    style: GoogleFonts.beVietnamPro(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.neutral),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
-}
 
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final bool isAlert;
-
-  const _StatCard({required this.label, required this.value, required this.icon, this.isAlert = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isAlert ? AppColors.primary.withOpacity(0.3) : AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 18, color: isAlert ? AppColors.primary : AppColors.textSecondary),
-            const SizedBox(height: 6),
-            Text(value, style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w700, color: isAlert ? AppColors.primary : AppColors.textPrimary)),
-            Text(label, style: GoogleFonts.beVietnamPro(fontSize: 11, color: AppColors.textSecondary)),
+  void _showDayDetailDialog(
+    BuildContext context,
+    int day,
+    int month,
+    int year,
+    double hours,
+    double earnings,
+    List<AttendanceModel> attendances,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.event_available_rounded, color: Color(0xFF70B843), size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'Ngày $day/$month/$year',
+                style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 17),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Tổng giờ làm:', style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary, fontSize: 13)),
+                  Text('${hours.toStringAsFixed(1)} giờ', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.neutral)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Tiền công ngày:', style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(_formatCurrency(earnings), style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 15, color: const Color(0xFF0066CC))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text('Chi tiết các ca làm:', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 6),
+              ...attendances.map((a) {
+                final inTime = DateFormat('HH:mm').format(a.checkIn);
+                final outTime = a.checkOut != null ? DateFormat('HH:mm').format(a.checkOut!) : 'Đang ca';
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        '$inTime - $outTime (${a.totalHours.toStringAsFixed(1)}h)',
+                        style: GoogleFonts.beVietnamPro(fontSize: 12.5, color: AppColors.neutral),
+                      ),
+                      if (a.isEdited)
+                        Text(' (Đã sửa)', style: GoogleFonts.beVietnamPro(fontSize: 11, color: AppColors.accent)),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Đóng', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, color: AppColors.primary)),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
-}
 
-class _AttendanceRow extends StatelessWidget {
-  final AttendanceModel attendance;
-  final bool isLast;
+  // ─── BOTTOM FLOATING BAR (FOR EMPLOYEE) ───────────────────────────────────
 
-  const _AttendanceRow({required this.attendance, required this.isLast});
+  Widget _buildBottomActionBar({
+    required BuildContext context,
+    required AttendanceModel? attendance,
+  }) {
+    final isActive = attendance != null && attendance.isActive;
+    final isDone = attendance != null && !attendance.isActive;
 
-  String _fmt(DateTime? dt) {
-    if (dt == null) return '--:--';
-    final local = dt.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = attendance.date.split('-');
-    final day = parts.length == 3 ? parts[2] : '?';
-    final month = parts.length == 3 ? parts[1] : '?';
-
-    return Column(
-      children: [
-        Padding(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: attendance.totalHours > 0 ? AppColors.success.withOpacity(0.1) : AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(day, style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 14, color: attendance.totalHours > 0 ? AppColors.success : AppColors.primary)),
-                    Text('Th$month', style: GoogleFonts.beVietnamPro(fontSize: 9, color: AppColors.textSecondary)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Vào: ${_fmt(attendance.checkIn)}  •  Ra: ${_fmt(attendance.checkOut)}', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.textPrimary)),
-                    if (attendance.isEdited) Text('(Đã sửa)', style: GoogleFonts.beVietnamPro(fontSize: 11, color: AppColors.accent)),
+                    Text(
+                      isActive
+                          ? 'Đang trong ca làm việc'
+                          : isDone
+                              ? 'Đã hoàn thành ca hôm nay'
+                              : 'Bạn chưa chấm công',
+                      style: GoogleFonts.beVietnamPro(
+                        color: isActive
+                            ? AppColors.success
+                            : isDone
+                                ? AppColors.info
+                                : const Color(0xFF4B5563),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      isActive
+                          ? 'Vào ca: ${DateFormat('HH:mm').format(attendance.checkIn)}'
+                          : 'Nhấn Chấm công để quét QR',
+                      style: GoogleFonts.beVietnamPro(
+                        color: AppColors.textSecondary,
+                        fontSize: 11.5,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Text(
-                attendance.formattedDuration,
-                style: GoogleFonts.beVietnamPro(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: attendance.totalHours > 0 ? AppColors.success : AppColors.textSecondary,
+              ElevatedButton.icon(
+                onPressed: () => context.push(AppRoutes.checkIn),
+                icon: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 20),
+                label: Text(
+                  isActive ? 'Ra ca' : 'Chấm công',
+                  style: GoogleFonts.beVietnamPro(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isActive ? const Color(0xFF1A6B5A) : AppColors.primary,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
           ),
         ),
-        if (!isLast)
-          const Divider(height: 1, indent: 16, endIndent: 16),
-      ],
+      ),
+    );
+  }
+}
+
+// ─── HELPER: DASHED LINE DIVIDER ───────────────────────────────────────────
+
+class _DashedLine extends StatelessWidget {
+  final Color color;
+  final double height;
+  final double dashWidth;
+  final double dashSpace;
+
+  const _DashedLine({
+    this.color = const Color(0xFFD1D5DB),
+    this.height = 1,
+    this.dashWidth = 4,
+    this.dashSpace = 4,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final boxWidth = constraints.constrainWidth();
+        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
+        return Flex(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          direction: Axis.horizontal,
+          children: List.generate(dashCount, (_) {
+            return SizedBox(
+              width: dashWidth,
+              height: height,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: color),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }
