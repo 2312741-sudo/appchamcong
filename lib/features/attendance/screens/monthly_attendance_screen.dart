@@ -574,25 +574,33 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
   bool _editing = false;
   bool _saving = false;
 
+  late DateTime _checkInDate;
   late TimeOfDay _checkInTime;
+  late DateTime _checkOutDate;
   late TimeOfDay _checkOutTime;
   final _noteCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    final defaultDate = DateTime(widget.month.year, widget.month.month, widget.day);
     final att = widget.attendance;
     if (att != null) {
       final ci = att.checkIn.toLocal();
+      _checkInDate = DateTime(ci.year, ci.month, ci.day);
       _checkInTime = TimeOfDay(hour: ci.hour, minute: ci.minute);
       if (att.checkOut != null) {
         final co = att.checkOut!.toLocal();
+        _checkOutDate = DateTime(co.year, co.month, co.day);
         _checkOutTime = TimeOfDay(hour: co.hour, minute: co.minute);
       } else {
+        _checkOutDate = DateTime(ci.year, ci.month, ci.day);
         _checkOutTime = TimeOfDay.now();
       }
     } else {
+      _checkInDate = defaultDate;
       _checkInTime = const TimeOfDay(hour: 8, minute: 0);
+      _checkOutDate = defaultDate;
       _checkOutTime = const TimeOfDay(hour: 17, minute: 0);
     }
   }
@@ -601,6 +609,38 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
   void dispose() {
     _noteCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate(bool isCheckIn) async {
+    final initial = isCheckIn ? _checkInDate : _checkOutDate;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(widget.month.year - 1, 1, 1),
+      lastDate: DateTime(widget.month.year + 1, 12, 31),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: AppColors.primary,
+            onPrimary: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isCheckIn) {
+          _checkInDate = picked;
+          // If check-out is now before check-in date, move check-out date forward
+          if (_checkOutDate.isBefore(_checkInDate)) {
+            _checkOutDate = _checkInDate;
+          }
+        } else {
+          _checkOutDate = picked;
+        }
+      });
+    }
   }
 
   Future<void> _pickTime(bool isCheckIn) async {
@@ -632,19 +672,27 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(attendanceRepositoryProvider);
-      final date = DateTime(widget.month.year, widget.month.month, widget.day);
 
       final newCheckIn = DateTime(
-              date.year, date.month, date.day, _checkInTime.hour, _checkInTime.minute)
-          .toUtc();
-      final newCheckOut = DateTime(
-              date.year, date.month, date.day, _checkOutTime.hour, _checkOutTime.minute)
-          .toUtc();
+        _checkInDate.year,
+        _checkInDate.month,
+        _checkInDate.day,
+        _checkInTime.hour,
+        _checkInTime.minute,
+      ).toUtc();
 
-      if (newCheckOut.isBefore(newCheckIn)) {
+      final newCheckOut = DateTime(
+        _checkOutDate.year,
+        _checkOutDate.month,
+        _checkOutDate.day,
+        _checkOutTime.hour,
+        _checkOutTime.minute,
+      ).toUtc();
+
+      if (!newCheckOut.isAfter(newCheckIn)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Giờ ra không thể trước giờ vào'),
+            content: Text('Thời điểm ra (ngày & giờ) phải sau thời điểm vào'),
             backgroundColor: AppColors.primary,
           ));
         }
@@ -879,9 +927,22 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
       );
     }
 
-    final checkInStr = DateFormat('HH:mm').format(att!.checkIn.toLocal());
-    final checkOutStr =
-        hasCheckOut ? DateFormat('HH:mm').format(att.checkOut!.toLocal()) : '--:--';
+    final ciLocal = att!.checkIn.toLocal();
+    final checkInStr = DateFormat('HH:mm').format(ciLocal);
+    String checkOutStr = '--:--';
+    String? checkOutDateNote;
+    if (hasCheckOut) {
+      final coLocal = att.checkOut!.toLocal();
+      final isSameDay = coLocal.year == ciLocal.year &&
+          coLocal.month == ciLocal.month &&
+          coLocal.day == ciLocal.day;
+      if (isSameDay) {
+        checkOutStr = DateFormat('HH:mm').format(coLocal);
+      } else {
+        checkOutStr = DateFormat('HH:mm').format(coLocal);
+        checkOutDateNote = '+1 ngày (${DateFormat('dd/MM').format(coLocal)})';
+      }
+    }
     final durationStr = att.formattedDuration;
 
     return Column(
@@ -889,18 +950,24 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
         Row(
           children: [
             Expanded(
-                child: _TimeCard(
-                    label: 'Giờ vào',
-                    time: checkInStr,
-                    icon: Icons.login_rounded,
-                    color: AppColors.success)),
+              child: _TimeCard(
+                label: 'Giờ vào (${DateFormat('dd/MM').format(ciLocal)})',
+                time: checkInStr,
+                icon: Icons.login_rounded,
+                color: AppColors.success,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: _TimeCard(
-                    label: 'Giờ ra',
-                    time: checkOutStr,
-                    icon: Icons.logout_rounded,
-                    color: AppColors.primary)),
+              child: _TimeCard(
+                label: checkOutDateNote != null
+                    ? 'Giờ ra $checkOutDateNote'
+                    : 'Giờ ra (${DateFormat('dd/MM').format(ciLocal)})',
+                time: checkOutStr,
+                icon: Icons.logout_rounded,
+                color: AppColors.primary,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -959,6 +1026,25 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
   }
 
   Widget _buildEditForm() {
+    final checkInDt = DateTime(
+      _checkInDate.year,
+      _checkInDate.month,
+      _checkInDate.day,
+      _checkInTime.hour,
+      _checkInTime.minute,
+    );
+    final checkOutDt = DateTime(
+      _checkOutDate.year,
+      _checkOutDate.month,
+      _checkOutDate.day,
+      _checkOutTime.hour,
+      _checkOutTime.minute,
+    );
+    final isValid = checkOutDt.isAfter(checkInDt);
+    final diffMinutes = isValid ? checkOutDt.difference(checkInDt).inMinutes : 0;
+    final hours = diffMinutes ~/ 60;
+    final mins = diffMinutes % 60;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -968,27 +1054,73 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: AppColors.neutral)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: _TimePickerButton(
-                label: 'Giờ vào',
-                time: _checkInTime,
+              child: _DateTimeCard(
+                title: 'Giờ vào',
+                icon: Icons.login_rounded,
                 color: AppColors.success,
-                onTap: () => _pickTime(true),
+                date: _checkInDate,
+                time: _checkInTime,
+                onPickDate: () => _pickDate(true),
+                onPickTime: () => _pickTime(true),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: _TimePickerButton(
-                label: 'Giờ ra',
-                time: _checkOutTime,
+              child: _DateTimeCard(
+                title: 'Giờ ra',
+                icon: Icons.logout_rounded,
                 color: AppColors.primary,
-                onTap: () => _pickTime(false),
+                date: _checkOutDate,
+                time: _checkOutTime,
+                onPickDate: () => _pickDate(false),
+                onPickTime: () => _pickTime(false),
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        // Live duration preview
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isValid
+                ? AppColors.success.withOpacity(0.08)
+                : AppColors.primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isValid
+                  ? AppColors.success.withOpacity(0.3)
+                  : AppColors.primary.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isValid ? Icons.timelapse_rounded : Icons.warning_amber_rounded,
+                size: 16,
+                color: isValid ? AppColors.success : AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  isValid
+                      ? 'Tổng công: ${hours}h ${mins > 0 ? "$mins p " : ""}(${(diffMinutes / 60.0).toStringAsFixed(1)} giờ)'
+                      : 'Thời điểm ra phải sau thời điểm vào',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isValid ? AppColors.success : AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -1015,6 +1147,126 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
 }
 
 // ── Small Widgets ─────────────────────────────────────────────────────────────
+
+class _DateTimeCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final DateTime date;
+  final TimeOfDay time;
+  final VoidCallback onPickDate;
+  final VoidCallback onPickTime;
+
+  const _DateTimeCard({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.date,
+    required this.time,
+    required this.onPickDate,
+    required this.onPickTime,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('dd/MM/yyyy').format(date);
+    final timeStr =
+        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Date button
+          GestureDetector(
+            onTap: onPickDate,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today_rounded, size: 13, color: color),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      dateStr,
+                      style: const TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.neutral,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down_rounded,
+                      size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Time button
+          GestureDetector(
+            onTap: onPickTime,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time_rounded, size: 13, color: color),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      timeStr,
+                      style: TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down_rounded,
+                      size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _TimeCard extends StatelessWidget {
   final String label;
