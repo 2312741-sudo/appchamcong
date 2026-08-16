@@ -12,8 +12,8 @@ final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
 
 // ---------- Current week start ----------
 
-final currentWeekStartProvider = StateProvider<String>((ref) {
-  final repo = ref.read(scheduleRepositoryProvider);
+final currentWeekStartProvider = Provider<String>((ref) {
+  final repo = ref.watch(scheduleRepositoryProvider);
   return repo.getWeekStart(DateTime.now());
 });
 

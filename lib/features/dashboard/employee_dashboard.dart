@@ -516,28 +516,79 @@ class _TodayScheduleCard extends ConsumerWidget {
                   case 7: shiftIds = daySchedule.sunday; break;
                 }
               }
-              final shifts = store.customShifts.where((s) => shiftIds.contains(s.id)).toList();
-              if (shifts.isEmpty) return const Text('Hôm nay không có ca làm', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
+              final shifts = store.customShifts
+                  .where((s) => shiftIds.any((id) => id.split('|').first == s.id))
+                  .toList();
+              final hasDelivery = shiftIds.contains('delivery');
+              final hasGiaoHang = shiftIds.contains('giaohang');
+
+              if (shifts.isEmpty && !hasDelivery && !hasGiaoHang) {
+                return const Text('Hôm nay không có ca làm', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
+              }
+
               return Column(
-                children: shifts.map((shift) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5C842).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
-                      ),
-                    ],
-                  ),
-                )).toList(),
+                children: [
+                  ...shifts.map((shift) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5C842).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
+                        ),
+                      ],
+                    ),
+                  )),
+                  if (hasDelivery || hasGiaoHang)
+                    Row(
+                      children: [
+                        if (hasDelivery)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8, bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1A6B5A).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF1A6B5A).withOpacity(0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.local_shipping_rounded, size: 14, color: Color(0xFF1A6B5A)),
+                                SizedBox(width: 4),
+                                Text('Chở hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A6B5A), fontFamily: 'BeVietnamPro')),
+                              ],
+                            ),
+                          ),
+                        if (hasGiaoHang)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8, bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF1C4E6B).withOpacity(0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.delivery_dining_rounded, size: 14, color: Color(0xFF1C4E6B)),
+                                SizedBox(width: 4),
+                                Text('Giao hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro')),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                ],
               );
             },
           ),

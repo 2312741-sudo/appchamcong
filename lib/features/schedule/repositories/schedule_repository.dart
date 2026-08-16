@@ -5,14 +5,17 @@ import '../../../models/member_model.dart';
 import '../../../models/schedule_model.dart';
 
 class ScheduleRepository {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final FirebaseFirestore? _firestoreOverride;
+  final FirebaseAuth? _authOverride;
 
   ScheduleRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  })  : _firestoreOverride = firestore,
+        _authOverride = auth;
+
+  FirebaseFirestore get _firestore => _firestoreOverride ?? FirebaseFirestore.instance;
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
   // ---------- Collection reference ----------
 
@@ -185,23 +188,25 @@ class ScheduleRepository {
 
   /// Returns the Monday of the week containing [date] as YYYY-MM-DD.
   String getWeekStart(DateTime date) {
-    final monday = date.subtract(Duration(days: date.weekday - 1));
+    final d = DateTime(date.year, date.month, date.day);
+    final monday = d.subtract(Duration(days: d.weekday - 1));
     final y = monday.year.toString().padLeft(4, '0');
     final m = monday.month.toString().padLeft(2, '0');
-    final d = monday.day.toString().padLeft(2, '0');
-    return '$y-$m-$d';
+    final day = monday.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
   }
 
   /// Returns the next [count] week-start dates starting from this week's Monday.
   List<String> getNextWeeks(int count) {
     final now = DateTime.now();
-    final thisMonday = now.subtract(Duration(days: now.weekday - 1));
+    final d = DateTime(now.year, now.month, now.day);
+    final thisMonday = d.subtract(Duration(days: d.weekday - 1));
     return List.generate(count, (i) {
       final monday = thisMonday.add(Duration(days: i * 7));
       final y = monday.year.toString().padLeft(4, '0');
       final m = monday.month.toString().padLeft(2, '0');
-      final d = monday.day.toString().padLeft(2, '0');
-      return '$y-$m-$d';
+      final day = monday.day.toString().padLeft(2, '0');
+      return '$y-$m-$day';
     });
   }
 }
