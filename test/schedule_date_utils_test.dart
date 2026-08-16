@@ -33,5 +33,17 @@ void main() {
       expect(d1.difference(d0).inDays, equals(7));
       expect(d2.difference(d1).inDays, equals(7));
     });
+
+    test('getWeeksRange generates correct past, current and future weeks', () {
+      final range = repo.getWeeksRange(pastWeeks: 4, futureWeeks: 4);
+      expect(range.length, equals(9)); // 4 past + 1 current + 4 future = 9
+      final currentMonday = repo.getWeekStart(DateTime.now());
+      expect(range[4], equals(currentMonday)); // Index 4 is the current week
+      
+      // Index 0 is 4 weeks before index 4
+      final dPast = DateTime.parse(range[0]);
+      final dCurr = DateTime.parse(range[4]);
+      expect(dCurr.difference(dPast).inDays, equals(28));
+    });
   });
 }

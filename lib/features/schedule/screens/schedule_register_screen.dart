@@ -38,9 +38,19 @@ class _ScheduleRegisterScreenState
   void initState() {
     super.initState();
     final repo = ScheduleRepository();
-    _weeks = repo.getNextWeeks(3);
-    _selectedWeekIndex = 0;
+    _weeks = repo.getWeeksRange(pastWeeks: 4, futureWeeks: 4);
+    final currentWeekStr = repo.getWeekStart(DateTime.now());
+    final currentIdx = _weeks.indexOf(currentWeekStr);
+    _selectedWeekIndex = currentIdx >= 0 ? currentIdx : 4;
   }
+
+  int get _thisWeekIndex {
+    final currentWeekStr = ScheduleRepository().getWeekStart(DateTime.now());
+    final idx = _weeks.indexOf(currentWeekStr);
+    return idx >= 0 ? idx : 4;
+  }
+
+  bool get _isCurrentWeek => _selectedWeekIndex == _thisWeekIndex;
 
   String get _currentWeek => _weeks[_selectedWeekIndex];
 
@@ -322,6 +332,58 @@ class _ScheduleRegisterScreenState
                     fontSize: 13,
                   ),
                 ),
+                if (!_isCurrentWeek)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: InkWell(
+                      onTap: () => setState(() {
+                        _selectedWeekIndex = _thisWeekIndex;
+                        _draft.clear();
+                      }),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.today_rounded, size: 13, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Về tuần này',
+                              style: GoogleFonts.beVietnamPro(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Tuần hiện tại',
+                        style: GoogleFonts.beVietnamPro(
+                          color: Colors.white,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

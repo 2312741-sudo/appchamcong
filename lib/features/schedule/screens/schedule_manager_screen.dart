@@ -51,11 +51,22 @@ class _ScheduleManagerScreenState
   void initState() {
     super.initState();
     final repo = ScheduleRepository();
-    _weeks = repo.getNextWeeks(5);
+    _weeks = repo.getWeeksRange(pastWeeks: 8, futureWeeks: 6);
+    final currentWeekStr = repo.getWeekStart(DateTime.now());
+    final currentIdx = _weeks.indexOf(currentWeekStr);
+    final defaultIdx = currentIdx >= 0 ? currentIdx : 8;
     _selectedWeekIndex = (widget.initialWeekIndex >= 0 && widget.initialWeekIndex < _weeks.length)
-        ? widget.initialWeekIndex
-        : 0;
+        ? (widget.initialWeekIndex == 0 ? defaultIdx : widget.initialWeekIndex)
+        : defaultIdx;
   }
+
+  int get _thisWeekIndex {
+    final currentWeekStr = ScheduleRepository().getWeekStart(DateTime.now());
+    final idx = _weeks.indexOf(currentWeekStr);
+    return idx >= 0 ? idx : 8;
+  }
+
+  bool get _isCurrentWeek => _selectedWeekIndex == _thisWeekIndex;
 
   String get _currentWeek => _weeks[_selectedWeekIndex];
 
@@ -124,14 +135,6 @@ class _ScheduleManagerScreenState
     } finally {
       if (mounted) setState(() => _saving = false);
     }
-  }
-
-  bool get _isCurrentWeek {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final currentMonday = today.subtract(Duration(days: today.weekday - 1));
-    final weekMonday = _parseDate(_currentWeek);
-    return currentMonday.isAtSameMomentAs(weekMonday);
   }
 
   void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner, bool canManageSchedule, bool canTick) {
@@ -398,12 +401,12 @@ class _ScheduleManagerScreenState
                       style: GoogleFonts.beVietnamPro(
                           color: Colors.white70, fontSize: 12),
                     ),
-                    if (_selectedWeekIndex > 0)
+                    if (!_isCurrentWeek)
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: InkWell(
                           onTap: () => setState(() {
-                            _selectedWeekIndex = 0;
+                            _selectedWeekIndex = _thisWeekIndex;
                             _draftLoaded = false;
                             _draft.clear();
                           }),

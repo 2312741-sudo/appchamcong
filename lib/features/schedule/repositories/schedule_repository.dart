@@ -196,17 +196,24 @@ class ScheduleRepository {
     return '$y-$m-$day';
   }
 
-  /// Returns the next [count] week-start dates starting from this week's Monday.
-  List<String> getNextWeeks(int count) {
+  /// Returns a list of week-start dates spanning [pastWeeks] before this week to [futureWeeks] after this week.
+  List<String> getWeeksRange({int pastWeeks = 8, int futureWeeks = 6}) {
     final now = DateTime.now();
     final d = DateTime(now.year, now.month, now.day);
     final thisMonday = d.subtract(Duration(days: d.weekday - 1));
-    return List.generate(count, (i) {
-      final monday = thisMonday.add(Duration(days: i * 7));
+    final total = pastWeeks + 1 + futureWeeks;
+    return List.generate(total, (i) {
+      final offset = i - pastWeeks;
+      final monday = thisMonday.add(Duration(days: offset * 7));
       final y = monday.year.toString().padLeft(4, '0');
       final m = monday.month.toString().padLeft(2, '0');
       final day = monday.day.toString().padLeft(2, '0');
       return '$y-$m-$day';
     });
+  }
+
+  /// Returns the next [count] week-start dates starting from this week's Monday.
+  List<String> getNextWeeks(int count) {
+    return getWeeksRange(pastWeeks: 0, futureWeeks: count > 0 ? count - 1 : 0);
   }
 }
