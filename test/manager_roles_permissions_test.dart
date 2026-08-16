@@ -49,7 +49,7 @@ void main() {
       expect(AppPermissions.canViewStoreSchedule(UserRole.manager1), isTrue);
       expect(AppPermissions.canViewStoreSchedule(UserRole.manager2), isTrue);
       expect(AppPermissions.canViewStoreSchedule(UserRole.legacyManager), isTrue);
-      expect(AppPermissions.canViewStoreSchedule(UserRole.employee), isFalse);
+      expect(AppPermissions.canViewStoreSchedule(UserRole.employee), isTrue);
     });
 
     test('AppPermissions - canTickDelivery and canTickGiaoHang', () {

@@ -11,7 +11,8 @@ import '../repositories/schedule_repository.dart';
 import '../../../models/member_model.dart';
 
 class ScheduleRegisterScreen extends ConsumerStatefulWidget {
-  const ScheduleRegisterScreen({super.key});
+  final bool showAppBar;
+  const ScheduleRegisterScreen({super.key, this.showAppBar = true});
 
   @override
   ConsumerState<ScheduleRegisterScreen> createState() =>
@@ -27,6 +28,9 @@ class _ScheduleRegisterScreenState
   bool _saving = false;
 
   static const List<String> _dayNames = [
+    'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN',
+  ];
+  static const List<String> _dayFullNames = [
     'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật',
   ];
 
@@ -76,9 +80,13 @@ class _ScheduleRegisterScreenState
       }
       return;
     }
-    for (int i = 0; i < 7; i++) {
-      _draft[i] = List.from(schedule.shiftForDay(i + 1));
-    }
+    _draft[0] = List.from(schedule.monday);
+    _draft[1] = List.from(schedule.tuesday);
+    _draft[2] = List.from(schedule.wednesday);
+    _draft[3] = List.from(schedule.thursday);
+    _draft[4] = List.from(schedule.friday);
+    _draft[5] = List.from(schedule.saturday);
+    _draft[6] = List.from(schedule.sunday);
   }
 
   DaySchedule _buildDaySchedule() {
@@ -142,10 +150,10 @@ class _ScheduleRegisterScreenState
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Chọn ca làm cho ${_dayNames[dayIndex]}', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
+                  Text('Chọn ca làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
                   const SizedBox(height: 16),
                   if (store.customShifts.isEmpty)
-                    const Text('Chưa có ca làm nào được thiết lập. V vui lòng liên hệ quản lý.'),
+                    const Text('Chưa có ca làm nào được thiết lập.'),
                   ...store.customShifts.map((shift) {
                     final currentSelected = selectedShifts.where((s) => s.startsWith('${shift.id}|') || s == shift.id).firstOrNull ?? '';
                     final isSelected = currentSelected.isNotEmpty;
@@ -186,28 +194,26 @@ class _ScheduleRegisterScreenState
                       ],
                     );
                   }),
-                    if (isOwner || store.deliveryEnabled)
-                      CheckboxListTile(
-                        title: Text('📦 Đăng ký Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                        value: hasDelivery,
-                        onChanged: (val) {
-                          setModalState(() {
-                            if (val == true) selectedShifts.add('delivery');
-                            else selectedShifts.remove('delivery');
-                          });
-                        }
-                      ),
-                    if (isOwner || store.giaoHangEnabled)
-                      CheckboxListTile(
-                        title: Text('🛵 Đăng ký Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                        value: hasGiaoHang,
-                        onChanged: (val) {
-                          setModalState(() {
-                            if (val == true) selectedShifts.add('giaohang');
-                            else selectedShifts.remove('giaohang');
-                          });
-                        }
-                      ),
+                  CheckboxListTile(
+                    title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    value: hasDelivery,
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) selectedShifts.add('delivery');
+                        else selectedShifts.remove('delivery');
+                      });
+                    }
+                  ),
+                  CheckboxListTile(
+                    title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    value: hasGiaoHang,
+                    onChanged: (val) {
+                      setModalState(() {
+                        if (val == true) selectedShifts.add('giaohang');
+                        else selectedShifts.remove('giaohang');
+                      });
+                    }
+                  ),
                     const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -251,16 +257,18 @@ class _ScheduleRegisterScreenState
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        title: Text(
-          'Đăng ký lịch làm',
-          style: GoogleFonts.beVietnamPro(
-              fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        elevation: 0,
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              title: Text(
+                'Đăng ký lịch làm',
+                style: GoogleFonts.beVietnamPro(
+                    fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+              elevation: 0,
+            )
+          : null,
       body: Column(
         children: [
           _buildWeekSelector(),

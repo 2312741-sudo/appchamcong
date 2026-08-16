@@ -15,7 +15,14 @@ enum _ViewMode { byDay, byEmployee }
 
 class ScheduleManagerScreen extends ConsumerStatefulWidget {
   final int initialWeekIndex;
-  const ScheduleManagerScreen({super.key, this.initialWeekIndex = 0});
+  final bool showAppBar;
+  final bool isReadOnly;
+  const ScheduleManagerScreen({
+    super.key,
+    this.initialWeekIndex = 0,
+    this.showAppBar = true,
+    this.isReadOnly = false,
+  });
 
   @override
   ConsumerState<ScheduleManagerScreen> createState() =>
@@ -127,7 +134,8 @@ class _ScheduleManagerScreenState
     return currentMonday.isAtSameMomentAs(weekMonday);
   }
 
-  void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner, bool canManageSchedule) {
+  void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner, bool canManageSchedule, bool canTick) {
+    if (!canManageSchedule && !canTick) return;
     var selectedShifts = List<String>.from(_draft[userId]?.shiftForDay(dayIndex + 1) ?? []);
     final isLockedForManager = !canManageSchedule;
     
@@ -195,26 +203,28 @@ class _ScheduleManagerScreenState
                       ],
                     );
                   }),
-                  CheckboxListTile(
-                    title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    value: hasDelivery,
-                    onChanged: (val) {
-                      setModalState(() {
-                        if (val == true) selectedShifts.add('delivery');
-                        else selectedShifts.remove('delivery');
-                      });
-                    }
-                  ),
-                  CheckboxListTile(
-                    title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    value: hasGiaoHang,
-                    onChanged: (val) {
-                      setModalState(() {
-                        if (val == true) selectedShifts.add('giaohang');
-                        else selectedShifts.remove('giaohang');
-                      });
-                    }
-                  ),
+                  if (canTick || isOwner || canManageSchedule) ...[
+                    CheckboxListTile(
+                      title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      value: hasDelivery,
+                      onChanged: (val) {
+                        setModalState(() {
+                          if (val == true) selectedShifts.add('delivery');
+                          else selectedShifts.remove('delivery');
+                        });
+                      }
+                    ),
+                    CheckboxListTile(
+                      title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      value: hasGiaoHang,
+                      onChanged: (val) {
+                        setModalState(() {
+                          if (val == true) selectedShifts.add('giaohang');
+                          else selectedShifts.remove('giaohang');
+                        });
+                      }
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -240,7 +250,12 @@ class _ScheduleManagerScreenState
     final members = ref.watch(activeMembersProvider);
     final currentMember = ref.watch(currentMemberProvider);
     final isOwner = currentMember?.role == UserRole.owner;
-    final canManageSchedule = AppPermissions.canManageSchedule(currentMember?.role);
+    final isManager2 = currentMember?.role == UserRole.manager2;
+    final isEmployee = currentMember?.role == UserRole.employee;
+    final canManageSchedule = !widget.isReadOnly && AppPermissions.canManageSchedule(currentMember?.role);
+    final canTick = !widget.isReadOnly &&
+        (AppPermissions.canTickDelivery(currentMember?.role) ||
+            AppPermissions.canTickGiaoHang(currentMember?.role));
     final store = storeAsync.valueOrNull;
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
@@ -250,57 +265,60 @@ class _ScheduleManagerScreenState
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        title: Text(
-          'Quản lý lịch làm',
-          style: GoogleFonts.beVietnamPro(
-              fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download_rounded, color: Colors.white),
-            tooltip: 'Xuất Excel tuần',
-            onPressed: () async {
-              try {
-                final schedule = scheduleAsync.valueOrNull;
-                await ExportUtils.exportWeeklyScheduleToExcel(
-                  weekStart: _currentWeek,
-                  members: members,
-                  schedule: schedule,
-                  store: store,
-                  storeName: store.name,
-                  context: context,
-                );
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Lỗi xuất: $e'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-          TextButton.icon(
-            onPressed: _saving ? null : _saveAll,
-            icon: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child:
-                        CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Icon(Icons.save_alt, color: Colors.white, size: 18),
-            label: Text('Lưu thay đổi',
+      appBar: widget.showAppBar
+          ? AppBar(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              title: Text(
+                canManageSchedule ? 'Quản lý lịch làm' : 'Lịch làm cửa hàng',
                 style: GoogleFonts.beVietnamPro(
-                    color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
-        ],
-        elevation: 0,
-      ),
+                    fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.download_rounded, color: Colors.white),
+                  tooltip: 'Xuất Excel tuần',
+                  onPressed: () async {
+                    try {
+                      final schedule = scheduleAsync.valueOrNull;
+                      await ExportUtils.exportWeeklyScheduleToExcel(
+                        weekStart: _currentWeek,
+                        members: members,
+                        schedule: schedule,
+                        store: store,
+                        storeName: store.name,
+                        context: context,
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi xuất: $e'),
+                            backgroundColor: AppColors.primary,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                if (canManageSchedule || canTick)
+                  TextButton.icon(
+                    onPressed: _saving ? null : _saveAll,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.save_alt, color: Colors.white, size: 18),
+                    label: Text('Lưu thay đổi',
+                        style: GoogleFonts.beVietnamPro(
+                            color: Colors.white, fontWeight: FontWeight.w600)),
+                  ),
+              ],
+              elevation: 0,
+            )
+          : null,
       body: Column(
         children: [
           _buildHeader(),
@@ -318,7 +336,9 @@ class _ScheduleManagerScreenState
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Quản lý 2: Chế độ chỉ xem lịch làm. Bạn có thể tick chọn Chở hàng / Giao hàng.',
+                      isManager2
+                          ? 'Quản lý 2: Chế độ chỉ xem lịch làm. Bạn có thể tick chọn Chở hàng / Giao hàng.'
+                          : 'Chế độ xem: Bạn đang xem lịch làm việc của toàn bộ cửa hàng.',
                       style: GoogleFonts.beVietnamPro(
                         color: const Color(0xFF856404),
                         fontSize: 12.5,
@@ -332,8 +352,8 @@ class _ScheduleManagerScreenState
           Expanded(
             child: scheduleAsync.when(
               data: (_) => _viewMode == _ViewMode.byDay
-                  ? _buildByDayView(members, store, isOwner, canManageSchedule)
-                  : _buildByEmployeeView(members, store, isOwner, canManageSchedule),
+                  ? _buildByDayView(members, store, isOwner, canManageSchedule, canTick)
+                  : _buildByEmployeeView(members, store, isOwner, canManageSchedule, canTick),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -476,7 +496,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByDayView(List<MemberModel> members, StoreModel store, bool isOwner, bool canManageSchedule) {
+  Widget _buildByDayView(List<MemberModel> members, StoreModel store, bool isOwner, bool canManageSchedule, bool canTick) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -524,7 +544,7 @@ class _ScheduleManagerScreenState
                       style: GoogleFonts.beVietnamPro(
                           fontWeight: FontWeight.w500, fontSize: 13)),
                   trailing: GestureDetector(
-                    onTap: () => _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule),
+                    onTap: () => _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule, canTick),
                     child: _ShiftChip(shifts: shift, store: store),
                   ),
                 );
@@ -536,7 +556,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store, bool isOwner, bool canManageSchedule) {
+  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store, bool isOwner, bool canManageSchedule, bool canTick) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -575,7 +595,7 @@ class _ScheduleManagerScreenState
                     return Expanded(
                       child: GestureDetector(
                         onTap: () =>
-                            _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule),
+                            _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule, canTick),
                         child: Column(
                           children: [
                             Text(

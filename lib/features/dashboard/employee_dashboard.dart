@@ -16,6 +16,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
 import '../attendance/screens/attendance_history_screen.dart';
+import '../../features/schedule/screens/employee_schedule_tab.dart';
 import '../../features/schedule/screens/schedule_register_screen.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
@@ -104,7 +105,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
         index: _selectedIndex,
         children: [
           _HomeTab(now: _now, pulseAnimation: _pulseAnimation, uid: uid ?? ''),
-          const ScheduleRegisterScreen(),
+          const EmployeeScheduleTab(),
           _ProfileTab(),
         ],
       ),

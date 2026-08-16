@@ -29,7 +29,8 @@ class AppPermissions {
     return role == UserRole.owner ||
         role == UserRole.manager1 ||
         role == UserRole.manager2 ||
-        role == UserRole.legacyManager;
+        role == UserRole.legacyManager ||
+        role == UserRole.employee;
   }
 
   /// Quyền Xếp / tick phụ cấp Chở hàng
