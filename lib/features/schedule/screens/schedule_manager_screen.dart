@@ -244,6 +244,334 @@ class _ScheduleManagerScreenState
     );
   }
 
+  String _pad(int n) => n.toString().padLeft(2, '0');
+
+  void _showDayDetailModal(MemberModel member, int dayIndex, DateTime dayDate, StoreModel store) {
+    final shiftEntries = _draft[member.userId]?.shiftForDay(dayIndex + 1) ?? [];
+    final dayFullName = _dayFullNames[dayIndex];
+    final dateFormatted = '${_pad(dayDate.day)}/${_pad(dayDate.month)}/${dayDate.year}';
+    final hasDelivery = shiftEntries.contains('delivery');
+    final hasGiaoHang = shiftEntries.contains('giaohang');
+
+    // Parse work shifts
+    final List<Map<String, dynamic>> parsedShifts = [];
+    for (final s in shiftEntries) {
+      if (s == 'delivery' || s == 'giaohang') continue;
+      final parts = s.split('|');
+      final baseId = parts[0];
+      final deptId = parts.length > 1 ? parts[1] : member.department;
+
+      final shiftDef = store.customShifts.where((x) => x.id == baseId).firstOrNull;
+      final deptDef = deptId != null ? store.departments.where((d) => d.id == deptId || d.shortName == deptId).firstOrNull : null;
+
+      final startMin = shiftDef != null ? (shiftDef.startHour * 60 + shiftDef.startMinute) : 9999;
+      final deptName = deptDef?.name ?? deptId ?? member.department ?? 'Chung';
+      final isProd = (shiftDef?.isProduction ?? false) ||
+          DepartmentUtils.isProduction(
+            deptId: deptId,
+            deptName: deptDef?.name,
+            shortName: deptDef?.shortName,
+            storeDepartments: store.departments,
+          );
+
+      parsedShifts.add({
+        'shift': shiftDef,
+        'shiftName': shiftDef?.name ?? baseId,
+        'timeRange': shiftDef != null
+            ? '${_pad(shiftDef.startHour)}:${_pad(shiftDef.startMinute)} – ${_pad(shiftDef.endHour)}:${_pad(shiftDef.endMinute)}'
+            : '--:--',
+        'startMinutes': startMin,
+        'deptName': deptName,
+        'isProduction': isProd,
+      });
+    }
+
+    // Sort shifts by start time
+    parsedShifts.sort((a, b) => (a['startMinutes'] as int).compareTo(b['startMinutes'] as int));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Header: Avatar, Member name, Day date
+              Row(
+                children: [
+                  _Avatar(member: member, size: 44),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          member.name,
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$dayFullName, $dateFormatted',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              // Title
+              Text(
+                'Chi tiết ca làm việc',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1C4E6B),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              if (parsedShifts.isEmpty && !hasDelivery && !hasGiaoHang)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE9ECEF)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.nightlight_round, color: Colors.grey, size: 32),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Không có ca làm trong ngày này',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                // Work shift cards
+                ...parsedShifts.map((s) {
+                  final shiftName = s['shiftName'] as String;
+                  final timeRange = s['timeRange'] as String;
+                  final deptName = s['deptName'] as String;
+                  final isProd = s['isProduction'] as bool;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isProd ? const Color(0xFFE8F5E9) : const Color(0xFFF0F7FA),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isProd ? const Color(0xFFA5D6A7) : const Color(0xFFBEE3F8),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isProd
+                                ? const Color(0xFF2E7D32).withOpacity(0.12)
+                                : AppColors.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.access_time_filled_rounded,
+                            size: 22,
+                            color: isProd ? const Color(0xFF2E7D32) : AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                shiftName,
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.schedule_rounded, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Giờ làm: $timeRange',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF1C4E6B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.badge_outlined, size: 14, color: Colors.black54),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Bộ phận: ',
+                                    style: GoogleFonts.beVietnamPro(
+                                      fontSize: 12.5,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isProd ? const Color(0xFF2E7D32) : AppColors.primary,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      deptName,
+                                      style: GoogleFonts.beVietnamPro(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+
+                // Delivery / Giao hàng badges
+                if (hasDelivery)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE3F2FD),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF90CAF9)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_shipping_rounded, color: Color(0xFF1565C0), size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Phụ cấp chở hàng: Có lịch chở hàng trong ngày',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1565C0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                if (hasGiaoHang)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFCC80)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.two_wheeler_rounded, color: Color(0xFFE65100), size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Phụ cấp giao hàng: Có lịch giao hàng trong ngày',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFE65100),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Đóng',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final storeAsync = ref.watch(currentStoreProvider);
@@ -575,8 +903,13 @@ class _ScheduleManagerScreenState
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 1.5),
                         child: GestureDetector(
-                          onTap: () =>
-                              _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule, canTick),
+                          onTap: () {
+                            if (canManageSchedule || canTick) {
+                              _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule, canTick);
+                            } else {
+                              _showDayDetailModal(m, dayIndex, dayDate, store);
+                            }
+                          },
                           child: Column(
                             children: [
                               Text(
