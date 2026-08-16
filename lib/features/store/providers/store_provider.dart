@@ -17,7 +17,17 @@ final storeRepositoryProvider = Provider<StoreRepository>((ref) {
 
 final currentStoreIdProvider = Provider<String?>((ref) {
   final user = ref.watch(currentUserProvider).valueOrNull;
-  return user?.currentStoreId;
+  if (user?.currentStoreId != null && user!.currentStoreId!.isNotEmpty) {
+    return user.currentStoreId;
+  }
+  if (user?.storeIds != null && user!.storeIds.isNotEmpty) {
+    return user.storeIds.first;
+  }
+  final stores = ref.watch(userStoresProvider).valueOrNull;
+  if (stores != null && stores.isNotEmpty) {
+    return stores.first.id;
+  }
+  return null;
 });
 
 final currentStoreProvider = StreamProvider<StoreModel?>((ref) {

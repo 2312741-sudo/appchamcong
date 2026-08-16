@@ -51,11 +51,50 @@ class ScheduleRepository {
   ) async {
     try {
       final ref = _schedules(storeId).doc(weekStart);
+      final now = Timestamp.now();
       await ref.set({
         'storeId': storeId,
         'weekStart': weekStart,
         'shifts': {userId: schedule.toJson()},
+        'updatedAt': now,
       }, SetOptions(merge: true));
+
+      // Trigger notification
+      try {
+        final caller = _auth.currentUser;
+        final isSelf = caller?.uid == userId;
+
+        if (isSelf) {
+          // Employee registered/updated their own schedule -> Notify Owner & Manager 1
+          final memberDoc = await _firestore.collection('stores').doc(storeId).collection('members').doc(userId).get();
+          final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
+
+          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+            'storeId': storeId,
+            'title': 'Đăng ký lịch làm mới',
+            'body': '$memberName vừa đăng ký lịch làm việc tuần ($weekStart).',
+            'type': 'schedule_changed',
+            'createdAt': now,
+            'targetRoles': ['owner', 'manager_1', 'manager'],
+            'readBy': caller?.uid != null ? [caller!.uid] : [],
+            'routePath': '/schedule-manager',
+            'routeExtra': {'weekStart': weekStart, 'userId': userId},
+          });
+        } else {
+          // Manager/Owner set schedule for this specific employee -> Notify this employee!
+          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+            'storeId': storeId,
+            'title': 'Lịch làm việc đã cập nhật',
+            'body': 'Lịch làm việc tuần ($weekStart) của bạn đã được cập nhật. Nhấn để xem chi tiết.',
+            'type': 'schedule_changed',
+            'createdAt': now,
+            'targetUserId': userId,
+            'readBy': caller?.uid != null ? [caller!.uid] : [],
+            'routePath': '/schedule',
+            'routeExtra': {'weekStart': weekStart},
+          });
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Lưu lịch cá nhân thất bại: $e');
     }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/app_notification_model.dart';
+import '../../../models/member_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/notification_repository.dart';
@@ -23,7 +24,7 @@ final notificationsStreamProvider = StreamProvider.autoDispose<List<AppNotificat
   // Trigger periodic/lazy check for weekly schedule reminders
   repo.checkAndGenerateWeeklyScheduleReminder(storeId);
 
-  return repo.watchNotifications(storeId, userId, member?.role);
+  return repo.watchNotifications(storeId, userId, member?.role ?? UserRole.employee);
 });
 
 /// Stream of unread notification count for current user in current store
@@ -37,5 +38,5 @@ final unreadNotificationCountProvider = StreamProvider.autoDispose<int>((ref) {
   }
 
   final repo = ref.watch(notificationRepositoryProvider);
-  return repo.watchUnreadCount(storeId, userId, member?.role);
+  return repo.watchUnreadCount(storeId, userId, member?.role ?? UserRole.employee);
 });

@@ -20,14 +20,14 @@ class NotificationRepository {
     if (storeId.isEmpty) return Stream.value([]);
 
     return _notificationsRef(storeId)
-        .orderBy('createdAt', descending: true)
-        .limit(50)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final list = snapshot.docs
           .map((doc) => AppNotificationModel.fromFirestore(doc))
           .where((n) => n.isRelevantFor(userId, role))
           .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
     });
   }
 
@@ -58,10 +58,7 @@ class NotificationRepository {
   Future<void> markAllAsRead(String storeId, String userId, UserRole? role) async {
     if (storeId.isEmpty || userId.isEmpty) return;
     try {
-      final snap = await _notificationsRef(storeId)
-          .orderBy('createdAt', descending: true)
-          .limit(50)
-          .get();
+      final snap = await _notificationsRef(storeId).get();
 
       final batch = _firestore.batch();
       int count = 0;

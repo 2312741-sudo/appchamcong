@@ -139,8 +139,8 @@ class AppNotificationModel {
 
     // 2. If targetRoles is set, check if user's role is in targetRoles
     if (targetRoles != null && targetRoles!.isNotEmpty) {
-      if (role == null) return false;
-      return targetRoles!.contains(role);
+      final effectiveRole = role ?? UserRole.employee;
+      return targetRoles!.contains(effectiveRole);
     }
 
     // 3. Otherwise it's a broadcast to all members of the store
