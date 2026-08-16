@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../app/router.dart';
+import '../../models/member_model.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/providers/auth_notifier.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../core/widgets/store_drawer.dart';
+import '../../core/widgets/notification_bell_icon.dart';
 import '../../features/members/screens/members_list_screen.dart';
 import '../../features/attendance/screens/attendance_table_screen.dart';
 
@@ -22,6 +26,24 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Reactive role check: If user role changed to Manager or Employee, auto-navigate
+    ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
+      if (next == null) return;
+      if (next.status == MemberStatus.pending) {
+        context.go(AppRoutes.pendingApproval);
+        return;
+      }
+      if (next.status == MemberStatus.kicked) {
+        context.go(AppRoutes.welcome);
+        return;
+      }
+      if (next.isManager) {
+        context.go(AppRoutes.managerDashboard);
+      } else if (next.isEmployee) {
+        context.go(AppRoutes.employeeDashboard);
+      }
+    });
+
     return Scaffold(
       drawer: const StoreDrawer(),
       backgroundColor: const Color(0xFFF5F6FA),
@@ -79,6 +101,7 @@ class _OwnerHomeTab extends ConsumerWidget {
 
     final activeCount = membersAsync.valueOrNull?.where((m) => m.isActive).length ?? 0;
     final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
+    final unclassifiedManagers = membersAsync.valueOrNull?.where((m) => m.isActive && m.isLegacyManager).toList() ?? [];
     final workingNow = attendancesAsync.valueOrNull?.where((a) => a.checkOut == null).length ?? 0;
     final doneToday = attendancesAsync.valueOrNull?.where((a) => a.checkOut != null).length ?? 0;
     final now = DateTime.now();
@@ -134,26 +157,107 @@ class _OwnerHomeTab extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // Store code badge - store is guaranteed non-null here
-                    Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFC8102E),
-                          borderRadius: BorderRadius.circular(12),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const NotificationBellIcon(
+                          iconColor: Colors.white,
+                          backgroundColor: Color(0x26FFFFFF),
                         ),
-                        child: Column(
-                          children: [
-                            const Text('Mã cửa hàng', style: TextStyle(color: Colors.white60, fontSize: 10, fontFamily: 'BeVietnamPro')),
-                            Text(store.code, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', letterSpacing: 2)),
-                          ],
+                        const SizedBox(width: 8),
+                        // Store code badge - store is guaranteed non-null here
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFC8102E),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text('Mã cửa hàng', style: TextStyle(color: Colors.white60, fontSize: 10, fontFamily: 'BeVietnamPro')),
+                              Text(store.code, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', letterSpacing: 2)),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
           ),
         ),
+
+        // Banner: Phân loại Quản lý cũ (Migration Banner)
+        if (unclassifiedManagers.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF57F17).withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Color(0xFFE65100), size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Cần phân loại Quản lý (${unclassifiedManagers.length})',
+                          style: GoogleFonts.beVietnamPro(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: const Color(0xFFE65100),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Có ${unclassifiedManagers.length} tài khoản Quản lý cũ cần được phân loại lại thành Quản lý 1 hoặc Quản lý 2. Hiện tại họ đang tạm giữ toàn quyền.',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12.5,
+                      color: const Color(0xFF5D4037),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        context.push(AppRoutes.members);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE65100),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(
+                        'Phân loại ngay',
+                        style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
         // Stats grid
         SliverToBoxAdapter(
@@ -290,7 +394,9 @@ class _OwnerSettingsTab extends ConsumerWidget {
     final user = ref.watch(currentUserProvider).value;
     final store = ref.watch(currentStoreProvider).value;
 
-    if (store == null) return const SizedBox();
+    if (store == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
@@ -303,29 +409,30 @@ class _OwnerSettingsTab extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Profile card
+          // Owner Profile Card
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 4))]),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)]),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 32,
-                  backgroundColor: const Color(0xFFC8102E),
-                  child: Text((user?.name ?? 'C')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+                  radius: 30,
+                  backgroundColor: const Color(0xFFC8102E).withOpacity(0.12),
+                  child: Text((user?.name.isNotEmpty == true) ? user!.name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFFC8102E), fontSize: 24, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro')),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user?.name ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
-                      Text(user?.email ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                      Text(user?.name ?? 'Chủ quán', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
+                      const SizedBox(height: 4),
+                      Text(user?.email ?? '', style: const TextStyle(fontSize: 13, color: Colors.grey, fontFamily: 'BeVietnamPro')),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: const Color(0xFFC8102E).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                        child: const Text('Chủ cửa hàng', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFC8102E), fontFamily: 'BeVietnamPro')),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: const Color(0xFFC8102E).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('Chủ cửa hàng', style: TextStyle(color: Color(0xFFC8102E), fontSize: 11, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
                       ),
                     ],
                   ),
@@ -333,7 +440,7 @@ class _OwnerSettingsTab extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           _SettingsSection(title: 'Cửa hàng', items: [
             _SettingsItem(icon: Icons.store_rounded, label: 'Cài đặt cửa hàng', sub: store.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),

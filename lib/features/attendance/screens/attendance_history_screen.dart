@@ -133,8 +133,8 @@ class _AttendanceHistoryScreenState
 
     final storeId = ref.watch(currentStoreIdProvider);
     final currentMember = ref.watch(currentMemberProvider);
-    final isManagerOrOwner = currentMember?.role == UserRole.owner ||
-        currentMember?.role == UserRole.manager;
+    final isManagerOrOwner = currentMember?.isOwner == true ||
+        currentMember?.isManager == true;
 
     if (storeId == null) {
       return const Scaffold(

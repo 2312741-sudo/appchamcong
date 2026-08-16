@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/auth/app_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/export_utils.dart';
 import '../../../models/member_model.dart';
@@ -13,7 +14,8 @@ import '../repositories/schedule_repository.dart';
 enum _ViewMode { byDay, byEmployee }
 
 class ScheduleManagerScreen extends ConsumerStatefulWidget {
-  const ScheduleManagerScreen({super.key});
+  final int initialWeekIndex;
+  const ScheduleManagerScreen({super.key, this.initialWeekIndex = 0});
 
   @override
   ConsumerState<ScheduleManagerScreen> createState() =>
@@ -43,7 +45,9 @@ class _ScheduleManagerScreenState
     super.initState();
     final repo = ScheduleRepository();
     _weeks = repo.getNextWeeks(5);
-    _selectedWeekIndex = 0;
+    _selectedWeekIndex = (widget.initialWeekIndex >= 0 && widget.initialWeekIndex < _weeks.length)
+        ? widget.initialWeekIndex
+        : 0;
   }
 
   String get _currentWeek => _weeks[_selectedWeekIndex];
@@ -123,9 +127,9 @@ class _ScheduleManagerScreenState
     return currentMonday.isAtSameMomentAs(weekMonday);
   }
 
-  void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner) {
+  void _showShiftPicker(String userId, int dayIndex, StoreModel store, bool isOwner, bool canManageSchedule) {
     var selectedShifts = List<String>.from(_draft[userId]?.shiftForDay(dayIndex + 1) ?? []);
-    final isLockedForManager = _isCurrentWeek && !isOwner;
+    final isLockedForManager = !canManageSchedule;
     
     showModalBottomSheet(
       context: context,
@@ -143,10 +147,10 @@ class _ScheduleManagerScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Chọn ca làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
-                  if (isLockedForManager)
+                  if (!canManageSchedule)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
-                      child: Text('Đang trong tuần hiện tại. Bạn chỉ có thể sửa phụ cấp.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.danger)),
+                      child: Text('Quản lý 2: Chế độ chỉ xem lịch làm. Bạn chỉ có thể tick chở hàng / giao hàng.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
                     ),
                   const SizedBox(height: 16),
                   if (store.customShifts.isEmpty)
@@ -236,6 +240,7 @@ class _ScheduleManagerScreenState
     final members = ref.watch(activeMembersProvider);
     final currentMember = ref.watch(currentMemberProvider);
     final isOwner = currentMember?.role == UserRole.owner;
+    final canManageSchedule = AppPermissions.canManageSchedule(currentMember?.role);
     final store = storeAsync.valueOrNull;
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
@@ -299,11 +304,36 @@ class _ScheduleManagerScreenState
       body: Column(
         children: [
           _buildHeader(),
+          if (!canManageSchedule)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF3CD),
+                border: Border(bottom: BorderSide(color: Color(0xFFFFEEBA))),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Color(0xFF856404), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Quản lý 2: Chế độ chỉ xem lịch làm. Bạn có thể tick chọn Chở hàng / Giao hàng.',
+                      style: GoogleFonts.beVietnamPro(
+                        color: const Color(0xFF856404),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: scheduleAsync.when(
               data: (_) => _viewMode == _ViewMode.byDay
-                  ? _buildByDayView(members, store, isOwner)
-                  : _buildByEmployeeView(members, store, isOwner),
+                  ? _buildByDayView(members, store, isOwner, canManageSchedule)
+                  : _buildByEmployeeView(members, store, isOwner, canManageSchedule),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -348,6 +378,59 @@ class _ScheduleManagerScreenState
                       style: GoogleFonts.beVietnamPro(
                           color: Colors.white70, fontSize: 12),
                     ),
+                    if (_selectedWeekIndex > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _selectedWeekIndex = 0;
+                            _draftLoaded = false;
+                            _draft.clear();
+                          }),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.today_rounded, size: 13, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Về tuần này',
+                                  style: GoogleFonts.beVietnamPro(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Tuần hiện tại',
+                            style: GoogleFonts.beVietnamPro(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -393,7 +476,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByDayView(List<MemberModel> members, StoreModel store, bool isOwner) {
+  Widget _buildByDayView(List<MemberModel> members, StoreModel store, bool isOwner, bool canManageSchedule) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -441,7 +524,7 @@ class _ScheduleManagerScreenState
                       style: GoogleFonts.beVietnamPro(
                           fontWeight: FontWeight.w500, fontSize: 13)),
                   trailing: GestureDetector(
-                    onTap: () => _showShiftPicker(m.userId, dayIndex, store, isOwner),
+                    onTap: () => _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule),
                     child: _ShiftChip(shifts: shift, store: store),
                   ),
                 );
@@ -453,7 +536,7 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store, bool isOwner) {
+  Widget _buildByEmployeeView(List<MemberModel> members, StoreModel store, bool isOwner, bool canManageSchedule) {
     if (members.isEmpty) {
       return _emptyState('Chưa có nhân viên nào');
     }
@@ -492,7 +575,7 @@ class _ScheduleManagerScreenState
                     return Expanded(
                       child: GestureDetector(
                         onTap: () =>
-                            _showShiftPicker(m.userId, dayIndex, store, isOwner),
+                            _showShiftPicker(m.userId, dayIndex, store, isOwner, canManageSchedule),
                         child: Column(
                           children: [
                             Text(

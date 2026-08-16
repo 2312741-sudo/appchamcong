@@ -108,7 +108,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
       computedSalaries.add({
         'userId': member.userId,
         'name': member.name,
-        'role': member.role == UserRole.owner ? 'Chủ' : member.role == UserRole.manager ? 'Quản lý' : 'Nhân viên',
+        'role': member.role.label,
         'type': member.employeeType == EmployeeType.fulltime ? 'Toàn thời gian' : 'Bán thời gian',
         'totalHours': totalHours,
         'baseSalary': member.employeeType == EmployeeType.fulltime ? member.baseMonthlySalary : member.baseHourlyRate,

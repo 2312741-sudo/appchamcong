@@ -7,6 +7,7 @@ import '../../features/store/providers/store_provider.dart';
 import '../../features/store/providers/user_repository.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/auth_notifier.dart';
+import '../../models/member_model.dart';
 import '../constants/app_colors.dart';
 
 class StoreDrawer extends ConsumerWidget {
@@ -108,12 +109,12 @@ class StoreDrawer extends ConsumerWidget {
                               Navigator.pop(context); // close drawer
                               
                               if (memberDoc.exists) {
-                                final role = memberDoc.data()?['role'] as String?;
+                                final role = UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
                                 final currentPath = GoRouterState.of(context).uri.toString();
                                 String targetPath = AppRoutes.employeeDashboard;
-                                if (role == 'owner') {
+                                if (role.isOwner) {
                                   targetPath = AppRoutes.ownerDashboard;
-                                } else if (role == 'manager') {
+                                } else if (role.isManager) {
                                   targetPath = AppRoutes.managerDashboard;
                                 }
                                 

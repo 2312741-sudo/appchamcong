@@ -66,8 +66,8 @@ class _MonthlyAttendanceScreenState
   Widget build(BuildContext context) {
     final storeId = ref.watch(currentStoreIdProvider);
     final currentMember = ref.watch(currentMemberProvider);
-    final isOwnerOrManager = currentMember?.role == UserRole.owner ||
-        currentMember?.role == UserRole.manager;
+    final isOwnerOrManager = currentMember?.isOwner == true ||
+        currentMember?.isManager == true;
 
     if (storeId == null) {
       return const Scaffold(

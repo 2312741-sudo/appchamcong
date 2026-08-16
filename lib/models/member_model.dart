@@ -1,21 +1,71 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
-enum UserRole { owner, manager, employee }
+enum UserRole {
+  owner,
+  manager1,
+  manager2,
+  legacyManager,
+  employee,
+}
 
 enum MemberStatus { pending, active, kicked }
 
 enum EmployeeType { fulltime, parttime }
 
 extension UserRoleExtension on UserRole {
+  bool get isOwner => this == UserRole.owner;
+  bool get isManager1 => this == UserRole.manager1;
+  bool get isManager2 => this == UserRole.manager2;
+  bool get isLegacyManager => this == UserRole.legacyManager;
+  bool get isManager =>
+      this == UserRole.manager1 ||
+      this == UserRole.manager2 ||
+      this == UserRole.legacyManager;
+  bool get isEmployee => this == UserRole.employee;
+
   String get label {
     switch (this) {
       case UserRole.owner:
         return 'Chủ';
-      case UserRole.manager:
+      case UserRole.manager1:
+        return 'Quản lý 1';
+      case UserRole.manager2:
+        return 'Quản lý 2';
+      case UserRole.legacyManager:
+        return 'Quản lý (Chưa phân loại)';
+      case UserRole.employee:
+        return 'Nhân viên';
+    }
+  }
+
+  String get shortLabel {
+    switch (this) {
+      case UserRole.owner:
+        return 'Chủ';
+      case UserRole.manager1:
+        return 'Quản lý 1';
+      case UserRole.manager2:
+        return 'Quản lý 2';
+      case UserRole.legacyManager:
         return 'Quản lý';
       case UserRole.employee:
         return 'Nhân viên';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case UserRole.owner:
+        return 'Toàn quyền quản trị cửa hàng, cài đặt, phân vai trò & tính lương.';
+      case UserRole.manager1:
+        return 'Toàn quyền xếp/sửa lịch làm, duyệt thành viên mới, tick chở/giao hàng.';
+      case UserRole.manager2:
+        return 'Chỉ xem lịch làm (không sửa), không duyệt thành viên, được tick chở/giao hàng.';
+      case UserRole.legacyManager:
+        return 'Tài khoản Quản lý cũ đang tạm giữ toàn quyền, cần Chủ phân loại lại.';
+      case UserRole.employee:
+        return 'Nhân viên chấm công, đăng ký ca làm cá nhân và xem báo cáo lương.';
     }
   }
 
@@ -23,7 +73,11 @@ extension UserRoleExtension on UserRole {
     switch (this) {
       case UserRole.owner:
         return 'owner';
-      case UserRole.manager:
+      case UserRole.manager1:
+        return 'manager_1';
+      case UserRole.manager2:
+        return 'manager_2';
+      case UserRole.legacyManager:
         return 'manager';
       case UserRole.employee:
         return 'employee';
@@ -34,8 +88,14 @@ extension UserRoleExtension on UserRole {
     switch (value) {
       case 'owner':
         return UserRole.owner;
+      case 'manager_1':
+      case 'manager1':
+        return UserRole.manager1;
+      case 'manager_2':
+      case 'manager2':
+        return UserRole.manager2;
       case 'manager':
-        return UserRole.manager;
+        return UserRole.legacyManager;
       case 'employee':
       default:
         return UserRole.employee;
@@ -151,7 +211,10 @@ class MemberModel extends Equatable {
 
   // Convenience getters
   bool get isOwner => role == UserRole.owner;
-  bool get isManager => role == UserRole.manager;
+  bool get isManager1 => role == UserRole.manager1 || role == UserRole.legacyManager;
+  bool get isManager2 => role == UserRole.manager2;
+  bool get isManager => isManager1 || isManager2;
+  bool get isLegacyManager => role == UserRole.legacyManager;
   bool get isEmployee => role == UserRole.employee;
   bool get isActive => status == MemberStatus.active;
   bool get isPending => status == MemberStatus.pending;

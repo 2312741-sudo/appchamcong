@@ -22,14 +22,15 @@ class _PendingApprovalScreenState
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(userProvider).value;
-    final membersAsync = ref.watch(storeMembersProvider);
+    final memberAsync = ref.watch(currentMemberStreamProvider);
 
-    membersAsync.whenData((members) {
-      final member = members.where((m) => m.userId == user?.id).firstOrNull;
+    memberAsync.whenData((member) {
+      if (member == null) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (member == null) {
+        if (member.status == MemberStatus.active) {
+          context.go(AppRoutes.splash);
+        } else if (member.status == MemberStatus.kicked) {
           ref.invalidate(userStoresProvider);
           ref.invalidate(currentUserProvider);
           context.go(AppRoutes.splash);
@@ -39,8 +40,6 @@ class _PendingApprovalScreenState
               backgroundColor: AppColors.primary,
             ),
           );
-        } else if (member.status == MemberStatus.active) {
-          context.go(AppRoutes.splash);
         }
       });
     });

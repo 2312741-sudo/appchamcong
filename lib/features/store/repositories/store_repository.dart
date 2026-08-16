@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/auth/app_permissions.dart';
 import '../../../models/store_model.dart';
 import '../../../models/advance_request_model.dart';
 import '../../../models/member_model.dart';
@@ -136,15 +137,48 @@ class StoreRepository {
   Future<List<StoreModel>> getUserStores(String userId) async {
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
-      if (!userDoc.exists) return [];
+      final userData = userDoc.data() ?? {};
+      final storeIds = List<String>.from(userData['storeIds'] ?? []);
+      final currentStoreId = userData['currentStoreId'] as String?;
 
-      final storeIds = List<String>.from(userDoc.data()?['storeIds'] ?? []);
+      if (currentStoreId != null &&
+          currentStoreId.isNotEmpty &&
+          !storeIds.contains(currentStoreId)) {
+        storeIds.add(currentStoreId);
+      }
+
+      // Fallback discovery if storeIds is empty: check owned stores & membership
+      if (storeIds.isEmpty) {
+        try {
+          final ownedStores =
+              await _stores.where('ownerId', isEqualTo: userId).get();
+          for (final doc in ownedStores.docs) {
+            if (!storeIds.contains(doc.id)) {
+              storeIds.add(doc.id);
+            }
+          }
+        } catch (_) {}
+
+        try {
+          final memberDocs = await _firestore
+              .collectionGroup('members')
+              .where('userId', isEqualTo: userId)
+              .get();
+          for (final doc in memberDocs.docs) {
+            final storeRef = doc.reference.parent.parent;
+            if (storeRef != null && !storeIds.contains(storeRef.id)) {
+              final status = doc.data()['status'] as String?;
+              if (status != 'kicked') {
+                storeIds.add(storeRef.id);
+              }
+            }
+          }
+        } catch (_) {}
+      }
 
       if (storeIds.isEmpty) return [];
 
-      // Fetch all store models for these IDs (Firestore allows up to 10 in whereIn,
-      // but we can just fetch them individually or chunk them if needed.
-      // Since it's usually < 10 stores per user, whereIn is fine).
+      // Fetch all store models for these IDs
       final stores = <StoreModel>[];
       for (var i = 0; i < storeIds.length; i += 10) {
         final chunk = storeIds.sublist(
@@ -159,6 +193,12 @@ class StoreRepository {
       final invalidStoreIds = <String>[];
 
       for (final store in stores) {
+        // Owner is always valid
+        if (store.ownerId == userId) {
+          validStores.add(store);
+          continue;
+        }
+
         final memberDoc = await _members(store.id).doc(userId).get();
         if (memberDoc.exists && memberDoc.data()?['status'] != 'kicked') {
           validStores.add(store);
@@ -167,23 +207,18 @@ class StoreRepository {
         }
       }
 
-      // Self-heal: remove invalid stores from user's storeIds array
-      if (invalidStoreIds.isNotEmpty) {
+      // Self-heal: update valid storeIds in user's profile
+      final validIds = validStores.map((s) => s.id).toList();
+      if (validIds.isNotEmpty || invalidStoreIds.isNotEmpty) {
         try {
-          await _firestore
-              .collection('users')
-              .doc(userId)
-              .update({'storeIds': FieldValue.arrayRemove(invalidStoreIds)});
+          final String? resolvedCurrentStoreId = (currentStoreId != null && validIds.contains(currentStoreId))
+              ? currentStoreId
+              : (validIds.isNotEmpty ? validIds.first : null);
 
-          // Also clear currentStoreId if it's one of the invalid stores
-          final currentStoreId = userDoc.data()?['currentStoreId'] as String?;
-          if (currentStoreId != null &&
-              invalidStoreIds.contains(currentStoreId)) {
-            await _firestore
-                .collection('users')
-                .doc(userId)
-                .update({'currentStoreId': null});
-          }
+          await _firestore.collection('users').doc(userId).set({
+            'storeIds': validIds,
+            'currentStoreId': resolvedCurrentStoreId,
+          }, SetOptions(merge: true));
         } catch (_) {}
       }
 
@@ -233,6 +268,21 @@ class StoreRepository {
       });
 
       await batch.commit();
+
+      // Create notification for Owner & Manager 1
+      try {
+        final applicantName = user?.displayName ?? user?.email ?? 'Nhân viên mới';
+        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+          'storeId': storeId,
+          'title': 'Yêu cầu gia nhập mới',
+          'body': '$applicantName vừa gửi yêu cầu tham gia cửa hàng. Nhấn để duyệt.',
+          'type': 'join_request',
+          'createdAt': Timestamp.fromDate(now),
+          'targetRoles': ['owner', 'manager_1', 'manager'],
+          'readBy': [],
+          'routePath': '/pending-members',
+        });
+      } catch (_) {}
     } catch (e) {
       throw Exception('Tham gia cửa hàng thất bại: $e');
     }
@@ -241,9 +291,45 @@ class StoreRepository {
   Future<void> approveOrRejectMember(
       String storeId, String userId, bool approve) async {
     try {
+      final caller = _auth.currentUser;
+      if (caller == null) {
+        throw Exception('401 Unauthorized: Chưa đăng nhập');
+      }
+
+      // Check caller's permission
+      final callerDoc = await _members(storeId).doc(caller.uid).get();
+      if (!callerDoc.exists) {
+        throw Exception('403 Forbidden: Bạn không thuộc cửa hàng này');
+      }
+      final callerRole = UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
+      if (!AppPermissions.canApproveMembers(callerRole)) {
+        throw Exception('403 Forbidden: Bạn không có quyền duyệt thành viên mới (Chỉ Chủ và Quản lý 1 có quyền này)');
+      }
+
+      final now = DateTime.now().toUtc();
       await _members(storeId).doc(userId).update({
         'status': approve ? 'active' : 'kicked',
+        'approvedBy': caller.uid,
+        'approvedByName': caller.displayName ?? caller.email ?? 'Quản lý',
+        'approvedByRole': callerRole.value,
+        'approvedAt': Timestamp.fromDate(now),
       });
+
+      // Create notification for Member
+      try {
+        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+          'storeId': storeId,
+          'title': approve ? 'Yêu cầu gia nhập đã được duyệt!' : 'Yêu cầu gia nhập bị từ chối',
+          'body': approve
+              ? 'Chúc mừng bạn đã trở thành thành viên của cửa hàng. Bạn có thể bắt đầu chấm công và đăng ký ca làm.'
+              : 'Yêu cầu tham gia cửa hàng của bạn đã bị từ chối.',
+          'type': approve ? 'join_approved' : 'join_rejected',
+          'createdAt': Timestamp.fromDate(now),
+          'targetUserId': userId,
+          'readBy': [],
+          'routePath': approve ? '/splash' : '/welcome',
+        });
+      } catch (_) {}
     } catch (e) {
       throw Exception('Cập nhật trạng thái thành viên thất bại: $e');
     }
@@ -251,6 +337,20 @@ class StoreRepository {
 
   Future<void> kickMember(String storeId, String userId) async {
     try {
+      final caller = _auth.currentUser;
+      if (caller == null) {
+        throw Exception('401 Unauthorized: Chưa đăng nhập');
+      }
+
+      final callerDoc = await _members(storeId).doc(caller.uid).get();
+      if (!callerDoc.exists) {
+        throw Exception('403 Forbidden: Bạn không thuộc cửa hàng này');
+      }
+      final callerRole = UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
+      if (!AppPermissions.canApproveMembers(callerRole)) {
+        throw Exception('403 Forbidden: Bạn không có quyền xóa thành viên (Chỉ Chủ và Quản lý 1 có quyền này)');
+      }
+
       await _members(storeId).doc(userId).update({'status': 'kicked'});
     } catch (e) {
       throw Exception('Xóa thành viên thất bại: $e');
@@ -260,6 +360,20 @@ class StoreRepository {
   Future<void> updateMemberRole(
       String storeId, String userId, UserRole newRole) async {
     try {
+      final caller = _auth.currentUser;
+      if (caller == null) {
+        throw Exception('401 Unauthorized: Chưa đăng nhập');
+      }
+
+      final callerDoc = await _members(storeId).doc(caller.uid).get();
+      if (!callerDoc.exists) {
+        throw Exception('403 Forbidden: Bạn không thuộc cửa hàng này');
+      }
+      final callerRole = UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
+      if (!AppPermissions.canAssignRoles(callerRole)) {
+        throw Exception('403 Forbidden: Chỉ Chủ cửa hàng mới có quyền phân vai trò');
+      }
+
       await _members(storeId).doc(userId).update({'role': newRole.value});
     } catch (e) {
       throw Exception('Cập nhật vai trò thất bại: $e');
@@ -376,6 +490,24 @@ class StoreRepository {
           .doc(request.storeId)
           .collection('advances')
           .add(request.toMap());
+
+      // Create notification for Store Owner
+      try {
+        final memberDoc = await _members(request.storeId).doc(request.userId).get();
+        final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
+        final formattedAmount = '${request.amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
+
+        await _firestore.collection('stores').doc(request.storeId).collection('notifications').add({
+          'storeId': request.storeId,
+          'title': 'Yêu cầu ứng lương mới',
+          'body': '$memberName vừa gửi yêu cầu tạm ứng $formattedAmount. Nhấn để duyệt.',
+          'type': 'advance_request',
+          'createdAt': Timestamp.now(),
+          'targetRoles': ['owner'],
+          'readBy': [],
+          'routePath': '/manage-advances',
+        });
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to create advance request: $e');
     }
@@ -396,6 +528,30 @@ class StoreRepository {
           .collection('advances')
           .doc(advanceId)
           .update(updateData);
+
+      // Create notification for Employee
+      try {
+        final advanceDoc = await _stores.doc(storeId).collection('advances').doc(advanceId).get();
+        final userId = advanceDoc.data()?['userId'] as String?;
+        final amount = advanceDoc.data()?['amount'] as num? ?? 0;
+        final formattedAmount = '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
+
+        if (userId != null && userId.isNotEmpty) {
+          final isApproved = status == AdvanceStatus.approved;
+          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+            'storeId': storeId,
+            'title': isApproved ? 'Yêu cầu ứng lương đã được duyệt' : 'Yêu cầu ứng lương bị từ chối',
+            'body': isApproved
+                ? 'Chủ quán đã duyệt yêu cầu tạm ứng $formattedAmount của bạn.'
+                : 'Yêu cầu tạm ứng $formattedAmount của bạn đã bị từ chối.',
+            'type': isApproved ? 'advance_approved' : 'advance_rejected',
+            'createdAt': Timestamp.now(),
+            'targetUserId': userId,
+            'readBy': [],
+            'routePath': '/salary',
+          });
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to update advance request: $e');
     }

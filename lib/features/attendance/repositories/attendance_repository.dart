@@ -79,6 +79,18 @@ class AttendanceRepository {
             .get();
 
         if (reportsQuery.docs.isEmpty) {
+          try {
+            await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+              'storeId': storeId,
+              'title': 'Nhắc nhở: Chưa nộp báo cáo sản xuất',
+              'body': 'Bạn đang trong ca sản xuất ngày $date nhưng chưa nộp báo cáo checklist. Vui lòng hoàn thành để chấm ra.',
+              'type': 'checklist_reminder',
+              'createdAt': Timestamp.now(),
+              'targetUserId': userId,
+              'readBy': [],
+              'routePath': '/production/report',
+            });
+          } catch (_) {}
           throw Exception('Bắt buộc phải hoàn thành và gửi báo cáo sản xuất trước khi ra ca.');
         }
       }

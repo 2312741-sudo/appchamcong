@@ -1,6 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/schedule_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/schedule_repository.dart';
 
@@ -32,7 +32,7 @@ final weekScheduleProvider =
 final myScheduleProvider = Provider<DaySchedule?>((ref) {
   final weekStart = ref.watch(currentWeekStartProvider);
   final scheduleAsync = ref.watch(weekScheduleProvider(weekStart));
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(currentUserIdProvider);
   if (uid == null) return null;
   return scheduleAsync.whenOrNull(
     data: (schedule) => schedule?.getScheduleForUser(uid),

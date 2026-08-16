@@ -1,9 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/store_model.dart';
 import '../../../models/member_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../repositories/store_repository.dart';
-import 'user_repository.dart';
 import '../../../models/advance_request_model.dart';
 
 // ---------- Repository Provider ----------
@@ -15,8 +16,8 @@ final storeRepositoryProvider = Provider<StoreRepository>((ref) {
 // ---------- Current Store ----------
 
 final currentStoreIdProvider = Provider<String?>((ref) {
-  final userAsync = ref.watch(userProvider);
-  return userAsync.whenOrNull(data: (user) => user?.currentStoreId);
+  final user = ref.watch(currentUserProvider).valueOrNull;
+  return user?.currentStoreId;
 });
 
 final currentStoreProvider = StreamProvider<StoreModel?>((ref) {
@@ -27,8 +28,10 @@ final currentStoreProvider = StreamProvider<StoreModel?>((ref) {
 });
 
 final userStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(currentUserIdProvider);
   if (uid == null) return [];
+  // Re-fetch automatically if user doc (e.g. storeIds) updates
+  ref.watch(currentUserProvider);
   final repo = ref.watch(storeRepositoryProvider);
   return repo.getUserStores(uid);
 });
@@ -58,19 +61,40 @@ final activeMembersProvider = Provider<List<MemberModel>>((ref) {
       [];
 });
 
+/// Dedicated direct realtime stream for the current user's membership in active store
+final currentMemberStreamProvider = StreamProvider<MemberModel?>((ref) {
+  final uid = ref.watch(currentUserIdProvider);
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (uid == null || storeId == null || storeId.isEmpty) {
+    return Stream.value(null);
+  }
+  return FirebaseFirestore.instance
+      .collection('stores')
+      .doc(storeId)
+      .collection('members')
+      .doc(uid)
+      .snapshots()
+      .map((snap) {
+    if (!snap.exists || snap.data() == null) return null;
+    return MemberModel.fromFirestore(snap);
+  });
+});
+
 final currentMemberProvider = Provider<MemberModel?>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final directMember = ref.watch(currentMemberStreamProvider).valueOrNull;
+  if (directMember != null) return directMember;
+
+  final uid = ref.watch(currentUserIdProvider);
   if (uid == null) return null;
-  final members = ref.watch(storeMembersProvider);
-  return members.whenOrNull(
-    data: (list) {
-      try {
-        return list.firstWhere((m) => m.userId == uid);
-      } catch (_) {
-        return null;
-      }
-    },
-  );
+  final members = ref.watch(storeMembersProvider).valueOrNull;
+  if (members != null) {
+    try {
+      return members.firstWhere((m) => m.userId == uid);
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
 });
 
 // ---------- Advances ----------

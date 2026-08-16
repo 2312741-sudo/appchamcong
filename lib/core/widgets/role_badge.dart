@@ -16,8 +16,12 @@ class RoleBadge extends StatelessWidget {
     switch (role) {
       case UserRole.owner:
         return AppColors.ownerBadge;
-      case UserRole.manager:
-        return AppColors.managerBadge;
+      case UserRole.manager1:
+        return const Color(0xFF1C4E6B);
+      case UserRole.manager2:
+        return const Color(0xFF00796B);
+      case UserRole.legacyManager:
+        return const Color(0xFFE65100);
       case UserRole.employee:
         return AppColors.employeeBadge;
     }
@@ -27,8 +31,12 @@ class RoleBadge extends StatelessWidget {
     switch (role) {
       case UserRole.owner:
         return 'Chủ';
-      case UserRole.manager:
-        return 'Quản lý';
+      case UserRole.manager1:
+        return 'Quản lý 1';
+      case UserRole.manager2:
+        return 'Quản lý 2';
+      case UserRole.legacyManager:
+        return 'Quản lý (Cũ)';
       case UserRole.employee:
         return 'NV';
     }

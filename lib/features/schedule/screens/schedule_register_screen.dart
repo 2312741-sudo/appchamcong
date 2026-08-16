@@ -235,7 +235,7 @@ class _ScheduleRegisterScreenState
     final storeAsync = ref.watch(currentStoreProvider);
     final store = storeAsync.valueOrNull;
     final currentMember = ref.watch(currentMemberProvider);
-    final isOwner = currentMember?.role == UserRole.owner || currentMember?.role == UserRole.manager;
+    final isOwner = currentMember?.isOwner == true || currentMember?.isManager == true;
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));

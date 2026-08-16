@@ -27,6 +27,7 @@ import '../features/members/screens/members_list_screen.dart';
 import '../features/members/screens/member_detail_screen.dart';
 import '../features/members/screens/pending_members_screen.dart';
 import '../features/auth/screens/profile_settings_screen.dart';
+import '../features/notifications/screens/notifications_screen.dart';
 import '../features/dashboard/owner_dashboard.dart';
 import '../features/dashboard/manager_dashboard.dart';
 import '../features/dashboard/employee_dashboard.dart';
@@ -68,6 +69,7 @@ class AppRoutes {
   static const String shiftSettings = '/shift-settings';
   static const String qrDisplay = '/qr-display';
   static const String profileSettings = '/profile-settings';
+  static const String notifications = '/notifications';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -228,7 +230,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.scheduleManager,
         name: 'schedule-manager',
-        builder: (context, state) => const ScheduleManagerScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final initialWeekIndex = extra?['initialWeekIndex'] as int? ?? 0;
+          return ScheduleManagerScreen(initialWeekIndex: initialWeekIndex);
+        },
       ),
 
       // ── Salary ────────────────────────────────────────────────────────────
@@ -295,6 +301,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'profile-settings',
         builder: (context, state) => const ProfileSettingsScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
     ],
     errorBuilder: (context, state) => Scaffold(
       backgroundColor: const Color(0xFFF8F4EE),
@@ -331,7 +342,9 @@ extension RoleNavigation on BuildContext {
     switch (role) {
       case UserRole.owner:
         go(AppRoutes.ownerDashboard);
-      case UserRole.manager:
+      case UserRole.manager1:
+      case UserRole.manager2:
+      case UserRole.legacyManager:
         go(AppRoutes.managerDashboard);
       case UserRole.employee:
         go(AppRoutes.employeeDashboard);

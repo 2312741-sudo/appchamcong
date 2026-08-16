@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../../../app/router.dart';
 import '../../store/providers/user_repository.dart';
@@ -34,12 +35,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (_hasNavigated || !mounted) return;
 
     try {
-      // 1. Await auth state (cached locally by Firebase Auth)
-      final authState = await ref.read(authStateChangesProvider.future);
-      if (!mounted || _hasNavigated) return;
-
-      // Not logged in -> Go to Welcome screen immediately
-      if (authState == null) {
+      // 1. Check current auth state
+      final authUser = FirebaseAuth.instance.currentUser;
+      if (authUser == null) {
         _navigateTo(AppRoutes.welcome);
         return;
       }
@@ -48,80 +46,112 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       unawaited(() async {
         try {
           await NotificationService().initialize();
-          await NotificationService().saveTokenForUser(authState.uid);
+          await NotificationService().saveTokenForUser(authUser.uid);
         } catch (_) {}
       }());
 
-      // 3. Await current user model with a fast timeout
-      final userModel = await ref
-          .read(currentUserProvider.future)
-          .timeout(const Duration(seconds: 4), onTimeout: () => null);
+      // 3. Get user document from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(authUser.uid)
+          .get();
 
       if (!mounted || _hasNavigated) return;
 
-      // No user profile in Firestore
-      if (userModel == null) {
+      if (!userDoc.exists || userDoc.data() == null) {
         _navigateTo(AppRoutes.profileSetup);
         return;
       }
 
-      // User has no store assigned
-      if (!userModel.hasStore) {
-        try {
-          final stores = await ref
-              .read(userStoresProvider.future)
-              .timeout(const Duration(seconds: 3), onTimeout: () => []);
-          if (stores.isNotEmpty && mounted && !_hasNavigated) {
-            final userRepo = ref.read(userRepositoryProvider);
-            await userRepo.updateCurrentStoreId(userModel.id, stores.first.id);
-            ref.invalidate(currentUserProvider);
-            _navigateTo(AppRoutes.splash);
-            return;
-          }
-        } catch (_) {}
-        _navigateTo(AppRoutes.welcome);
+      final userData = userDoc.data()!;
+      var currentStoreId = userData['currentStoreId'] as String?;
+
+      // 4. If currentStoreId is missing or empty, discover user's stores
+      if (currentStoreId == null || currentStoreId.isEmpty) {
+        final storeRepo = ref.read(storeRepositoryProvider);
+        final stores = await storeRepo.getUserStores(authUser.uid);
+        if (stores.isNotEmpty) {
+          currentStoreId = stores.first.id;
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(authUser.uid)
+              .set({
+            'currentStoreId': currentStoreId,
+            'storeIds': stores.map((s) => s.id).toList(),
+          }, SetOptions(merge: true));
+        } else {
+          _navigateTo(AppRoutes.welcome);
+          return;
+        }
+      }
+
+      if (!mounted || _hasNavigated) return;
+
+      // 5. Resolve member role and status in current store
+      final memberDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(currentStoreId)
+          .collection('members')
+          .doc(authUser.uid)
+          .get();
+
+      if (!mounted || _hasNavigated) return;
+
+      if (memberDoc.exists && memberDoc.data() != null) {
+        final data = memberDoc.data()!;
+        final role = data['role'] as String?;
+        final status = data['status'] as String?;
+
+        if (status == 'pending') {
+          _navigateTo(AppRoutes.pendingApproval);
+          return;
+        }
+        if (status == 'kicked') {
+          _navigateTo(AppRoutes.welcome);
+          return;
+        }
+
+        if (role == 'owner') {
+          _navigateTo(AppRoutes.ownerDashboard);
+        } else if (role == 'manager_1' ||
+            role == 'manager1' ||
+            role == 'manager_2' ||
+            role == 'manager2' ||
+            role == 'manager') {
+          _navigateTo(AppRoutes.managerDashboard);
+        } else {
+          _navigateTo(AppRoutes.employeeDashboard);
+        }
         return;
       }
 
-      // 4. Resolve member role and status
-      try {
-        final memberDoc = await FirebaseFirestore.instance
-            .collection('stores')
-            .doc(userModel.currentStoreId)
-            .collection('members')
-            .doc(userModel.id)
-            .get()
-            .timeout(const Duration(seconds: 3));
+      // Check if user is owner of the store
+      final storeDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(currentStoreId)
+          .get();
 
-        if (!mounted || _hasNavigated) return;
+      if (storeDoc.exists && storeDoc.data()?['ownerId'] == authUser.uid) {
+        _navigateTo(AppRoutes.ownerDashboard);
+        return;
+      }
 
-        if (memberDoc.exists) {
-          final role = memberDoc.data()?['role'] as String?;
-          final status = memberDoc.data()?['status'] as String?;
+      // If not a member of currentStoreId, try other stores
+      final storeRepo = ref.read(storeRepositoryProvider);
+      final stores = await storeRepo.getUserStores(authUser.uid);
+      if (stores.isNotEmpty) {
+        final newStoreId = stores.first.id;
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(authUser.uid)
+            .update({'currentStoreId': newStoreId});
+        _navigateTo(AppRoutes.splash);
+        return;
+      }
 
-          if (status == 'pending') {
-            _navigateTo(AppRoutes.pendingApproval);
-            return;
-          }
-          if (status == 'kicked') {
-            _navigateTo(AppRoutes.welcome);
-            return;
-          }
-
-          if (role == 'owner') {
-            _navigateTo(AppRoutes.ownerDashboard);
-          } else if (role == 'manager') {
-            _navigateTo(AppRoutes.managerDashboard);
-          } else {
-            _navigateTo(AppRoutes.employeeDashboard);
-          }
-          return;
-        }
-      } catch (_) {}
-
-      // Fallback
-      _navigateTo(AppRoutes.employeeDashboard);
-    } catch (_) {
+      _navigateTo(AppRoutes.welcome);
+    } catch (e) {
+      debugPrint('SplashScreen auth error: $e');
       if (mounted && !_hasNavigated) {
         _navigateTo(AppRoutes.welcome);
       }

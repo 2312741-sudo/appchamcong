@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class UserRepository {
   final FirebaseFirestore _firestore;
@@ -53,14 +54,9 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
 
-final userProvider = StreamProvider<UserModel?>((ref) {
-  final authUser = ref.watch(authStateProvider).valueOrNull;
-  if (authUser == null) return Stream.value(null);
+/// Re-export / unified user stream provider
+final userProvider = currentUserProvider;
 
-  final repo = ref.watch(userRepositoryProvider);
-  return repo.watchUser(authUser.uid);
-});
+/// Re-export / unified auth state stream provider
+final authStateProvider = authStateChangesProvider;
 
-final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
-});

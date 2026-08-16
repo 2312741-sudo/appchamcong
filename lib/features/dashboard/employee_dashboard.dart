@@ -4,12 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../app/router.dart';
+import '../../models/member_model.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/providers/auth_notifier.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../models/attendance_model.dart';
+import '../../core/constants/app_colors.dart';
 import '../../core/widgets/store_drawer.dart';
+import '../../core/widgets/notification_bell_icon.dart';
+import '../attendance/screens/attendance_history_screen.dart';
 import '../../features/schedule/screens/schedule_register_screen.dart';
 
 class EmployeeDashboard extends ConsumerStatefulWidget {
@@ -52,6 +57,24 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
   @override
   Widget build(BuildContext context) {
     final uid = ref.watch(currentUserProvider).value?.id;
+
+    // Reactive role check: If user is actually Owner or Manager, auto-navigate to right dashboard
+    ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
+      if (next == null) return;
+      if (next.status == MemberStatus.pending) {
+        context.go(AppRoutes.pendingApproval);
+        return;
+      }
+      if (next.status == MemberStatus.kicked) {
+        context.go(AppRoutes.welcome);
+        return;
+      }
+      if (next.isOwner) {
+        context.go(AppRoutes.ownerDashboard);
+      } else if (next.isManager) {
+        context.go(AppRoutes.managerDashboard);
+      }
+    });
 
     // Kick out if removed
     ref.listen(storeMembersProvider, (prev, next) {
@@ -169,27 +192,38 @@ class _HomeTab extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        // Store chip - store is guaranteed non-null here (parent checks store == null)
-                        GestureDetector(
-                            onTap: () => Scaffold.of(context).openDrawer(),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.store_rounded, color: Colors.white, size: 14),
-                                  const SizedBox(width: 6),
-                                  Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
-                                ],
-                              ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const NotificationBellIcon(
+                              iconColor: Colors.white,
+                              backgroundColor: Color(0x26FFFFFF),
                             ),
-                          ),
+                            if (store != null) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => Scaffold.of(context).openDrawer(),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.store_rounded, color: Colors.white, size: 14),
+                                      const SizedBox(width: 6),
+                                      Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -599,7 +633,6 @@ class _ProfileTab extends ConsumerWidget {
           _ProfileMenuItem(icon: Icons.attach_money_rounded, label: 'Xem lương tháng này', color: const Color(0xFF1A6B5A), onTap: () => context.push(AppRoutes.salary)),
           _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công', color: const Color(0xFF1C4E6B), onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString())),
           _ProfileMenuItem(icon: Icons.account_balance_wallet_rounded, label: 'Tạm ứng lương', color: const Color(0xFFB8860B), onTap: () => context.push(AppRoutes.salary)),
-          _ProfileMenuItem(icon: Icons.notifications_rounded, label: 'Thông báo', color: const Color(0xFF7B1FA2), onTap: () {}),
           _ProfileMenuItem(icon: Icons.logout_rounded, label: 'Đăng xuất', color: Colors.red, onTap: () async {
             final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
               title: const Text('Đăng xuất?', style: TextStyle(fontFamily: 'BeVietnamPro')),
@@ -609,7 +642,7 @@ class _ProfileTab extends ConsumerWidget {
               ],
             ));
             if (confirm == true) {
-              await ref.read(authRepositoryProvider).signOut();
+              await ref.read(authNotifierProvider.notifier).signOut();
               await Future.delayed(const Duration(milliseconds: 300));
               if (context.mounted) {
                 context.go(AppRoutes.login);

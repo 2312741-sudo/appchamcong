@@ -110,7 +110,7 @@ class MembersListScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          member.role.label,
+                          member.role.shortLabel,
                           style: TextStyle(
                             fontFamily: 'BeVietnamPro',
                             fontSize: 12,
@@ -119,6 +119,26 @@ class MembersListScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      if (member.isLegacyManager) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3CD),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: const Color(0xFFFFEEBA)),
+                          ),
+                          child: const Text(
+                            'Cần phân loại',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF856404),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 8),
                       Text(
                         member.employeeType.shortLabel,
@@ -144,8 +164,12 @@ class MembersListScreen extends ConsumerWidget {
     switch (role) {
       case UserRole.owner:
         return AppColors.danger;
-      case UserRole.manager:
-        return AppColors.primary;
+      case UserRole.manager1:
+        return const Color(0xFF1C4E6B);
+      case UserRole.manager2:
+        return const Color(0xFF00796B);
+      case UserRole.legacyManager:
+        return const Color(0xFFE65100);
       case UserRole.employee:
         return AppColors.success;
     }

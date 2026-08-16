@@ -240,11 +240,35 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                   ),
-                  items: UserRole.values.map((r) => DropdownMenuItem(value: r, child: Text(r.label))).toList(),
+                  items: [
+                    const DropdownMenuItem(
+                      value: UserRole.employee,
+                      child: Text('Nhân viên'),
+                    ),
+                    const DropdownMenuItem(
+                      value: UserRole.manager2,
+                      child: Text('Quản lý 2 (Chỉ xem lịch, tick chở/giao hàng)'),
+                    ),
+                    const DropdownMenuItem(
+                      value: UserRole.manager1,
+                      child: Text('Quản lý 1 (Toàn quyền, xếp lịch, duyệt TV mới)'),
+                    ),
+                    const DropdownMenuItem(
+                      value: UserRole.owner,
+                      child: Text('Chủ cửa hàng'),
+                    ),
+                    if (_selectedRole == UserRole.legacyManager)
+                      const DropdownMenuItem(
+                        value: UserRole.legacyManager,
+                        child: Text('Quản lý (Cũ - Chưa phân loại)'),
+                      ),
+                  ],
                   onChanged: (v) {
                     if (v != null) setState(() => _selectedRole = v);
                   },
                 ),
+                const SizedBox(height: 10),
+                _buildRoleDescriptionCard(_selectedRole),
                 const SizedBox(height: 24),
                 
                 // Employee Type Setup
@@ -340,5 +364,94 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
           },
         ),
     );
+  }
+
+  Widget _buildRoleDescriptionCard(UserRole role) {
+    switch (role) {
+      case UserRole.manager1:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F4F8),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFB3D7E8)),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Quyền hạn Quản lý 1 (Toàn quyền quản lý):',
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF1C4E6B)),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '• Xếp ca / Sửa / Xóa lịch làm việc cho cả cửa hàng\n• Chấp nhận (duyệt) thành viên mới xin gia nhập\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• Xem bảng chấm công toàn bộ nhân viên',
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF2C3E50), height: 1.4),
+              ),
+            ],
+          ),
+        );
+      case UserRole.manager2:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE0F2F1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF80CBC4)),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Quyền hạn Quản lý 2 (Giới hạn ca làm):',
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF00695C)),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '• Xem lịch làm việc của cả cửa hàng (Chỉ xem)\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• ❌ KHÔNG được tạo/sửa/xoá ca làm việc của nhân viên\n• ❌ KHÔNG được duyệt thành viên mới xin vào',
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF004D40), height: 1.4),
+              ),
+            ],
+          ),
+        );
+      case UserRole.legacyManager:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3CD),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFFFEEBA)),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tài khoản Quản lý cũ (Chưa phân loại):',
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF856404)),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Đang tạm giữ quyền Quản lý 1. Vui lòng chọn Quản lý 1 hoặc Quản lý 2 ở trên rồi nhấn "Lưu thay đổi" để phân loại.',
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF533F03), height: 1.4),
+              ),
+            ],
+          ),
+        );
+      case UserRole.owner:
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFDE8E8),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFF8B4B4)),
+          ),
+          child: const Text(
+            'Chủ cửa hàng: Toàn quyền cao nhất trên toàn bộ hệ thống cửa hàng.',
+            style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF9B1C1C), height: 1.3),
+          ),
+        );
+      case UserRole.employee:
+        return const SizedBox.shrink();
+    }
   }
 }

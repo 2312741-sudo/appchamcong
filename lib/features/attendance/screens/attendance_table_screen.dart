@@ -195,7 +195,9 @@ class _MemberCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final roleColors = {
       UserRole.owner: AppColors.primary,
-      UserRole.manager: AppColors.info,
+      UserRole.manager1: const Color(0xFF1C4E6B),
+      UserRole.manager2: const Color(0xFF00796B),
+      UserRole.legacyManager: const Color(0xFFE65100),
       UserRole.employee: AppColors.textSecondary,
     };
     final roleColor = roleColors[member.role] ?? AppColors.textSecondary;

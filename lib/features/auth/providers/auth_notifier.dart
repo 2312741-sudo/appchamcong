@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/auth_repository.dart';
 import '../../../models/user_model.dart';
 import '../../../core/services/notification_service.dart';
 import 'auth_provider.dart';
+import '../../store/providers/store_provider.dart';
 
 // ── Auth Action State ─────────────────────────────────────────────────────────
 
@@ -41,8 +43,19 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repository;
+  final Ref _ref;
 
-  AuthNotifier(this._repository) : super(const AuthState());
+  AuthNotifier(this._repository, this._ref) : super(const AuthState());
+
+  void _invalidateAllUserData() {
+    _ref.invalidate(currentUserProvider);
+    _ref.invalidate(currentFirebaseUserProvider);
+    _ref.invalidate(currentUserIdProvider);
+    _ref.invalidate(userStoresProvider);
+    _ref.invalidate(currentStoreProvider);
+    _ref.invalidate(storeMembersProvider);
+    _ref.invalidate(currentMemberStreamProvider);
+  }
 
   // ── Sign In ─────────────────────────────────────────────────────────────
 
@@ -56,11 +69,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email,
         password: password,
       );
+
+      _invalidateAllUserData();
       
-      // Update FCM token after successful login
+      // Update FCM token in background without blocking login
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await NotificationService().saveTokenForUser(user.uid);
+        unawaited(NotificationService().saveTokenForUser(user.uid).catchError((_) {}));
       }
 
       state = state.copyWith(
@@ -117,10 +132,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       await _repository.createUserDocument(userModel);
 
-      // Update FCM token after successful register
+      _invalidateAllUserData();
+
+      // Update FCM token in background
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-        await NotificationService().saveTokenForUser(currentUser.uid);
+        unawaited(NotificationService().saveTokenForUser(currentUser.uid).catchError((_) {}));
       }
 
       state = state.copyWith(
@@ -149,8 +166,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       await _repository.signOut();
+      _invalidateAllUserData();
       state = const AuthState();
     } catch (e) {
+      _invalidateAllUserData();
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Có lỗi khi đăng xuất',
@@ -260,5 +279,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
-  return AuthNotifier(repo);
+  return AuthNotifier(repo, ref);
 });
