@@ -7,12 +7,15 @@ import '../../app/router.dart';
 import '../../core/auth/app_permissions.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/member_model.dart';
+import '../../models/store_model.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/auth_notifier.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
+import '../../features/schedule/providers/schedule_provider.dart';
+import '../../features/schedule/screens/employee_schedule_tab.dart';
 import '../../features/schedule/screens/schedule_manager_screen.dart';
 
 class ManagerDashboard extends ConsumerStatefulWidget {
@@ -68,7 +71,7 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
         index: _selectedIndex,
         children: [
           _ManagerHomeTab(uid: uid ?? ''),
-          const ScheduleManagerScreen(),
+          const EmployeeScheduleTab(),
           _ManagerProfileTab(uid: uid ?? ''),
         ],
       ),
@@ -265,6 +268,14 @@ class _ManagerHomeTab extends ConsumerWidget {
                 ],
               ],
             ),
+          ),
+        ),
+
+        // Ca làm hôm nay của Quản lý
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            child: _TodayScheduleCard(uid: uid),
           ),
         ),
 
@@ -618,3 +629,190 @@ class _MgrNavItem extends StatelessWidget {
     );
   }
 }
+
+class _TodayScheduleCard extends ConsumerWidget {
+  final String uid;
+  const _TodayScheduleCard({required this.uid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheduleAsync = ref.watch(currentWeekScheduleProvider);
+    final store = ref.watch(currentStoreProvider).value;
+    final member = ref.watch(currentMemberProvider);
+
+    if (store == null) return const SizedBox();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5C842).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.event_note_rounded, color: Color(0xFFB8860B), size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text('Ca làm hôm nay của bạn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
+            ],
+          ),
+          const SizedBox(height: 12),
+          scheduleAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            error: (_, __) => const Text('Không tải được lịch', style: TextStyle(color: Colors.grey)),
+            data: (schedule) {
+              if (schedule == null) return const Text('Không có lịch tuần này', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
+              final daySchedule = schedule.shifts[uid];
+              List<String> shiftIds = [];
+              if (daySchedule != null) {
+                switch (DateTime.now().weekday) {
+                  case 1: shiftIds = daySchedule.monday; break;
+                  case 2: shiftIds = daySchedule.tuesday; break;
+                  case 3: shiftIds = daySchedule.wednesday; break;
+                  case 4: shiftIds = daySchedule.thursday; break;
+                  case 5: shiftIds = daySchedule.friday; break;
+                  case 6: shiftIds = daySchedule.saturday; break;
+                  case 7: shiftIds = daySchedule.sunday; break;
+                }
+              }
+              final shifts = store.customShifts
+                  .where((s) => shiftIds.any((id) => id.split('|').first == s.id))
+                  .toList();
+              final hasDelivery = shiftIds.contains('delivery');
+              final hasGiaoHang = shiftIds.contains('giaohang');
+
+              if (shifts.isEmpty && !hasDelivery && !hasGiaoHang) {
+                return const Text('Hôm nay không có ca làm', style: TextStyle(color: Colors.grey, fontFamily: 'BeVietnamPro'));
+              }
+
+              return Column(
+                children: [
+                  ...shifts.map((shift) {
+                    final dept = _getShiftDepartment(shift.id, shiftIds, store, member);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5C842).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (dept != null && dept.isNotEmpty) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1C4E6B).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFF1C4E6B).withOpacity(0.25)),
+                                    ),
+                                    child: Text(
+                                      dept,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1C4E6B),
+                                        fontFamily: 'BeVietnamPro',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (hasDelivery || hasGiaoHang)
+                    Row(
+                      children: [
+                        if (hasDelivery)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8, bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1A6B5A).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF1A6B5A).withOpacity(0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.local_shipping_rounded, size: 14, color: Color(0xFF1A6B5A)),
+                                SizedBox(width: 4),
+                                Text('Chở hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A6B5A), fontFamily: 'BeVietnamPro')),
+                              ],
+                            ),
+                          ),
+                        if (hasGiaoHang)
+                          Container(
+                            margin: const EdgeInsets.only(right: 8, bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF1C4E6B).withOpacity(0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.delivery_dining_rounded, size: 14, color: Color(0xFF1C4E6B)),
+                                SizedBox(width: 4),
+                                Text('Giao hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro')),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _getShiftDepartment(String shiftId, List<String> shiftIds, StoreModel store, MemberModel? member) {
+    final matchingEntry = shiftIds.firstWhere((id) => id.split('|').first == shiftId, orElse: () => '');
+    if (matchingEntry.contains('|')) {
+      final deptId = matchingEntry.split('|')[1];
+      final deptDef = store.departments.where((d) => d.id == deptId || d.shortName == deptId).firstOrNull;
+      if (deptDef != null) return deptDef.name;
+      return deptId;
+    }
+    if (member?.department != null && member!.department!.isNotEmpty) {
+      final deptDef = store.departments.where((d) => d.id == member.department || d.shortName == member.department || d.name == member.department).firstOrNull;
+      return deptDef?.name ?? member.department;
+    }
+    return null;
+  }
+
+  String _pad(int n) => n.toString().padLeft(2, '0');
+}
+

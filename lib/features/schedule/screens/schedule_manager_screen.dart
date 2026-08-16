@@ -322,7 +322,7 @@ class _ScheduleManagerScreenState
           : null,
       body: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(store, members, scheduleAsync.valueOrNull, canManageSchedule, canTick),
           if (!canManageSchedule)
             Container(
               width: double.infinity,
@@ -363,103 +363,162 @@ class _ScheduleManagerScreenState
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(StoreModel store, List<MemberModel> members, ScheduleModel? schedule, bool canManageSchedule, bool canTick) {
     return Container(
       color: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 14),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+      child: Column(
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.white),
-            onPressed: _selectedWeekIndex > 0
-                ? () => setState(() {
-                      _selectedWeekIndex--;
-                      _draftLoaded = false;
-                      _draft.clear();
-                    })
-                : null,
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'Tuần ${_weekNumber(_currentWeek)}',
-                  style: GoogleFonts.beVietnamPro(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16),
-                ),
-                Text(
-                  _weekLabel(_currentWeek),
-                  style: GoogleFonts.beVietnamPro(
-                      color: Colors.white70, fontSize: 12),
-                ),
-                if (!_isCurrentWeek)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: InkWell(
-                      onTap: () => setState(() {
-                        _selectedWeekIndex = _thisWeekIndex;
-                        _draftLoaded = false;
-                        _draft.clear();
-                      }),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.today_rounded, size: 13, color: Colors.white),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Về tuần này',
-                              style: GoogleFonts.beVietnamPro(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        'Tuần hiện tại',
-                        style: GoogleFonts.beVietnamPro(
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, color: Colors.white),
+                onPressed: _selectedWeekIndex > 0
+                    ? () => setState(() {
+                          _selectedWeekIndex--;
+                          _draftLoaded = false;
+                          _draft.clear();
+                        })
+                    : null,
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'Tuần ${_weekNumber(_currentWeek)}',
+                      style: GoogleFonts.beVietnamPro(
                           color: Colors.white,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16),
+                    ),
+                    Text(
+                      _weekLabel(_currentWeek),
+                      style: GoogleFonts.beVietnamPro(
+                          color: Colors.white70, fontSize: 12),
+                    ),
+                    if (!_isCurrentWeek)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _selectedWeekIndex = _thisWeekIndex;
+                            _draftLoaded = false;
+                            _draft.clear();
+                          }),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.today_rounded, size: 13, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Về tuần này',
+                                  style: GoogleFonts.beVietnamPro(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Tuần hiện tại',
+                            style: GoogleFonts.beVietnamPro(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, color: Colors.white),
+                onPressed: _selectedWeekIndex < _weeks.length - 1
+                    ? () => setState(() {
+                          _selectedWeekIndex++;
+                          _draftLoaded = false;
+                          _draft.clear();
+                        })
+                    : null,
+              ),
+            ],
+          ),
+          if (!widget.showAppBar) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ExportUtils.exportWeeklyScheduleToExcel(
+                        weekStart: _currentWeek,
+                        members: members,
+                        schedule: schedule,
+                        store: store,
+                        storeName: store.name,
+                        context: context,
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Lỗi xuất: $e'),
+                            backgroundColor: AppColors.primary,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.download_rounded, color: Colors.white, size: 16),
+                  label: Text('Xuất Excel', style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white54),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    minimumSize: Size.zero,
+                  ),
+                ),
+                if (canManageSchedule || canTick) ...[
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: _saving ? null : _saveAll,
+                    icon: _saving
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                        : const Icon(Icons.save_alt_rounded, color: AppColors.primary, size: 16),
+                    label: Text('Lưu thay đổi', style: GoogleFonts.beVietnamPro(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      minimumSize: Size.zero,
                     ),
                   ),
+                ],
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.white),
-            onPressed: _selectedWeekIndex < _weeks.length - 1
-                ? () => setState(() {
-                      _selectedWeekIndex++;
-                      _draftLoaded = false;
-                      _draft.clear();
-                    })
-                : null,
-          ),
+          ],
         ],
       ),
     );

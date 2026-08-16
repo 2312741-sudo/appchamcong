@@ -80,7 +80,7 @@ class _EmployeeScheduleTabState extends ConsumerState<EmployeeScheduleTab>
         controller: _tabController,
         children: const [
           ScheduleRegisterScreen(showAppBar: false),
-          ScheduleManagerScreen(showAppBar: false, isReadOnly: true),
+          ScheduleManagerScreen(showAppBar: false),
         ],
       ),
     );
