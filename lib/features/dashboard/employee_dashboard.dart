@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../app/router.dart';
 import '../../models/member_model.dart';
+import '../../models/store_model.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/auth_notifier.dart';
@@ -470,6 +471,7 @@ class _TodayScheduleCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheduleAsync = ref.watch(currentWeekScheduleProvider);
     final store = ref.watch(currentStoreProvider).value;
+    final member = ref.watch(currentMemberProvider);
 
     if (store == null) return const SizedBox();
 
@@ -528,25 +530,57 @@ class _TodayScheduleCard extends ConsumerWidget {
 
               return Column(
                 children: [
-                  ...shifts.map((shift) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5C842).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
-                        ),
-                      ],
-                    ),
-                  )),
+                  ...shifts.map((shift) {
+                    final dept = _getShiftDepartment(shift.id, shiftIds, store, member);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5C842).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (dept != null && dept.isNotEmpty) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1C4E6B).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFF1C4E6B).withOpacity(0.25)),
+                                    ),
+                                    child: Text(
+                                      dept,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1C4E6B),
+                                        fontFamily: 'BeVietnamPro',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                   if (hasDelivery || hasGiaoHang)
                     Row(
                       children: [
@@ -595,6 +629,21 @@ class _TodayScheduleCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String? _getShiftDepartment(String shiftId, List<String> shiftIds, StoreModel store, MemberModel? member) {
+    final matchingEntry = shiftIds.firstWhere((id) => id.split('|').first == shiftId, orElse: () => '');
+    if (matchingEntry.contains('|')) {
+      final deptId = matchingEntry.split('|')[1];
+      final deptDef = store.departments.where((d) => d.id == deptId || d.shortName == deptId).firstOrNull;
+      if (deptDef != null) return deptDef.name;
+      return deptId;
+    }
+    if (member?.department != null && member!.department!.isNotEmpty) {
+      final deptDef = store.departments.where((d) => d.id == member.department || d.shortName == member.department || d.name == member.department).firstOrNull;
+      return deptDef?.name ?? member.department;
+    }
+    return null;
   }
 
   String _pad(int n) => n.toString().padLeft(2, '0');
