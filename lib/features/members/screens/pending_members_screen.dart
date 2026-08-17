@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 
@@ -95,8 +96,8 @@ class _PendingMembersScreenState extends ConsumerState<PendingMembersScreen> {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppColors.primary.withOpacity(0.1),
-                backgroundImage: member.hasAvatar ? NetworkImage(member.avatarUrl!) : null,
-                child: !member.hasAvatar
+                backgroundImage: getAvatarImageProvider(member.avatarUrl),
+                child: getAvatarImageProvider(member.avatarUrl) == null
                     ? Text(
                         member.initials,
                         style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),

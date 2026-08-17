@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../providers/auth_notifier.dart';
 import '../providers/auth_provider.dart';
 import '../../../app/router.dart';
@@ -22,8 +19,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  File? _avatarFile;
-  bool _isUploadingAvatar = false;
 
   @override
   void initState() {
@@ -42,70 +37,6 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 85,
-    );
-    if (picked != null) {
-      setState(() => _avatarFile = File(picked.path));
-    }
-  }
-
-  void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined,
-                  color: AppColors.primary),
-              title: const Text(AppStrings.takePhoto),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.primary),
-              title: const Text(AppStrings.chooseFromGallery),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<String?> _uploadAvatar(String uid) async {
-    if (_avatarFile == null) return null;
-    setState(() => _isUploadingAvatar = true);
-    try {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('avatars')
-          .child('$uid.jpg');
-      await ref.putFile(_avatarFile!);
-      final url = await ref.getDownloadURL();
-      return url;
-    } catch (e) {
-      debugPrint('Avatar upload error: $e');
-      return null;
-    } finally {
-      if (mounted) setState(() => _isUploadingAvatar = false);
-    }
-  }
-
   Future<void> _handleContinue() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -115,18 +46,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       return;
     }
 
-    String? avatarUrl;
-    if (_avatarFile != null) {
-      avatarUrl = await _uploadAvatar(uid);
-    }
-
     final success = await ref.read(authNotifierProvider.notifier).updateProfile(
           uid: uid,
           name: _nameController.text.trim(),
           phone: _phoneController.text.trim().isEmpty
               ? null
               : _phoneController.text.trim(),
-          avatarUrl: avatarUrl,
         );
 
     if (!mounted) return;
@@ -147,7 +72,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
-    final isLoading = authState.isLoading || _isUploadingAvatar;
+    final isLoading = authState.isLoading;
 
     return LoadingOverlay(
       isLoading: isLoading,
@@ -192,51 +117,22 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                   const SizedBox(height: 32),
 
-                  // ── Avatar Picker ──────────────────────────────────────
-                  GestureDetector(
-                    onTap: _showImageSourceDialog,
-                    child: Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        CircleAvatar(
-                          radius: 56,
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          backgroundImage: _avatarFile != null
-                              ? FileImage(_avatarFile!)
-                              : null,
-                          child: _avatarFile == null
-                              ? const Icon(
-                                  Icons.person_rounded,
-                                  size: 52,
-                                  color: AppColors.primary,
-                                )
-                              : null,
-                        ),
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_rounded,
-                            size: 20,
-                            color: AppColors.white,
-                          ),
-                        ),
-                      ],
+                  // ── Icon Display ──────────────────────────────────────
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 48,
+                      color: AppColors.primary,
                     ),
                   ),
 
-                  const SizedBox(height: 8),
-
-                  TextButton(
-                    onPressed: _showImageSourceDialog,
-                    child: const Text(AppStrings.chooseAvatar),
-                  ),
-
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // ── Full Name ──────────────────────────────────────────
                   TextFormField(

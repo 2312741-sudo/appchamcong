@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/auth_repository.dart';
@@ -98,6 +99,82 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // ── Google Sign In ────────────────────────────────────────────────────────
+
+  Future<bool> signInWithGoogle() async {
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      await _repository.signInWithGoogle();
+
+      _invalidateAllUserData();
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        unawaited(NotificationService().saveTokenForUser(user.uid).catchError((_) {}));
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        successMessage: 'Đăng nhập Google thành công',
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'cancelled') {
+        state = state.copyWith(isLoading: false);
+        return false;
+      }
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthRepository.parseFirebaseAuthError(e),
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Không thể đăng nhập Google: $e',
+      );
+      return false;
+    }
+  }
+
+  // ── Apple Sign In ─────────────────────────────────────────────────────────
+
+  Future<bool> signInWithApple() async {
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      await _repository.signInWithApple();
+
+      _invalidateAllUserData();
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        unawaited(NotificationService().saveTokenForUser(user.uid).catchError((_) {}));
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        successMessage: 'Đăng nhập Apple thành công',
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'cancelled') {
+        state = state.copyWith(isLoading: false);
+        return false;
+      }
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: AuthRepository.parseFirebaseAuthError(e),
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Không thể đăng nhập Apple: $e',
+      );
+      return false;
+    }
+  }
+
   // ── Register ────────────────────────────────────────────────────────────
 
   Future<bool> register({
@@ -183,19 +260,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String uid,
     required String name,
     String? phone,
-    String? avatarUrl,
+    DateTime? birthday,
+    String? currentStoreId,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
-      final updateData = <String, dynamic>{'name': name};
-      if (phone != null) updateData['phone'] = phone;
-      if (avatarUrl != null) updateData['avatarUrl'] = avatarUrl;
-
-      await _repository.updateUserDocument(uid: uid, data: updateData);
-      await _repository.updateFirebaseProfile(
-        displayName: name,
-        photoURL: avatarUrl,
+      await _repository.updateUserProfile(
+        uid: uid,
+        name: name,
+        phone: phone,
+        birthday: birthday,
+        currentStoreId: currentStoreId,
       );
+
+      _invalidateAllUserData();
 
       state = state.copyWith(
         isLoading: false,
@@ -205,7 +283,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Có lỗi khi cập nhật hồ sơ',
+        errorMessage: 'Có lỗi khi cập nhật hồ sơ: $e',
       );
       return false;
     }

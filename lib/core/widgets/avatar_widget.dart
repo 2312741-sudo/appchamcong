@@ -1,7 +1,32 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../constants/app_colors.dart';
+
+/// Helper to get an ImageProvider for any avatar representation (Network URL, Data URI, or local bytes)
+ImageProvider? getAvatarImageProvider(String? avatarUrl, [Uint8List? localBytes]) {
+  if (localBytes != null && localBytes.isNotEmpty) {
+    return MemoryImage(localBytes);
+  }
+  if (avatarUrl == null || avatarUrl.trim().isEmpty) {
+    return null;
+  }
+  final trimmed = avatarUrl.trim();
+  if (trimmed.startsWith('data:image')) {
+    try {
+      final base64Part = trimmed.split(',').last;
+      return MemoryImage(base64Decode(base64Part));
+    } catch (_) {
+      return null;
+    }
+  }
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return CachedNetworkImageProvider(trimmed);
+  }
+  return null;
+}
 
 class AvatarWidget extends StatelessWidget {
   final String? avatarUrl;
@@ -43,30 +68,56 @@ class AvatarWidget extends StatelessWidget {
     return colors[index];
   }
 
+  Widget _buildFallback(Color bgColor) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: bgColor,
+      child: Text(
+        _initials,
+        style: TextStyle(
+          color: AppColors.white,
+          fontSize: radius * 0.6,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hasAvatar = avatarUrl != null && avatarUrl!.isNotEmpty;
+    final hasAvatar = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
     final bgColor = backgroundColor ?? _getColorFromName();
     final diameter = radius * 2;
 
     if (!hasAvatar) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundColor: bgColor,
-        child: Text(
-          _initials,
-          style: TextStyle(
-            color: AppColors.white,
-            fontSize: radius * 0.6,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
+      return _buildFallback(bgColor);
     }
 
+    final trimmed = avatarUrl!.trim();
+
+    // Check if base64 Data URI
+    if (trimmed.startsWith('data:image')) {
+      try {
+        final base64Part = trimmed.split(',').last;
+        final bytes = base64Decode(base64Part);
+        return ClipOval(
+          child: Image.memory(
+            bytes,
+            width: diameter,
+            height: diameter,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildFallback(bgColor),
+          ),
+        );
+      } catch (_) {
+        return _buildFallback(bgColor);
+      }
+    }
+
+    // Network image
     return ClipOval(
       child: CachedNetworkImage(
-        imageUrl: avatarUrl!,
+        imageUrl: trimmed,
         width: diameter,
         height: diameter,
         fit: BoxFit.cover,
@@ -79,18 +130,7 @@ class AvatarWidget extends StatelessWidget {
             color: AppColors.white,
           ),
         ),
-        errorWidget: (context, url, error) => CircleAvatar(
-          radius: radius,
-          backgroundColor: bgColor,
-          child: Text(
-            _initials,
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: radius * 0.6,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+        errorWidget: (context, url, error) => _buildFallback(bgColor),
       ),
     );
   }

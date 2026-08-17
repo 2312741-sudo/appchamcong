@@ -335,6 +335,8 @@ class _NotificationCard extends StatelessWidget {
         return const _TypeConfig(Icons.assignment_late_rounded, Color(0xFFEA580C));
       case AppNotificationType.deliveryUpdate:
         return const _TypeConfig(Icons.local_shipping_rounded, Color(0xFF7B1FA2));
+      case AppNotificationType.birthday:
+        return const _TypeConfig(Icons.cake_rounded, Color(0xFFE91E63));
       case AppNotificationType.general:
         return const _TypeConfig(Icons.notifications_rounded, Color(0xFF475569));
     }

@@ -15,6 +15,7 @@ import '../../models/attendance_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
+import '../../core/widgets/avatar_widget.dart';
 import '../attendance/screens/attendance_history_screen.dart';
 import '../../features/schedule/screens/employee_schedule_tab.dart';
 import '../../features/schedule/screens/schedule_register_screen.dart';
@@ -93,6 +94,10 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
     });
 
     final store = ref.watch(currentStoreProvider).value;
+
+    if (uid == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
 
     if (store == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -700,8 +705,8 @@ class _ProfileTab extends ConsumerWidget {
                 CircleAvatar(
                   radius: 36,
                   backgroundColor: const Color(0xFFC8102E),
-                  backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
-                  child: user?.avatarUrl == null
+                  backgroundImage: getAvatarImageProvider(user?.avatarUrl),
+                  child: getAvatarImageProvider(user?.avatarUrl) == null
                       ? Text((user?.name ?? 'U')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))
                       : null,
                 ),
@@ -731,6 +736,7 @@ class _ProfileTab extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Menu items
+          _ProfileMenuItem(icon: Icons.person_outline_rounded, label: 'Chỉnh sửa hồ sơ cá nhân', color: const Color(0xFFC8102E), onTap: () => context.push(AppRoutes.profileSettings)),
           _ProfileMenuItem(icon: Icons.attach_money_rounded, label: 'Xem lương tháng này', color: const Color(0xFF1A6B5A), onTap: () => context.push(AppRoutes.salary)),
           _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công', color: const Color(0xFF1C4E6B), onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString())),
           _ProfileMenuItem(icon: Icons.account_balance_wallet_rounded, label: 'Tạm ứng lương', color: const Color(0xFFB8860B), onTap: () => context.push(AppRoutes.salary)),
@@ -743,11 +749,10 @@ class _ProfileTab extends ConsumerWidget {
               ],
             ));
             if (confirm == true) {
-              await ref.read(authNotifierProvider.notifier).signOut();
-              await Future.delayed(const Duration(milliseconds: 300));
               if (context.mounted) {
                 context.go(AppRoutes.login);
               }
+              await ref.read(authNotifierProvider.notifier).signOut();
             }
           }),
         ],

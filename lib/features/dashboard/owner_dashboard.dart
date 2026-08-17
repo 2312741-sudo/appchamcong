@@ -11,6 +11,7 @@ import '../../features/auth/providers/auth_notifier.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
+import '../../core/widgets/avatar_widget.dart';
 import '../../features/members/screens/members_list_screen.dart';
 import '../../features/attendance/screens/attendance_table_screen.dart';
 
@@ -88,6 +89,11 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
 class _OwnerHomeTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
+
     final user = ref.watch(currentUserProvider).value;
     final store = ref.watch(currentStoreProvider).value;
 
@@ -418,7 +424,10 @@ class _OwnerSettingsTab extends ConsumerWidget {
                 CircleAvatar(
                   radius: 30,
                   backgroundColor: const Color(0xFFC8102E).withOpacity(0.12),
-                  child: Text((user?.name.isNotEmpty == true) ? user!.name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFFC8102E), fontSize: 24, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro')),
+                  backgroundImage: getAvatarImageProvider(user?.avatarUrl),
+                  child: (getAvatarImageProvider(user?.avatarUrl) == null)
+                      ? Text((user?.name.isNotEmpty == true) ? user!.name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFFC8102E), fontSize: 24, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro'))
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -459,9 +468,8 @@ class _OwnerSettingsTab extends ConsumerWidget {
                 ],
               ));
               if (confirm == true && context.mounted) {
-                await ref.read(authRepositoryProvider).signOut();
-                await Future.delayed(const Duration(milliseconds: 300));
-                if (context.mounted) GoRouter.of(context).go(AppRoutes.login);
+                context.go(AppRoutes.login);
+                await ref.read(authNotifierProvider.notifier).signOut();
               }
             }),
           ]),

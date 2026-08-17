@@ -13,6 +13,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/auth_notifier.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
+import '../../core/widgets/avatar_widget.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/schedule/screens/employee_schedule_tab.dart';
@@ -109,6 +110,11 @@ class _ManagerHomeTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
+
     final user = ref.watch(currentUserProvider).value;
     final store = ref.watch(currentStoreProvider).value;
 
@@ -410,10 +416,13 @@ class _ManagerProfileTab extends ConsumerWidget {
                 CircleAvatar(
                   radius: 32,
                   backgroundColor: const Color(0xFF1C4E6B).withOpacity(0.15),
-                  child: Text(
-                    user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'QL',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro'),
-                  ),
+                  backgroundImage: getAvatarImageProvider(user?.avatarUrl),
+                  child: (getAvatarImageProvider(user?.avatarUrl) == null)
+                      ? Text(
+                          user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'QL',
+                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro'),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -442,6 +451,8 @@ class _ManagerProfileTab extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          _ProfileMenuItem(icon: Icons.person_outline_rounded, label: 'Chỉnh sửa hồ sơ cá nhân', onTap: () => context.push(AppRoutes.profileSettings)),
+          const SizedBox(height: 10),
           _ProfileMenuItem(icon: Icons.payments_outlined, label: 'Lương & Tiền công của tôi', onTap: () => context.push(AppRoutes.salary)),
           const SizedBox(height: 10),
           _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công của tôi', onTap: () => context.push(AppRoutes.attendanceHistory)),
@@ -460,9 +471,8 @@ class _ManagerProfileTab extends ConsumerWidget {
               ),
             );
             if (confirm == true) {
-              await ref.read(authNotifierProvider.notifier).signOut();
-              await Future.delayed(const Duration(milliseconds: 300));
               if (context.mounted) context.go(AppRoutes.login);
+              await ref.read(authNotifierProvider.notifier).signOut();
             }
           }),
         ],

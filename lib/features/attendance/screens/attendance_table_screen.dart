@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../../core/utils/excel_export_service.dart';
 import '../../../core/widgets/export_modal.dart';
 import '../../../models/member_model.dart';
@@ -227,10 +228,8 @@ class _MemberCard extends StatelessWidget {
             CircleAvatar(
               radius: 24,
               backgroundColor: AppColors.primary.withOpacity(0.12),
-              backgroundImage: member.hasAvatar
-                  ? NetworkImage(member.avatarUrl!)
-                  : null,
-              child: !member.hasAvatar
+              backgroundImage: getAvatarImageProvider(member.avatarUrl),
+              child: getAvatarImageProvider(member.avatarUrl) == null
                   ? Text(member.initials,
                       style: const TextStyle(
                           fontFamily: 'BeVietnamPro',

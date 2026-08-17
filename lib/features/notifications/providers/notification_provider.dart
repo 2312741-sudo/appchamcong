@@ -21,8 +21,9 @@ final notificationsStreamProvider = StreamProvider.autoDispose<List<AppNotificat
 
   final repo = ref.watch(notificationRepositoryProvider);
   
-  // Trigger periodic/lazy check for weekly schedule reminders
+  // Trigger periodic/lazy check for weekly schedule reminders and birthdays
   repo.checkAndGenerateWeeklyScheduleReminder(storeId);
+  repo.checkAndGenerateBirthdayNotifications(storeId);
 
   return repo.watchNotifications(storeId, userId, member?.role ?? UserRole.employee);
 });

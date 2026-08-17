@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../features/auth/providers/auth_provider.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/welcome_screen.dart';
@@ -72,10 +74,28 @@ class AppRoutes {
   static const String notifications = '/notifications';
 }
 
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+          (dynamic _) => notifyListeners(),
+        );
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
+    refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
     redirect: (BuildContext context, GoRouterState state) {
       final authState = ref.read(authStateChangesProvider);
       final isAuthenticated =

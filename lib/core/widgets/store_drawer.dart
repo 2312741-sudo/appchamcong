@@ -10,6 +10,8 @@ import '../../features/auth/providers/auth_notifier.dart';
 import '../../models/member_model.dart';
 import '../constants/app_colors.dart';
 
+import 'avatar_widget.dart';
+
 class StoreDrawer extends ConsumerWidget {
   const StoreDrawer({super.key});
 
@@ -32,8 +34,8 @@ class StoreDrawer extends ConsumerWidget {
             accountEmail: Text(user?.email ?? '', style: const TextStyle(fontFamily: 'BeVietnamPro')),
             currentAccountPicture: CircleAvatar(
               backgroundColor: AppColors.surface,
-              backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
-              child: user?.avatarUrl == null
+              backgroundImage: getAvatarImageProvider(user?.avatarUrl),
+              child: getAvatarImageProvider(user?.avatarUrl) == null
                   ? const Icon(Icons.person, color: AppColors.primary, size: 36)
                   : null,
             ),
@@ -174,9 +176,9 @@ class StoreDrawer extends ConsumerWidget {
             leading: const Icon(Icons.logout, color: AppColors.danger),
             title: const Text('Đăng xuất', style: TextStyle(color: AppColors.danger, fontFamily: 'BeVietnamPro')),
             onTap: () async {
+              Navigator.of(context).pop(); // Close drawer
+              context.go(AppRoutes.login);
               await ref.read(authNotifierProvider.notifier).signOut();
-              await Future.delayed(const Duration(milliseconds: 300));
-              if (context.mounted) context.go(AppRoutes.login);
             },
           ),
           const SizedBox(height: 24),

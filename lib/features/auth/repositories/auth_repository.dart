@@ -1,5 +1,12 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../models/user_model.dart';
 
 class AuthRepository {
@@ -32,6 +39,97 @@ class AuthRepository {
     );
   }
 
+  // ── Google Sign In ────────────────────────────────────────────────────────
+
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      final googleProvider = GoogleAuthProvider();
+      googleProvider.addScope('email');
+      googleProvider.addScope('profile');
+
+      UserCredential userCredential;
+      if (kIsWeb) {
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        userCredential = await _auth.signInWithProvider(googleProvider);
+      }
+      await _ensureFirestoreUserExists(userCredential.user);
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'web-context-cancelled' ||
+          e.code == 'cancelled' ||
+          e.code == 'user-cancelled' ||
+          e.code == 'canceled') {
+        throw FirebaseAuthException(
+          code: 'cancelled',
+          message: 'Người dùng đã hủy đăng nhập Google',
+        );
+      }
+      rethrow;
+    } catch (e) {
+      throw FirebaseAuthException(
+        code: 'google-sign-in-failed',
+        message: 'Lỗi đăng nhập Google: $e',
+      );
+    }
+  }
+
+  // ── Apple Sign In ─────────────────────────────────────────────────────────
+
+  Future<UserCredential> signInWithApple() async {
+    try {
+      final appleProvider = AppleAuthProvider();
+      appleProvider.addScope('email');
+      appleProvider.addScope('name');
+
+      UserCredential userCredential;
+      if (kIsWeb) {
+        userCredential = await _auth.signInWithPopup(appleProvider);
+      } else {
+        userCredential = await _auth.signInWithProvider(appleProvider);
+      }
+      await _ensureFirestoreUserExists(userCredential.user);
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'web-context-cancelled' ||
+          e.code == 'cancelled' ||
+          e.code == 'user-cancelled' ||
+          e.code == 'canceled') {
+        throw FirebaseAuthException(
+          code: 'cancelled',
+          message: 'Người dùng đã hủy đăng nhập Apple',
+        );
+      }
+      rethrow;
+    } catch (e) {
+      throw FirebaseAuthException(
+        code: 'apple-sign-in-failed',
+        message: 'Lỗi đăng nhập Apple: $e',
+      );
+    }
+  }
+
+  Future<void> _ensureFirestoreUserExists(User? user, {String? fallbackName}) async {
+    if (user == null) return;
+    final doc = await _firestore.collection('users').doc(user.uid).get();
+    if (!doc.exists) {
+      final name = fallbackName ?? (user.displayName != null && user.displayName!.isNotEmpty ? user.displayName! : 'Người dùng');
+      if (user.displayName == null && fallbackName != null) {
+        try {
+          await user.updateDisplayName(fallbackName);
+        } catch (_) {}
+      }
+      final userModel = UserModel(
+        id: user.uid,
+        name: name,
+        email: user.email ?? '',
+        avatarUrl: user.photoURL,
+        createdAt: DateTime.now().toUtc(),
+      );
+      await createUserDocument(userModel);
+    }
+  }
+
   // ── Register ──────────────────────────────────────────────────────────────
 
   Future<UserCredential> createUserWithEmailAndPassword({
@@ -54,12 +152,63 @@ class AuthRepository {
 
   Future<void> updateFirebaseProfile({
     String? displayName,
-    String? photoURL,
   }) async {
-    final user = _auth.currentUser;
-    if (user == null) throw Exception('Không có người dùng đang đăng nhập');
-    await user.updateDisplayName(displayName);
-    if (photoURL != null) await user.updatePhotoURL(photoURL);
+    try {
+      final user = _auth.currentUser;
+      if (user != null && displayName != null && displayName.isNotEmpty) {
+        await user.updateDisplayName(displayName);
+      }
+    } catch (_) {
+      // Ignored: Non-fatal Firebase Auth profile cache error
+    }
+  }
+
+  Future<void> updateUserProfile({
+    required String uid,
+    required String name,
+    String? phone,
+    DateTime? birthday,
+    String? currentStoreId,
+  }) async {
+    final updateData = <String, dynamic>{
+      'name': name.trim(),
+    };
+    if (phone != null) updateData['phone'] = phone.trim();
+    if (birthday != null) {
+      updateData['birthday'] = birthday.toIso8601String();
+    }
+
+    // 1. Update main Firestore user doc
+    await updateUserDocument(uid: uid, data: updateData);
+
+    // 2. Best-effort update Firebase Auth display name (never throws)
+    await updateFirebaseProfile(displayName: name.trim());
+
+    // 3. Sync name, phone, birthday to store members subcollections
+    try {
+      final userDoc = await getUserDocument(uid);
+      final storeIds = <String>{};
+      if (currentStoreId != null && currentStoreId.isNotEmpty) {
+        storeIds.add(currentStoreId);
+      }
+      if (userDoc != null) {
+        if (userDoc.currentStoreId != null && userDoc.currentStoreId!.isNotEmpty) {
+          storeIds.add(userDoc.currentStoreId!);
+        }
+        storeIds.addAll(userDoc.storeIds);
+      }
+
+      for (final sId in storeIds) {
+        final memberRef = _firestore.collection('stores').doc(sId).collection('members').doc(uid);
+        final mDoc = await memberRef.get();
+        if (mDoc.exists) {
+          final memberUpdate = <String, dynamic>{'name': name.trim()};
+          if (phone != null) memberUpdate['phone'] = phone.trim();
+          if (birthday != null) memberUpdate['birthday'] = birthday.toIso8601String();
+          await memberRef.update(memberUpdate);
+        }
+      }
+    } catch (_) {}
   }
 
   // ── Firestore User Doc ────────────────────────────────────────────────────

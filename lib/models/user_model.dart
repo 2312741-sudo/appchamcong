@@ -6,6 +6,7 @@ class UserModel extends Equatable {
   final String email;
   final String? phone;
   final String? avatarUrl;
+  final DateTime? birthday;
   final String? currentStoreId;
   final List<String> storeIds;
   final DateTime createdAt;
@@ -18,18 +19,27 @@ class UserModel extends Equatable {
     required this.email,
     this.phone,
     this.avatarUrl,
+    this.birthday,
     this.currentStoreId,
     this.storeIds = const [],
     required this.createdAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, [String? docId]) {
+    DateTime? parsedBirthday;
+    if (json['birthday'] != null) {
+      try {
+        parsedBirthday = DateTime.parse(json['birthday'].toString());
+      } catch (_) {}
+    }
+
     return UserModel(
       id: docId ?? json['id'] ?? '',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       phone: json['phone'],
       avatarUrl: json['avatarUrl'],
+      birthday: parsedBirthday,
       currentStoreId: json['currentStoreId'],
       storeIds: List<String>.from(json['storeIds'] ?? []),
       createdAt: json['createdAt'] != null 
@@ -45,6 +55,7 @@ class UserModel extends Equatable {
       'email': email,
       'phone': phone,
       'avatarUrl': avatarUrl,
+      if (birthday != null) 'birthday': birthday!.toIso8601String(),
       'currentStoreId': currentStoreId,
       'storeIds': storeIds,
       'createdAt': createdAt.toIso8601String(),
@@ -62,6 +73,7 @@ class UserModel extends Equatable {
     String? email,
     String? phone,
     String? avatarUrl,
+    DateTime? birthday,
     String? currentStoreId,
     List<String>? storeIds,
     DateTime? createdAt,
@@ -72,6 +84,7 @@ class UserModel extends Equatable {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      birthday: birthday ?? this.birthday,
       currentStoreId: currentStoreId ?? this.currentStoreId,
       storeIds: storeIds ?? this.storeIds,
       createdAt: createdAt ?? this.createdAt,
@@ -85,6 +98,7 @@ class UserModel extends Equatable {
         email,
         phone,
         avatarUrl,
+        birthday,
         currentStoreId,
         storeIds,
         createdAt,

@@ -12,6 +12,7 @@ void main() {
       expect(AppNotificationTypeExtension.fromString('schedule_registration_reminder'), equals(AppNotificationType.scheduleRegistrationReminder));
       expect(AppNotificationTypeExtension.fromString('checklist_reminder'), equals(AppNotificationType.checklistReminder));
       expect(AppNotificationTypeExtension.fromString('delivery_update'), equals(AppNotificationType.deliveryUpdate));
+      expect(AppNotificationTypeExtension.fromString('birthday'), equals(AppNotificationType.birthday));
       expect(AppNotificationTypeExtension.fromString('general'), equals(AppNotificationType.general));
       expect(AppNotificationTypeExtension.fromString('unknown'), equals(AppNotificationType.general));
 
@@ -22,6 +23,7 @@ void main() {
       expect(AppNotificationType.scheduleRegistrationReminder.value, equals('schedule_registration_reminder'));
       expect(AppNotificationType.checklistReminder.value, equals('checklist_reminder'));
       expect(AppNotificationType.deliveryUpdate.value, equals('delivery_update'));
+      expect(AppNotificationType.birthday.value, equals('birthday'));
       expect(AppNotificationType.general.value, equals('general'));
     });
 
@@ -142,6 +144,27 @@ void main() {
       // Chỉ nhân viên xin ứng nhận được kết quả duyệt
       expect(advanceApprove.isRelevantFor('user_emp_1', UserRole.employee), isTrue);
       expect(advanceApprove.isRelevantFor('user_emp_2', UserRole.employee), isFalse);
+    });
+
+    test('Birthday notifications are broadcast to everyone in the store (Owner, Managers, Employees)', () {
+      final birthdayNotif = AppNotificationModel(
+        id: 'birthday_u1_2026_8_17',
+        storeId: 'store_1',
+        title: '🎂 Hôm nay là sinh nhật của Nguyễn Văn A!',
+        body: 'Cả cửa hàng hãy cùng gửi những lời chúc mừng tốt đẹp nhất đến Nguyễn Văn A nhân ngày sinh nhật hôm nay nhé! 🎉🎈',
+        type: AppNotificationType.birthday,
+        createdAt: DateTime(2026, 8, 17),
+        targetUserId: null,
+        targetRoles: null, // Broadcast to all in store
+      );
+
+      // Verify that all roles in the store receive the birthday notification
+      expect(birthdayNotif.isRelevantFor('u_owner', UserRole.owner), isTrue);
+      expect(birthdayNotif.isRelevantFor('u_mgr1', UserRole.manager1), isTrue);
+      expect(birthdayNotif.isRelevantFor('u_mgr2', UserRole.manager2), isTrue);
+      expect(birthdayNotif.isRelevantFor('u_legacy', UserRole.legacyManager), isTrue);
+      expect(birthdayNotif.isRelevantFor('u_emp1', UserRole.employee), isTrue);
+      expect(birthdayNotif.isRelevantFor('u1', UserRole.employee), isTrue);
     });
   });
 }

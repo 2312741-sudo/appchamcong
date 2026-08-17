@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/auth/app_permissions.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../../core/utils/export_utils.dart';
 import '../../../core/utils/department_utils.dart';
 import '../../../models/member_model.dart';
@@ -1184,10 +1185,11 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (member.hasAvatar) {
+    final avatarProvider = getAvatarImageProvider(member.avatarUrl);
+    if (avatarProvider != null) {
       return CircleAvatar(
         radius: size / 2,
-        backgroundImage: NetworkImage(member.avatarUrl!),
+        backgroundImage: avatarProvider,
       );
     }
     return CircleAvatar(

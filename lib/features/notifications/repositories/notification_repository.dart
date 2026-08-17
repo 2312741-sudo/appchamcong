@@ -133,4 +133,69 @@ class NotificationRepository {
       }
     } catch (_) {}
   }
+
+  /// Check and generate birthday notifications for any member of the store (including Owner, Managers, Employees)
+  Future<void> checkAndGenerateBirthdayNotifications(String storeId) async {
+    if (storeId.isEmpty) return;
+    try {
+      final now = DateTime.now();
+      final membersSnap = await _firestore
+          .collection('stores')
+          .doc(storeId)
+          .collection('members')
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      final activeMembers = membersSnap.docs.map((d) => MemberModel.fromFirestore(d)).toList();
+
+      for (final member in activeMembers) {
+        DateTime? birthday = member.birthday;
+
+        // If birthday is not in member doc, lookup user document
+        if (birthday == null) {
+          try {
+            final userDoc = await _firestore.collection('users').doc(member.userId).get();
+            if (userDoc.exists && userDoc.data() != null) {
+              final bStr = userDoc.data()!['birthday'];
+              if (bStr != null) {
+                birthday = DateTime.tryParse(bStr.toString());
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (birthday != null && birthday.day == now.day && birthday.month == now.month) {
+          final birthdayKey = 'birthday_${member.userId}_${now.year}_${now.month}_${now.day}';
+
+          final existing = await _notificationsRef(storeId)
+              .where('routeExtra.birthdayKey', isEqualTo: birthdayKey)
+              .limit(1)
+              .get();
+
+          if (existing.docs.isEmpty) {
+            await sendNotification(
+              storeId,
+              AppNotificationModel(
+                id: '',
+                storeId: storeId,
+                title: '🎂 Hôm nay là sinh nhật của ${member.name}!',
+                body: 'Cả cửa hàng hãy cùng gửi những lời chúc mừng tốt đẹp nhất đến ${member.name} (${member.role.label}) nhân ngày sinh nhật hôm nay nhé! 🎉🎈',
+                type: AppNotificationType.birthday,
+                createdAt: DateTime.now(),
+                targetRoles: null, // Broadcast to all roles in store (Owner, Managers, Employees)
+                targetUserId: null,
+                routePath: null,
+                routeExtra: {
+                  'birthdayKey': birthdayKey,
+                  'memberId': member.userId,
+                  'memberName': member.name,
+                  'memberRole': member.role.label,
+                },
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+  }
 }

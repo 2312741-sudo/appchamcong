@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 
@@ -167,8 +168,8 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                     CircleAvatar(
                       radius: 32,
                       backgroundColor: AppColors.primary.withOpacity(0.1),
-                      backgroundImage: member.hasAvatar ? NetworkImage(member.avatarUrl!) : null,
-                      child: !member.hasAvatar
+                      backgroundImage: getAvatarImageProvider(member.avatarUrl),
+                      child: getAvatarImageProvider(member.avatarUrl) == null
                           ? Text(member.initials, style: const TextStyle(fontSize: 24, color: AppColors.primary))
                           : null,
                     ),

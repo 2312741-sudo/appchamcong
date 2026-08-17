@@ -53,6 +53,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    final success = await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    if (success) {
+      context.go(AppRoutes.splash);
+    } else {
+      final error = ref.read(authNotifierProvider).errorMessage;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    final success = await ref.read(authNotifierProvider.notifier).signInWithApple();
+    if (!mounted) return;
+    if (success) {
+      context.go(AppRoutes.splash);
+    } else {
+      final error = ref.read(authNotifierProvider).errorMessage;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _showForgotPassword() {
     final emailController = TextEditingController(text: _emailController.text);
     showDialog(
@@ -242,6 +280,110 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ElevatedButton(
                     onPressed: authState.isLoading ? null : _handleLogin,
                     child: const Text(AppStrings.login),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── Divider ───────────────────────────────────────────
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: AppColors.border)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Hoặc tiếp tục với',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ),
+                      const Expanded(child: Divider(color: AppColors.border)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ── Social Buttons ────────────────────────────────────
+                  Row(
+                    children: [
+                      // Google Sign In Button
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: authState.isLoading ? null : _handleGoogleSignIn,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xFFE0E0E0)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'G',
+                                    style: TextStyle(
+                                      color: const Color(0xFF4285F4),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      fontFamily: 'BeVietnamPro',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Google',
+                                style: TextStyle(
+                                  color: Color(0xFF333333),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Apple Sign In Button
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: authState.isLoading ? null : _handleAppleSignIn,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.apple, size: 22, color: Colors.white),
+                              SizedBox(width: 6),
+                              Text(
+                                'Apple',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 24),

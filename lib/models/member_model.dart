@@ -192,6 +192,7 @@ class MemberModel extends Equatable {
   final DateTime joinedAt;
   final String? employeeCode;
   final String? department; // Department ID (from store.departments)
+  final DateTime? birthday;
 
   const MemberModel({
     required this.userId,
@@ -207,6 +208,7 @@ class MemberModel extends Equatable {
     required this.joinedAt,
     this.employeeCode,
     this.department,
+    this.birthday,
   });
 
   // Convenience getters
@@ -231,6 +233,13 @@ class MemberModel extends Equatable {
   }
 
   factory MemberModel.fromJson(Map<String, dynamic> json, String userId) {
+    DateTime? parsedBirthday;
+    if (json['birthday'] is Timestamp) {
+      parsedBirthday = (json['birthday'] as Timestamp).toDate();
+    } else if (json['birthday'] != null) {
+      parsedBirthday = DateTime.tryParse(json['birthday'].toString());
+    }
+
     return MemberModel(
       userId: userId,
       name: json['name'] as String? ?? '',
@@ -251,6 +260,7 @@ class MemberModel extends Equatable {
               DateTime.now().toUtc(),
       employeeCode: json['employeeCode'] as String?,
       department: json['department'] as String?,
+      birthday: parsedBirthday,
     );
   }
 
@@ -274,6 +284,7 @@ class MemberModel extends Equatable {
       'joinedAt': Timestamp.fromDate(joinedAt),
       'employeeCode': employeeCode,
       'department': department,
+      if (birthday != null) 'birthday': birthday!.toIso8601String(),
     };
   }
 
@@ -291,9 +302,11 @@ class MemberModel extends Equatable {
     DateTime? joinedAt,
     String? employeeCode,
     String? department,
+    DateTime? birthday,
     bool clearPhone = false,
     bool clearAvatarUrl = false,
     bool clearDepartment = false,
+    bool clearBirthday = false,
   }) {
     return MemberModel(
       userId: userId ?? this.userId,
@@ -310,6 +323,7 @@ class MemberModel extends Equatable {
       joinedAt: joinedAt ?? this.joinedAt,
       employeeCode: employeeCode ?? this.employeeCode,
       department: clearDepartment ? null : (department ?? this.department),
+      birthday: clearBirthday ? null : (birthday ?? this.birthday),
     );
   }
 
@@ -328,6 +342,7 @@ class MemberModel extends Equatable {
         joinedAt,
         employeeCode,
         department,
+        birthday,
       ];
 
   @override
