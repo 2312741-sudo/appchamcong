@@ -40,7 +40,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập camera để quét mã QR tham gia cửa hàng và xác thực chấm công.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện.</string>
+	<string>Ứng dụng cần quyền truy cập thư viện ảnh để chọn và quét mã QR tham gia cửa hàng hoặc chấm công.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Ứng dụng cần quyền lưu ảnh vào thư viện để tải về mã QR cửa hàng.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
