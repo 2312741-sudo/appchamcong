@@ -731,6 +731,7 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
     final isDone = attendance != null && !attendance!.isActive;
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -744,7 +745,7 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
@@ -784,27 +785,34 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
                           : isDone
                               ? 'Đã hoàn thành ca hôm nay'
                               : 'Chưa chấm công hôm nay',
-                      style: GoogleFonts.beVietnamPro(
+                      style: const TextStyle(
+                        fontFamily: 'BeVietnamPro',
                         fontWeight: FontWeight.w700,
                         fontSize: 14.5,
-                        color: const Color(0xFF1A1A1A),
+                        color: Color(0xFF1A1A1A),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       isActive
                           ? 'Vào ca lúc ${DateFormat('HH:mm').format(attendance!.checkIn)}'
                           : isDone && attendance?.checkOut != null
-                              ? 'Tổng giờ: ${(attendance!.totalHours ?? 0).toStringAsFixed(1)}h (${DateFormat('HH:mm').format(attendance!.checkIn)} - ${DateFormat('HH:mm').format(attendance!.checkOut!)})'
-                              : 'Chạm để chấm vào ca làm việc của bạn',
-                      style: GoogleFonts.beVietnamPro(
+                              ? 'Tổng: ${(attendance!.totalHours ?? 0).toStringAsFixed(1)}h (${DateFormat('HH:mm').format(attendance!.checkIn)} - ${DateFormat('HH:mm').format(attendance!.checkOut!)})'
+                              : 'Chạm để chấm vào ca làm việc',
+                      style: const TextStyle(
+                        fontFamily: 'BeVietnamPro',
                         fontSize: 12,
                         color: Colors.grey,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => context.push(AppRoutes.checkIn),
                 icon: Icon(
@@ -813,7 +821,8 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
                 ),
                 label: Text(
                   isActive ? 'Ra ca' : 'Chấm công',
-                  style: GoogleFonts.beVietnamPro(
+                  style: const TextStyle(
+                    fontFamily: 'BeVietnamPro',
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
                   ),
@@ -824,7 +833,7 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
                       : const Color(0xFFC8102E),
                   foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
