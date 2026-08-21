@@ -26,8 +26,13 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
+use_modular_headers!
+
 target 'Runner' do
-  use_frameworks! :linkage => :static
+  pod 'gRPC-Core', :modular_headers => false
+  pod 'gRPC-C++', :modular_headers => false
+  pod 'BoringSSL-GRPC', :modular_headers => false
+  pod 'abseil', :modular_headers => false
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
@@ -41,5 +46,18 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
     end
+  end
+  installer.aggregate_targets.each do |target|
+    target.user_project.native_targets.each do |native_target|
+      native_target.build_configurations.each do |config|
+        flags = config.build_settings['OTHER_LDFLAGS']
+        flags = [flags] if flags.is_a?(String)
+        flags ||= ['$(inherited)']
+        flags.delete('-Wl,-allow_multiple_definition')
+        flags << '-Wl,-ld_classic' unless flags.include?('-Wl,-ld_classic')
+        config.build_settings['OTHER_LDFLAGS'] = flags
+      end
+    end
+    target.user_project.save
   end
 end
