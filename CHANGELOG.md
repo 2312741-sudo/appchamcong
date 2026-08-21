@@ -6,6 +6,32 @@ Tất cả các thay đổi đáng chú ý của dự án **Chấm Công Trạm*
 
 ---
 
+## [1.0.3] - 22/08/2026
+
+### 🚀 Tính Năng Mới & Nâng Cấp Vận Hành
+- **Sắp xếp thứ tự nhân viên tùy chỉnh (Drag & Drop):**
+  - Hỗ trợ kéo-thả (ReorderableListView) để sắp xếp thứ tự hiển thị nhân viên tùy ý trong danh sách thành viên và bảng lịch làm việc.
+  - Thứ tự được đồng bộ tức thì lên đám mây (`stores/{storeId}.memberOrder`) và áp dụng nhất quán trên cả Web và Mobile.
+  - **Phân quyền:** Chỉ Chủ cửa hàng (Owner) mới có quyền kéo-thả đổi thứ tự; các vai trò khác (Quản lý 1, Quản lý 2, Nhân viên) chỉ xem theo thứ tự Chủ đã xếp.
+- **Ẩn lịch nhân viên tùy chọn trong tab Lịch cửa hàng:**
+  - Bổ sung nút chuyển đổi nhanh (👁️ Hiện / 🙈 Ẩn lịch) trên màn hình Lịch làm việc và chi tiết thành viên.
+  - Nhân viên bị ẩn lịch sẽ chỉ hiển thị với Chủ quán (có nhãn 🙈 `Ẩn`) và bản thân nhân viên đó (trên tab lịch cá nhân). Các Quản lý và Nhân viên khác hoàn toàn không nhìn thấy.
+- **Quản lý & Sắp xếp danh mục Checklist sản xuất:**
+  - Màn hình quản lý checklist sản xuất mới (`ProductionTasksScreen`) hỗ trợ tạo mới, chỉnh sửa, bật/tắt và kéo sắp xếp thứ tự đầu việc checklist.
+  - **Phân quyền:** Chỉ Chủ quán mới được chỉnh sửa/sắp xếp; nhân viên và quản lý chỉ xem theo thứ tự được chỉ định.
+- **Bổ sung chức năng Chấm công cho tài khoản Chủ quán (Owner):**
+  - Thẻ trạng thái chấm công cá nhân trực quan ngay trên trang Tổng quan (`_OwnerHomeTab`) với thông tin giờ vào ca và thời lượng làm việc real-time.
+  - Nút nổi Chấm công (Floating Action Button) màu đỏ tiện lợi giúp Chủ quán chấm công tức thì bằng WiFi, GPS hoặc QR Code.
+  - Lối tắt truy cập nhanh: Chấm công, Lịch sử công của tôi, Lịch làm cá nhân & Đăng ký ca, Bảng lương & Tạm ứng cá nhân.
+  - Giờ công của Chủ quán được tích hợp đầy đủ vào Bảng công và file xuất báo cáo Excel.
+
+### ⚡ Tối Ưu Hóa & Tương Thích
+- **Nâng cấp SDK & Dependencies:** Cập nhật `sign_in_with_apple: ^6.1.3` và `mobile_scanner: ^6.0.11` tương thích hoàn toàn với Flutter Dart 3.6 SDK.
+- **Kiểm thử tự động:** Vượt qua toàn bộ 55/55 test suites (`flutter test`).
+- **Mã phiên bản (Version):** Nâng cấp lên `1.0.3` (Build `4`).
+
+---
+
 ## [1.0.2] - 22/08/2026
 
 ### 🚀 Tính Năng Mới & Nâng Cấp Quản Trị
