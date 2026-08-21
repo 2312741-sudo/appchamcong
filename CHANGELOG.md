@@ -6,54 +6,40 @@ Tất cả các thay đổi đáng chú ý của dự án **Chấm Công Trạm*
 
 ---
 
-## [1.0.3] - 22/08/2026
+## [1.0.2] - 22/08/2026 (Build 4)
 
 ### 🚀 Tính Năng Mới & Nâng Cấp Vận Hành
 - **Sắp xếp thứ tự nhân viên tùy chỉnh (Drag & Drop):**
   - Hỗ trợ kéo-thả (ReorderableListView) để sắp xếp thứ tự hiển thị nhân viên tùy ý trong danh sách thành viên và bảng lịch làm việc.
   - Thứ tự được đồng bộ tức thì lên đám mây (`stores/{storeId}.memberOrder`) và áp dụng nhất quán trên cả Web và Mobile.
-  - **Phân quyền:** Chỉ Chủ cửa hàng (Owner) mới có quyền kéo-thả đổi thứ tự; các vai trò khác (Quản lý 1, Quản lý 2, Nhân viên) chỉ xem theo thứ tự Chủ đã xếp.
+  - **Phân quyền:** Chỉ Chủ cửa hàng (Owner) mới có quyền kéo-thả đổi thứ tự; các vai trò khác chỉ xem theo thứ tự Chủ đã xếp.
 - **Đồng bộ thứ tự sắp xếp nhân viên trong tất cả file xuất Excel:**
-  - **Lịch làm việc tuần (`exportWeeklyScheduleToExcel`):** Thứ tự danh sách nhân viên trong bảng Excel được xuất ra chính xác 100% theo đúng thứ tự tùy chỉnh của Chủ quán.
+  - **Lịch làm việc tuần (`exportWeeklyScheduleToExcel`):** Thứ tự danh sách nhân viên trong bảng Excel được xuất ra chính xác 100% theo đúng thứ tự tùy chỉnh của Chủ quán (`memberOrder`).
   - **Bảng công tháng (`exportMonthlyAttendance`):** Các hàng nhân viên tự động sắp xếp theo thứ tự `memberOrder`.
-  - **Báo cáo lương tháng (`exportMonthlySalary`):** Các dòng tính lương đồng bộ sắp xếp theo thứ tự Chủ quán đã thiết lập.
+  - **Báo cáo lương tháng (`exportMonthlySalary`):** Các dòng tính lương đồng bộ sắp xếp theo thứ tự `memberOrder`.
 - **Ẩn lịch nhân viên tùy chọn trong tab Lịch cửa hàng:**
   - Bổ sung nút chuyển đổi nhanh (👁️ Hiện / 🙈 Ẩn lịch) trên màn hình Lịch làm việc và chi tiết thành viên.
-  - Nhân viên bị ẩn lịch sẽ chỉ hiển thị với Chủ quán (có nhãn 🙈 `Ẩn`) và bản thân nhân viên đó (trên tab lịch cá nhân). Các Quản lý và Nhân viên khác hoàn toàn không nhìn thấy.
+  - Nhân viên bị ẩn lịch sẽ chỉ hiển thị với Chủ quán (có nhãn 🙈 `Ẩn`) và bản thân nhân viên đó (trên tab lịch cá nhân).
 - **Quản lý & Sắp xếp danh mục Checklist sản xuất:**
   - Màn hình quản lý checklist sản xuất mới (`ProductionTasksScreen`) hỗ trợ tạo mới, chỉnh sửa, bật/tắt và kéo sắp xếp thứ tự đầu việc checklist.
-  - **Phân quyền:** Chỉ Chủ quán mới được chỉnh sửa/sắp xếp; nhân viên và quản lý chỉ xem theo thứ tự được chỉ định.
 - **Bổ sung chức năng Chấm công cho tài khoản Chủ quán (Owner):**
   - Thẻ trạng thái chấm công cá nhân trực quan ngay trên trang Tổng quan (`_OwnerHomeTab`) với thông tin giờ vào ca và thời lượng làm việc real-time.
   - Nút nổi Chấm công (Floating Action Button) màu đỏ tiện lợi giúp Chủ quán chấm công tức thì bằng WiFi, GPS hoặc QR Code.
   - Lối tắt truy cập nhanh: Chấm công, Lịch sử công của tôi, Lịch làm cá nhân & Đăng ký ca, Bảng lương & Tạm ứng cá nhân.
-  - Giờ công của Chủ quán được tích hợp đầy đủ vào Bảng công và file xuất báo cáo Excel.
+- **Xóa cửa hàng bảo mật 2 lớp (Dành riêng cho Chủ):** Bổ sung tính năng Xóa cửa hàng tại trang Cài đặt với quy trình xác nhận 2 bước an toàn (cảnh báo + nhập tên cửa hàng hoặc từ khóa "XÓA").
+- **Tự động nhận diện tên Wi-Fi (SSID):** Nâng cấp bộ công cụ `LocationUtils` tự động kích hoạt quyền vị trí và lấy tên Wi-Fi thực tế của quán.
 
 ### ⚡ Sửa Lỗi & Tối Ưu Hóa (Bug Fixes & Improvements)
 - **Vá lỗi mất dữ liệu Lịch làm việc khi đồng bộ (Critical Bug Fix):**
   - Sửa hàm `saveUserSchedule` sử dụng Firestore dot-notation (`shifts.$userId`) để cập nhật nguyên tử (atomic) đúng slot của từng nhân viên mà không ghi đè hoặc làm mất lịch của nhân viên khác.
-  - Thêm type check an toàn và cơ chế fallback trong `ScheduleModel.fromFirestore` và `DaySchedule.fromJson` để xử lý dữ liệu trả về từ Firestore Web & Mobile.
+  - Thêm type check an toàn và cơ chế fallback trong `ScheduleModel.fromFirestore` và `DaySchedule.fromJson`.
 - **Khắc phục lỗi hiển thị Thẻ chấm công của Chủ quán:**
   - Sửa lỗi co hẹp chiều ngang khiến chữ bị nhảy dòng thành cột dọc ("C-h-ư-a...") bằng cách bổ sung `width: double.infinity` và `CrossAxisAlignment.stretch`.
-- **Nâng cấp SDK & Dependencies:** Cập nhật `sign_in_with_apple: ^6.1.3` và `mobile_scanner: ^6.0.11` tương thích hoàn toàn với Flutter Dart 3.6 SDK.
+- **Khắc phục lỗi kích thành viên:** Khi bị kích khỏi 1 cửa hàng, nếu người dùng vẫn thuộc cửa hàng khác, ứng dụng sẽ tự động chuyển sang cửa hàng hợp lệ kế tiếp.
+- **Đồng bộ danh sách cửa hàng Real-time:** Chuyển đổi `userStoresProvider` sang `StreamProvider` kết hợp theo dõi `currentUserProvider`.
+- **Tương thích Native iOS:** Cấu hình CocoaPods chuẩn `use_frameworks! :linkage => :static` tương thích hoàn toàn với Firebase C++ và Apple Clang Linker.
 - **Kiểm thử tự động:** Vượt qua toàn bộ 55/55 test suites (`flutter test`).
-- **Mã phiên bản (Version):** `1.0.3` (Build `4`).
-
----
-
-## [1.0.2] - 22/08/2026
-
-### 🚀 Tính Năng Mới & Nâng Cấp Quản Trị
-- **Xóa cửa hàng bảo mật 2 lớp (Dành riêng cho Chủ):** Bổ sung tính năng Xóa cửa hàng tại trang Cài đặt với quy trình xác nhận 2 bước an toàn (cảnh báo + nhập tên cửa hàng hoặc từ khóa "XÓA"). Cơ chế soft-delete tự động dọn dẹp liên kết cửa hàng cho tất cả thành viên và gửi thông báo nội bộ.
-- **Tự động nhận diện tên Wi-Fi (SSID):** Nâng cấp bộ công cụ `LocationUtils` tự động kích hoạt quyền vị trí và lấy tên Wi-Fi thực tế của quán, điền tự động khi thiết lập chấm công qua mạng.
-- **Tích hợp Apple Capability:** Bổ sung quyền `Access WiFi Information` (`com.apple.developer.networking.wifi-info`) vào `Runner.entitlements`.
-
-### ⚡ Sửa Lỗi & Tối Ưu Hóa (Bug Fixes & Improvements)
-- **Khắc phục lỗi kích thành viên:** Khi bị kích khỏi 1 cửa hàng, nếu người dùng vẫn thuộc cửa hàng khác, ứng dụng sẽ tự động chuyển sang cửa hàng hợp lệ kế tiếp và vào thẳng Dashboard, loại bỏ hoàn toàn lỗi văng nhầm ra màn hình "Tham gia cửa hàng".
-- **Đồng bộ danh sách cửa hàng Real-time:** Chuyển đổi `userStoresProvider` sang `StreamProvider` kết hợp theo dõi `currentUserProvider`. Danh sách cửa hàng cập nhật tức thì theo thời gian thực khi có thay đổi nhân sự.
-- **Tự làm sạch dữ liệu (Self-heal):** Tự động lọc bỏ và gỡ các cửa hàng đã bị xóa hoặc không hợp lệ khỏi hồ sơ người dùng.
-- **Kiểm thử tự động:** Bổ sung bộ kiểm thử `test/store_kick_and_delete_test.dart`, hoàn thành 100% (55/55 test cases đạt chuẩn).
-- **Mã phiên bản (Version):** Nâng cấp lên `1.0.2` (Build `3`) chuẩn bị phát hành trên App Store.
+- **Mã phiên bản (Version):** `1.0.2` (Build `4`).
 
 ---
 
