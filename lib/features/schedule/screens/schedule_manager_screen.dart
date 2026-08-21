@@ -88,12 +88,15 @@ class _ScheduleManagerScreenState
 
   void _loadDraft(ScheduleModel? schedule, List<MemberModel> members) {
     if (_loadedWeekStart == _currentWeek && _hasUnsavedEdits) return;
-    _draft.clear();
-    for (final m in members) {
-      _draft[m.userId] = schedule?.getScheduleForUser(m.userId) ??
-          DaySchedule.allOff();
-    }
-    _loadedWeekStart = _currentWeek;
+    // Must call setState so UI rebuilds when stream emits updated data from web/other source
+    setState(() {
+      _draft.clear();
+      for (final m in members) {
+        _draft[m.userId] = schedule?.getScheduleForUser(m.userId) ??
+            DaySchedule.allOff();
+      }
+      _loadedWeekStart = _currentWeek;
+    });
   }
 
   void _setShift(String userId, int dayIndex, List<String> shifts) {
@@ -606,7 +609,10 @@ class _ScheduleManagerScreenState
       // Only skip reload if we're on the same week AND user has unsaved local edits.
       // This ensures data saved on web is reflected once the Firestore stream emits.
       if (_loadedWeekStart != _currentWeek || !_hasUnsavedEdits) {
-        _loadDraft(schedule, members);
+        // Defer setState to after build to avoid "setState during build" assertion
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadDraft(schedule, members);
+        });
       }
     });
 

@@ -85,20 +85,23 @@ class _ScheduleRegisterScreenState
   }
 
   void _loadDraftFromSchedule(DaySchedule? schedule) {
-    _draft.clear();
-    if (schedule == null) {
-      for (int i = 0; i < 7; i++) {
-        _draft[i] = [];
+    // Must call setState so widget rebuilds when stream emits updated Firestore data
+    setState(() {
+      _draft.clear();
+      if (schedule == null) {
+        for (int i = 0; i < 7; i++) {
+          _draft[i] = [];
+        }
+        return;
       }
-      return;
-    }
-    _draft[0] = List.from(schedule.monday);
-    _draft[1] = List.from(schedule.tuesday);
-    _draft[2] = List.from(schedule.wednesday);
-    _draft[3] = List.from(schedule.thursday);
-    _draft[4] = List.from(schedule.friday);
-    _draft[5] = List.from(schedule.saturday);
-    _draft[6] = List.from(schedule.sunday);
+      _draft[0] = List.from(schedule.monday);
+      _draft[1] = List.from(schedule.tuesday);
+      _draft[2] = List.from(schedule.wednesday);
+      _draft[3] = List.from(schedule.thursday);
+      _draft[4] = List.from(schedule.friday);
+      _draft[5] = List.from(schedule.saturday);
+      _draft[6] = List.from(schedule.sunday);
+    });
   }
 
   DaySchedule _buildDaySchedule() {
@@ -267,7 +270,10 @@ class _ScheduleRegisterScreenState
       final userSchedule = uid != null ? schedule?.getScheduleForUser(uid) : null;
       // Reload draft when week changes OR when no unsaved edits (stream update from web)
       if (_loadedWeekStart != _currentWeek || !_hasUnsavedEdits) {
-        _loadDraftFromSchedule(userSchedule);
+        // Defer to post-frame to avoid setState during build()
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadDraftFromSchedule(userSchedule);
+        });
         _loadedWeekStart = _currentWeek;
       }
     });
