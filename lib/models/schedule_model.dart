@@ -89,7 +89,8 @@ class DaySchedule {
     return [];
   }
 
-  factory DaySchedule.fromJson(Map<String, dynamic> json) {
+  factory DaySchedule.fromJson(dynamic json) {
+    if (json == null || json is! Map) return const DaySchedule();
     return DaySchedule(
       monday: _parseList(json['monday']),
       tuesday: _parseList(json['tuesday']),
@@ -166,12 +167,14 @@ class ScheduleModel extends Equatable {
   });
 
   factory ScheduleModel.fromJson(Map<String, dynamic> json, String id) {
-    final shiftsData = json['shifts'] as Map<String, dynamic>? ?? {};
+    final shiftsData = json['shifts'];
     final parsedShifts = <String, DaySchedule>{};
-    for (final entry in shiftsData.entries) {
-      if (entry.value is Map<String, dynamic>) {
-        parsedShifts[entry.key] =
-            DaySchedule.fromJson(entry.value as Map<String, dynamic>);
+    if (shiftsData is Map) {
+      for (final entry in shiftsData.entries) {
+        final key = entry.key.toString();
+        if (entry.value != null) {
+          parsedShifts[key] = DaySchedule.fromJson(entry.value);
+        }
       }
     }
     return ScheduleModel(
@@ -183,7 +186,16 @@ class ScheduleModel extends Equatable {
   }
 
   factory ScheduleModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final rawData = doc.data();
+    if (rawData == null || rawData is! Map) {
+      return ScheduleModel(
+        id: doc.id,
+        storeId: '',
+        weekStart: doc.id,
+        shifts: const {},
+      );
+    }
+    final data = Map<String, dynamic>.from(rawData);
     return ScheduleModel.fromJson(data, doc.id);
   }
 

@@ -55,10 +55,14 @@ class ScheduleRepository {
     try {
       final ref = _schedules(storeId).doc(weekStart);
       final now = Timestamp.now();
+      // Use dot-notation key 'shifts.$userId' to update ONLY this user's entry
+      // without overwriting other users' schedules in the same document.
+      // SetOptions(merge: true) merges at top-level fields, so we must use
+      // the nested dot-path as the key to perform a true partial update.
       await ref.set({
         'storeId': storeId,
         'weekStart': weekStart,
-        'shifts': {userId: schedule.toJson()},
+        'shifts.$userId': schedule.toJson(),
         'updatedAt': now,
       }, SetOptions(merge: true));
 
