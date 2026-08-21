@@ -114,8 +114,20 @@ class ExcelExportService {
         cell.cellStyle = headerStyle;
       }
 
-      for (int r = 0; r < members.length; r++) {
-        final member = members[r];
+      final sortedMembers = List<MemberModel>.from(members);
+      if (store.memberOrder.isNotEmpty) {
+        sortedMembers.sort((a, b) {
+          final idxA = store.memberOrder.indexOf(a.userId);
+          final idxB = store.memberOrder.indexOf(b.userId);
+          if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+          if (idxA != -1) return -1;
+          if (idxB != -1) return 1;
+          return a.name.compareTo(b.name);
+        });
+      }
+
+      for (int r = 0; r < sortedMembers.length; r++) {
+        final member = sortedMembers[r];
         final memberAtts = attendances.where((a) => a.userId == member.userId).toList();
         double totalHours = 0;
         
@@ -205,6 +217,7 @@ class ExcelExportService {
     required String themeColorHex,
     required List<Map<String, dynamic>> computedSalaries,
     required String suffix,
+    List<String> memberOrder = const [],
     String? memberName,
     BuildContext? context,
   }) async {
@@ -246,8 +259,22 @@ class ExcelExportService {
         cell.cellStyle = headerStyle;
       }
 
-      for (int r = 0; r < computedSalaries.length; r++) {
-        final data = computedSalaries[r];
+      final sortedSalaries = List<Map<String, dynamic>>.from(computedSalaries);
+      if (memberOrder.isNotEmpty) {
+        sortedSalaries.sort((a, b) {
+          final uidA = a['userId']?.toString() ?? '';
+          final uidB = b['userId']?.toString() ?? '';
+          final idxA = memberOrder.indexOf(uidA);
+          final idxB = memberOrder.indexOf(uidB);
+          if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+          if (idxA != -1) return -1;
+          if (idxB != -1) return 1;
+          return (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? '');
+        });
+      }
+
+      for (int r = 0; r < sortedSalaries.length; r++) {
+        final data = sortedSalaries[r];
         final rowIdx = r + 1;
         
         // Text columns

@@ -224,9 +224,21 @@ class ExportUtils {
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 29, rowIndex: 1)).cellStyle = headerStyle;
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 29, rowIndex: 2)).cellStyle = headerStyle;
 
-      // ── Row 3+: Data Rows ────────────────────────────────────────────────
-      for (int r = 0; r < members.length; r++) {
-        final member = members[r];
+      // ── Row 3+: Data Rows (Sorted by Owner's Custom Order) ──────────────
+      final sortedMembers = List<MemberModel>.from(members);
+      if (store != null && store.memberOrder.isNotEmpty) {
+        sortedMembers.sort((a, b) {
+          final idxA = store.memberOrder.indexOf(a.userId);
+          final idxB = store.memberOrder.indexOf(b.userId);
+          if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+          if (idxA != -1) return -1;
+          if (idxB != -1) return 1;
+          return a.name.compareTo(b.name);
+        });
+      }
+
+      for (int r = 0; r < sortedMembers.length; r++) {
+        final member = sortedMembers[r];
         final rowIdx = 3 + r;
         final daySchedule = schedule?.getScheduleForUser(member.userId);
 

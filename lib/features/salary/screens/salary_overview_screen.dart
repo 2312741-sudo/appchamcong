@@ -153,6 +153,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
                         themeColorHex: store?.themeColor ?? '#C8102E',
                         computedSalaries: filteredSalaries,
                         suffix: isMonth ? '${monthDate!.year}-${monthDate.month.toString().padLeft(2, '0')}' : 'Filter',
+                        memberOrder: store?.memberOrder ?? [],
                         memberName: selectedMemberName,
                         context: context,
                       );

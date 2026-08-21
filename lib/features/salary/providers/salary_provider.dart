@@ -231,7 +231,19 @@ final myMemberDataProvider = FutureProvider<MemberModel?>((ref) async {
 final allActiveMembersProvider =
     FutureProvider.family<List<MemberModel>, String>((ref, storeId) async {
   final repo = ref.read(salaryRepositoryProvider);
-  return repo.getActiveMembers(storeId);
+  final members = await repo.getActiveMembers(storeId);
+  final store = ref.watch(currentStoreProvider).valueOrNull;
+  if (store != null && store.memberOrder.isNotEmpty) {
+    members.sort((a, b) {
+      final idxA = store.memberOrder.indexOf(a.userId);
+      final idxB = store.memberOrder.indexOf(b.userId);
+      if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+      if (idxA != -1) return -1;
+      if (idxB != -1) return 1;
+      return a.name.compareTo(b.name);
+    });
+  }
+  return members;
 });
 
 // Selected month for salary screens

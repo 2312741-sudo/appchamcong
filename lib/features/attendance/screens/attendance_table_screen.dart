@@ -29,6 +29,7 @@ class AttendanceTableScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final storeId = ref.watch(currentStoreIdProvider);
     final membersAsync = ref.watch(storeMembersProvider);
+    final store = ref.watch(currentStoreProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -45,11 +46,20 @@ class AttendanceTableScreen extends ConsumerWidget {
             tooltip: 'Xuất Excel Tháng',
             onPressed: () {
               final membersData = membersAsync.valueOrNull;
-              final store = ref.read(currentStoreProvider).valueOrNull;
               if (storeId != null && membersData != null && store != null) {
                 final activeMembers = membersData
                     .where((m) => m.status == MemberStatus.active)
                     .toList();
+                if (store.memberOrder.isNotEmpty) {
+                  activeMembers.sort((a, b) {
+                    final idxA = store.memberOrder.indexOf(a.userId);
+                    final idxB = store.memberOrder.indexOf(b.userId);
+                    if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+                    if (idxA != -1) return -1;
+                    if (idxB != -1) return 1;
+                    return a.name.compareTo(b.name);
+                  });
+                }
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
@@ -115,6 +125,16 @@ class AttendanceTableScreen extends ConsumerWidget {
         data: (allMembers) {
           final members =
               allMembers.where((m) => m.status == MemberStatus.active).toList();
+          if (store != null && store.memberOrder.isNotEmpty) {
+            members.sort((a, b) {
+              final idxA = store.memberOrder.indexOf(a.userId);
+              final idxB = store.memberOrder.indexOf(b.userId);
+              if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+              if (idxA != -1) return -1;
+              if (idxB != -1) return 1;
+              return a.name.compareTo(b.name);
+            });
+          }
 
           if (members.isEmpty) {
             return const Center(
