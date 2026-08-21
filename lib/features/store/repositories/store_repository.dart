@@ -128,7 +128,9 @@ class StoreRepository {
     try {
       final query = await _stores.where('code', isEqualTo: code).limit(1).get();
       if (query.docs.isEmpty) return null;
-      return StoreModel.fromFirestore(query.docs.first);
+      final store = StoreModel.fromFirestore(query.docs.first);
+      if (store.isDeleted) return null;
+      return store;
     } catch (e) {
       throw Exception('Tìm cửa hàng thất bại: $e');
     }
@@ -153,7 +155,8 @@ class StoreRepository {
           final ownedStores =
               await _stores.where('ownerId', isEqualTo: userId).get();
           for (final doc in ownedStores.docs) {
-            if (!storeIds.contains(doc.id)) {
+            final data = doc.data();
+            if (data['status'] != 'deleted' && !storeIds.contains(doc.id)) {
               storeIds.add(doc.id);
             }
           }
@@ -185,14 +188,21 @@ class StoreRepository {
             i, i + 10 > storeIds.length ? storeIds.length : i + 10);
         final storesQuery =
             await _stores.where(FieldPath.documentId, whereIn: chunk).get();
-        stores.addAll(storesQuery.docs.map((d) => StoreModel.fromFirestore(d)));
+        stores.addAll(storesQuery.docs
+            .map((d) => StoreModel.fromFirestore(d))
+            .where((s) => !s.isDeleted));
       }
 
-      // Verify member status to handle legacy kicked users
+      // Verify member status to handle legacy kicked users and deleted stores
       final validStores = <StoreModel>[];
       final invalidStoreIds = <String>[];
 
       for (final store in stores) {
+        if (store.isDeleted) {
+          invalidStoreIds.add(store.id);
+          continue;
+        }
+
         // Owner is always valid
         if (store.ownerId == userId) {
           validStores.add(store);
@@ -204,6 +214,13 @@ class StoreRepository {
           validStores.add(store);
         } else {
           invalidStoreIds.add(store.id);
+        }
+      }
+
+      // Also mark storeIds that were not found in Firestore as invalid
+      for (final id in storeIds) {
+        if (!validStores.any((s) => s.id == id) && !invalidStoreIds.contains(id)) {
+          invalidStoreIds.add(id);
         }
       }
 
@@ -351,7 +368,48 @@ class StoreRepository {
         throw Exception('403 Forbidden: Bạn không có quyền xóa thành viên (Chỉ Chủ và Quản lý 1 có quyền này)');
       }
 
-      await _members(storeId).doc(userId).update({'status': 'kicked'});
+      final batch = _firestore.batch();
+
+      // 1. Mark member as kicked
+      batch.update(_members(storeId).doc(userId), {'status': 'kicked'});
+
+      // 2. Remove storeId from user's storeIds & fix currentStoreId
+      final userRef = _firestore.collection('users').doc(userId);
+      batch.update(userRef, {
+        'storeIds': FieldValue.arrayRemove([storeId]),
+      });
+
+      await batch.commit();
+
+      // 3. Fix currentStoreId if it was pointing to the kicked store
+      try {
+        final userDoc = await userRef.get();
+        final userData = userDoc.data() ?? {};
+        final currentStoreId = userData['currentStoreId'] as String?;
+        final remainingStoreIds = List<String>.from(userData['storeIds'] ?? []);
+
+        if (currentStoreId == storeId || !remainingStoreIds.contains(currentStoreId)) {
+          final newCurrentStoreId = remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
+          await userRef.update({'currentStoreId': newCurrentStoreId});
+        }
+      } catch (_) {}
+
+      // 4. Send notification to kicked user
+      try {
+        final now = DateTime.now().toUtc();
+        final storeDoc = await _stores.doc(storeId).get();
+        final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
+
+        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+          'storeId': storeId,
+          'title': 'Bạn đã bị xóa khỏi cửa hàng',
+          'body': 'Bạn đã bị xóa khỏi cửa hàng "$storeName".',
+          'type': 'member_kicked',
+          'createdAt': Timestamp.fromDate(now),
+          'targetUserId': userId,
+          'readBy': [],
+        });
+      } catch (_) {}
     } catch (e) {
       throw Exception('Xóa thành viên thất bại: $e');
     }
@@ -404,8 +462,92 @@ class StoreRepository {
   Stream<StoreModel?> watchStore(String storeId) {
     return _stores.doc(storeId).snapshots().map((snap) {
       if (!snap.exists) return null;
-      return StoreModel.fromFirestore(snap);
+      final store = StoreModel.fromFirestore(snap);
+      if (store.isDeleted) return null;
+      return store;
     });
+  }
+
+  Future<void> deleteStore(String storeId) async {
+    try {
+      final caller = _auth.currentUser;
+      if (caller == null) {
+        throw Exception('401 Unauthorized: Chưa đăng nhập');
+      }
+
+      final storeDoc = await _stores.doc(storeId).get();
+      if (!storeDoc.exists) {
+        throw Exception('Cửa hàng không tồn tại');
+      }
+
+      final storeData = storeDoc.data() ?? {};
+      final ownerId = storeData['ownerId'] as String?;
+      final storeName = storeData['name'] as String? ?? 'Cửa hàng';
+
+      if (ownerId != caller.uid) {
+        throw Exception('403 Forbidden: Chỉ Chủ cửa hàng mới có quyền xóa cửa hàng');
+      }
+
+      final now = DateTime.now().toUtc();
+
+      // 1. Soft-delete store document
+      await _stores.doc(storeId).update({
+        'status': 'deleted',
+        'deletedAt': Timestamp.fromDate(now),
+        'deletedBy': caller.uid,
+      });
+
+      // 2. Fetch all members in this store
+      final membersSnap = await _members(storeId).get();
+      final affectedUserIds = <String>{};
+
+      for (final doc in membersSnap.docs) {
+        affectedUserIds.add(doc.id);
+      }
+      affectedUserIds.add(caller.uid);
+
+      // 3. Remove storeId from each user's storeIds and update currentStoreId if pointing to this store
+      for (final uid in affectedUserIds) {
+        try {
+          final userRef = _firestore.collection('users').doc(uid);
+          final uDoc = await userRef.get();
+          if (!uDoc.exists) continue;
+
+          final uData = uDoc.data() ?? {};
+          final currentStoreId = uData['currentStoreId'] as String?;
+          final userStoreIds = List<String>.from(uData['storeIds'] ?? []);
+
+          userStoreIds.remove(storeId);
+
+          final String? newCurrentStoreId = (currentStoreId == storeId)
+              ? (userStoreIds.isNotEmpty ? userStoreIds.first : null)
+              : currentStoreId;
+
+          await userRef.set({
+            'storeIds': userStoreIds,
+            'currentStoreId': newCurrentStoreId,
+          }, SetOptions(merge: true));
+        } catch (_) {}
+      }
+
+      // 4. Send notification to all members
+      try {
+        for (final uid in affectedUserIds) {
+          if (uid == caller.uid) continue; // Don't notify the owner who deleted it
+          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+            'storeId': storeId,
+            'title': 'Cửa hàng đã bị xóa',
+            'body': 'Cửa hàng "$storeName" đã bị xóa bởi Chủ cửa hàng.',
+            'type': 'store_deleted',
+            'createdAt': Timestamp.fromDate(now),
+            'targetUserId': uid,
+            'readBy': [],
+          });
+        }
+      } catch (_) {}
+    } catch (e) {
+      throw Exception('Xóa cửa hàng thất bại: $e');
+    }
   }
 
   Stream<List<MemberModel>> watchMembers(String storeId) {

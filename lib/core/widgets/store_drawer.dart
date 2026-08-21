@@ -110,8 +110,11 @@ class StoreDrawer extends ConsumerWidget {
                             if (context.mounted) {
                               Navigator.pop(context); // close drawer
                               
-                              if (memberDoc.exists) {
-                                final role = UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
+                              final isOwner = store.ownerId == user.id;
+                              if (memberDoc.exists || isOwner) {
+                                final role = isOwner
+                                    ? UserRole.owner
+                                    : UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
                                 final currentPath = GoRouterState.of(context).uri.toString();
                                 String targetPath = AppRoutes.employeeDashboard;
                                 if (role.isOwner) {

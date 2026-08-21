@@ -6,6 +6,22 @@ Tất cả các thay đổi đáng chú ý của dự án **Chấm Công Trạm*
 
 ---
 
+## [1.0.2] - 22/08/2026
+
+### 🚀 Tính Năng Mới & Nâng Cấp Quản Trị
+- **Xóa cửa hàng bảo mật 2 lớp (Dành riêng cho Chủ):** Bổ sung tính năng Xóa cửa hàng tại trang Cài đặt với quy trình xác nhận 2 bước an toàn (cảnh báo + nhập tên cửa hàng hoặc từ khóa "XÓA"). Cơ chế soft-delete tự động dọn dẹp liên kết cửa hàng cho tất cả thành viên và gửi thông báo nội bộ.
+- **Tự động nhận diện tên Wi-Fi (SSID):** Nâng cấp bộ công cụ `LocationUtils` tự động kích hoạt quyền vị trí và lấy tên Wi-Fi thực tế của quán, điền tự động khi thiết lập chấm công qua mạng.
+- **Tích hợp Apple Capability:** Bổ sung quyền `Access WiFi Information` (`com.apple.developer.networking.wifi-info`) vào `Runner.entitlements`.
+
+### ⚡ Sửa Lỗi & Tối Ưu Hóa (Bug Fixes & Improvements)
+- **Khắc phục lỗi kích thành viên:** Khi bị kích khỏi 1 cửa hàng, nếu người dùng vẫn thuộc cửa hàng khác, ứng dụng sẽ tự động chuyển sang cửa hàng hợp lệ kế tiếp và vào thẳng Dashboard, loại bỏ hoàn toàn lỗi văng nhầm ra màn hình "Tham gia cửa hàng".
+- **Đồng bộ danh sách cửa hàng Real-time:** Chuyển đổi `userStoresProvider` sang `StreamProvider` kết hợp theo dõi `currentUserProvider`. Danh sách cửa hàng cập nhật tức thì theo thời gian thực khi có thay đổi nhân sự.
+- **Tự làm sạch dữ liệu (Self-heal):** Tự động lọc bỏ và gỡ các cửa hàng đã bị xóa hoặc không hợp lệ khỏi hồ sơ người dùng.
+- **Kiểm thử tự động:** Bổ sung bộ kiểm thử `test/store_kick_and_delete_test.dart`, hoàn thành 100% (55/55 test cases đạt chuẩn).
+- **Mã phiên bản (Version):** Nâng cấp lên `1.0.2` (Build `3`) chuẩn bị phát hành trên App Store.
+
+---
+
 ## [1.0.1] - 17/08/2026
 
 ### 🚀 Phát hành & Cấu hình Google Play

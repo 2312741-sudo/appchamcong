@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/location_utils.dart';
 import '../../../models/store_model.dart';
 import '../../../app/router.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/store_provider.dart';
 
 class StoreSettingsScreen extends ConsumerStatefulWidget {
@@ -40,6 +41,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   double? _lat;
   double? _lng;
   bool _isSaving = false;
+  bool _isDeleting = false;
   bool _isFetchingLocation = false;
   bool _isRegeneratingCode = false;
   bool _initialized = false;
@@ -322,6 +324,141 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     );
   }
 
+  Future<void> _deleteStore(StoreModel store) async {
+    // Step 1: First Confirmation Dialog
+    final firstConfirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
+            SizedBox(width: 8),
+            Text(
+              'Xóa cửa hàng',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontWeight: FontWeight.w700,
+                color: AppColors.danger,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa cửa hàng "${store.name}"?\n\nHành động này không thể hoàn tác. Mọi thành viên sẽ mất quyền truy cập vào cửa hàng này.',
+          style: const TextStyle(fontFamily: 'BeVietnamPro', height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'BeVietnamPro')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text(
+              'Tiếp tục',
+              style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (firstConfirmed != true || !mounted) return;
+
+    // Step 2: Second confirmation - Type store name or "XÓA"
+    final confirmCtrl = TextEditingController();
+    final secondConfirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final text = confirmCtrl.text.trim();
+          final isMatch = text == store.name.trim() ||
+              text.toUpperCase() == 'XÓA' ||
+              text.toUpperCase() == 'XOA';
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'Xác nhận lần cuối',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontWeight: FontWeight.w700,
+                color: AppColors.danger,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vui lòng nhập chính xác tên cửa hàng "${store.name}" hoặc gõ "XÓA" để xác nhận:',
+                  style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 13),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: confirmCtrl,
+                  autofocus: true,
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Nhập "${store.name}" hoặc "XÓA"',
+                    border: const OutlineInputBorder(),
+                    errorText: confirmCtrl.text.isNotEmpty && !isMatch
+                        ? 'Tên xác nhận chưa khớp'
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy', style: TextStyle(fontFamily: 'BeVietnamPro')),
+              ),
+              ElevatedButton(
+                onPressed: isMatch ? () => Navigator.pop(ctx, true) : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.danger.withOpacity(0.3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text(
+                  'Xóa vĩnh viễn',
+                  style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (secondConfirmed != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      final repo = ref.read(storeRepositoryProvider);
+      await repo.deleteStore(store.id);
+
+      if (!mounted) return;
+      _showSuccess('Đã xóa cửa hàng "${store.name}"');
+
+      // Invalidate providers
+      ref.invalidate(userStoresProvider);
+
+      context.go(AppRoutes.splash);
+    } catch (e) {
+      _showError('Xóa cửa hàng thất bại: $e');
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -345,6 +482,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final storeAsync = ref.watch(currentStoreProvider);
+    final currentUserId = ref.watch(currentUserIdProvider);
+    final currentMember = ref.watch(currentMemberProvider);
 
     return storeAsync.when(
       loading: () => const Scaffold(
@@ -359,6 +498,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
             body: Center(child: Text('Không tìm thấy cửa hàng')),
           );
         }
+        final isOwner = store.ownerId == currentUserId || currentMember?.isOwner == true;
         _initFromStore(store);
         return Scaffold(
           backgroundColor: AppColors.surface,
@@ -1100,7 +1240,78 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+
+                  // Danger Zone (Owner only)
+                  if (isOwner) ...[
+                    const SizedBox(height: 36),
+                    const _SectionHeader(title: 'Vùng nguy hiểm'),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.delete_forever_rounded, color: AppColors.danger, size: 22),
+                              SizedBox(width: 8),
+                              Text(
+                                'Xóa cửa hàng',
+                                style: TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.danger,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Thao tác này sẽ xóa cửa hàng và gỡ bỏ tất cả thành viên khỏi cửa hàng. Chỉ Chủ cửa hàng mới có quyền thực hiện.',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _isDeleting ? null : () => _deleteStore(store),
+                              icon: _isDeleting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.danger,
+                                      ),
+                                    )
+                                  : const Icon(Icons.delete_outline_rounded, size: 18),
+                              label: Text(_isDeleting ? 'Đang xóa...' : 'Xóa cửa hàng này'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.danger,
+                                side: const BorderSide(color: AppColors.danger),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

@@ -78,6 +78,9 @@ class StoreModel extends Equatable {
   final String? themeColor;
   final bool departmentSelectionEnabled; // cho phép NV/QL chọn bộ phận khi đăng ký ca
   final List<StoreWifi> wifis;
+  final String status;
+
+  bool get isDeleted => status == 'deleted';
 
   const StoreModel({
     required this.id,
@@ -99,6 +102,7 @@ class StoreModel extends Equatable {
     this.themeColor,
     this.departmentSelectionEnabled = true,
     this.wifis = const [],
+    this.status = 'active',
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
@@ -152,6 +156,7 @@ class StoreModel extends Equatable {
       themeColor: json['themeColor'] as String?,
       departmentSelectionEnabled: json['departmentSelectionEnabled'] as bool? ?? true,
       wifis: resolvedWifis,
+      status: json['status'] as String? ?? 'active',
     );
   }
 
@@ -180,6 +185,7 @@ class StoreModel extends Equatable {
       'themeColor': themeColor,
       'departmentSelectionEnabled': departmentSelectionEnabled,
       'wifis': wifis.map((w) => w.toJson()).toList(),
+      'status': status,
     };
   }
 
@@ -203,6 +209,7 @@ class StoreModel extends Equatable {
     String? themeColor,
     bool? departmentSelectionEnabled,
     List<StoreWifi>? wifis,
+    String? status,
     bool clearAddress = false,
     bool clearNetworkIP = false,
     bool clearLocation = false,
@@ -227,6 +234,7 @@ class StoreModel extends Equatable {
       themeColor: themeColor ?? this.themeColor,
       departmentSelectionEnabled: departmentSelectionEnabled ?? this.departmentSelectionEnabled,
       wifis: wifis ?? this.wifis,
+      status: status ?? this.status,
     );
   }
 
@@ -254,9 +262,10 @@ class StoreModel extends Equatable {
         themeColor,
         departmentSelectionEnabled,
         wifis,
+        status,
       ];
 
   @override
   String toString() =>
-      'StoreModel(id: $id, name: $name, code: $code, ownerId: $ownerId)';
+      'StoreModel(id: $id, name: $name, code: $code, ownerId: $ownerId, status: $status)';
 }

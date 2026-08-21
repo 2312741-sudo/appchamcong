@@ -87,67 +87,82 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       if (!mounted || _hasNavigated) return;
 
-      // 5. Resolve member role and status in current store
-      final memberDoc = await FirebaseFirestore.instance
-          .collection('stores')
-          .doc(currentStoreId)
-          .collection('members')
-          .doc(authUser.uid)
-          .get();
-
-      if (!mounted || _hasNavigated) return;
-
-      if (memberDoc.exists && memberDoc.data() != null) {
-        final data = memberDoc.data()!;
-        final role = data['role'] as String?;
-        final status = data['status'] as String?;
-
-        if (status == 'pending') {
-          _navigateTo(AppRoutes.pendingApproval);
-          return;
-        }
-        if (status == 'kicked') {
-          _navigateTo(AppRoutes.welcome);
-          return;
-        }
-
-        if (role == 'owner') {
-          _navigateTo(AppRoutes.ownerDashboard);
-        } else if (role == 'manager_1' ||
-            role == 'manager1' ||
-            role == 'manager_2' ||
-            role == 'manager2' ||
-            role == 'manager') {
-          _navigateTo(AppRoutes.managerDashboard);
-        } else {
-          _navigateTo(AppRoutes.employeeDashboard);
-        }
-        return;
-      }
-
-      // Check if user is owner of the store
+      // 5. Check if currentStore exists and is not deleted
       final storeDoc = await FirebaseFirestore.instance
           .collection('stores')
           .doc(currentStoreId)
           .get();
 
-      if (storeDoc.exists && storeDoc.data()?['ownerId'] == authUser.uid) {
-        _navigateTo(AppRoutes.ownerDashboard);
-        return;
+      final storeData = storeDoc.data();
+      final isStoreDeleted = !storeDoc.exists || storeData?['status'] == 'deleted';
+
+      if (!isStoreDeleted) {
+        // Resolve member role and status in current store
+        final memberDoc = await FirebaseFirestore.instance
+            .collection('stores')
+            .doc(currentStoreId)
+            .collection('members')
+            .doc(authUser.uid)
+            .get();
+
+        if (!mounted || _hasNavigated) return;
+
+        if (memberDoc.exists && memberDoc.data() != null) {
+          final data = memberDoc.data()!;
+          final role = data['role'] as String?;
+          final status = data['status'] as String?;
+
+          if (status == 'pending') {
+            _navigateTo(AppRoutes.pendingApproval);
+            return;
+          }
+          if (status == 'active') {
+            if (role == 'owner') {
+              _navigateTo(AppRoutes.ownerDashboard);
+            } else if (role == 'manager_1' ||
+                role == 'manager1' ||
+                role == 'manager_2' ||
+                role == 'manager2' ||
+                role == 'manager') {
+              _navigateTo(AppRoutes.managerDashboard);
+            } else {
+              _navigateTo(AppRoutes.employeeDashboard);
+            }
+            return;
+          }
+          // If status is 'kicked', do not navigate to welcome; fall through to switch to other stores.
+        } else if (storeData?['ownerId'] == authUser.uid) {
+          _navigateTo(AppRoutes.ownerDashboard);
+          return;
+        }
       }
 
-      // If not a member of currentStoreId, try other stores
+      // If user is kicked, store is deleted, or not a valid member: discover remaining stores
       final storeRepo = ref.read(storeRepositoryProvider);
       final stores = await storeRepo.getUserStores(authUser.uid);
-      if (stores.isNotEmpty) {
-        final newStoreId = stores.first.id;
+      final validOtherStores = stores.where((s) => s.id != currentStoreId && !s.isDeleted).toList();
+
+      if (validOtherStores.isNotEmpty) {
+        final newStoreId = validOtherStores.first.id;
         await FirebaseFirestore.instance
             .collection('users')
             .doc(authUser.uid)
-            .update({'currentStoreId': newStoreId});
+            .set({
+          'currentStoreId': newStoreId,
+          'storeIds': validOtherStores.map((s) => s.id).toList(),
+        }, SetOptions(merge: true));
         _navigateTo(AppRoutes.splash);
         return;
       }
+
+      // Truly no valid stores left
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(authUser.uid)
+          .set({
+        'currentStoreId': null,
+        'storeIds': [],
+      }, SetOptions(merge: true));
 
       _navigateTo(AppRoutes.welcome);
     } catch (e) {

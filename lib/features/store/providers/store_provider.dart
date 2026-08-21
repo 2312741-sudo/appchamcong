@@ -17,12 +17,21 @@ final storeRepositoryProvider = Provider<StoreRepository>((ref) {
 
 final currentStoreIdProvider = Provider<String?>((ref) {
   final user = ref.watch(currentUserProvider).valueOrNull;
-  if (user?.currentStoreId != null && user!.currentStoreId!.isNotEmpty) {
-    return user.currentStoreId;
+  if (user == null) return null;
+
+  // 1. If currentStoreId is set and valid within storeIds, return it
+  if (user.currentStoreId != null && user.currentStoreId!.isNotEmpty) {
+    if (user.storeIds.isEmpty || user.storeIds.contains(user.currentStoreId)) {
+      return user.currentStoreId;
+    }
   }
-  if (user?.storeIds != null && user!.storeIds.isNotEmpty) {
+
+  // 2. If currentStoreId is invalid (e.g. user was kicked), fallback to first available storeId
+  if (user.storeIds.isNotEmpty) {
     return user.storeIds.first;
   }
+
+  // 3. Fallback to loaded stores list if available
   final stores = ref.watch(userStoresProvider).valueOrNull;
   if (stores != null && stores.isNotEmpty) {
     return stores.first.id;
@@ -37,13 +46,17 @@ final currentStoreProvider = StreamProvider<StoreModel?>((ref) {
   return repo.watchStore(storeId);
 });
 
-final userStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
+final userStoresProvider = StreamProvider<List<StoreModel>>((ref) async* {
   final uid = ref.watch(currentUserIdProvider);
-  if (uid == null) return [];
-  // Re-fetch automatically if user doc (e.g. storeIds) updates
+  if (uid == null) {
+    yield [];
+    return;
+  }
+  // Re-evaluate automatically when user document changes
   ref.watch(currentUserProvider);
   final repo = ref.watch(storeRepositoryProvider);
-  return repo.getUserStores(uid);
+  final stores = await repo.getUserStores(uid);
+  yield stores;
 });
 
 // ---------- Members ----------
