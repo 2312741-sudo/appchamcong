@@ -26,6 +26,8 @@ class _ScheduleRegisterScreenState
   // Local draft: dayIndex (0=Mon..6=Sun) → List of selected shift IDs
   final Map<int, List<String>> _draft = {};
   bool _saving = false;
+  String? _loadedWeekStart;
+  bool _hasUnsavedEdits = false;
 
   static const List<String> _dayNames = [
     'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN',
@@ -120,6 +122,8 @@ class _ScheduleRegisterScreenState
       final repo = ref.read(scheduleRepositoryProvider);
       await repo.saveUserSchedule(
           storeId, uid, _currentWeek, _buildDaySchedule());
+      _hasUnsavedEdits = false;
+      _loadedWeekStart = _currentWeek;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -229,7 +233,10 @@ class _ScheduleRegisterScreenState
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        setState(() => _draft[dayIndex] = List.from(selectedShifts));
+                        setState(() {
+                          _draft[dayIndex] = List.from(selectedShifts);
+                          _hasUnsavedEdits = true;
+                        });
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
@@ -258,8 +265,10 @@ class _ScheduleRegisterScreenState
 
     scheduleAsync.whenData((schedule) {
       final userSchedule = uid != null ? schedule?.getScheduleForUser(uid) : null;
-      if (_draft.isEmpty) {
+      // Reload draft when week changes OR when no unsaved edits (stream update from web)
+      if (_loadedWeekStart != _currentWeek || !_hasUnsavedEdits) {
         _loadDraftFromSchedule(userSchedule);
+        _loadedWeekStart = _currentWeek;
       }
     });
 
@@ -310,6 +319,8 @@ class _ScheduleRegisterScreenState
                     setState(() {
                       _selectedWeekIndex--;
                       _draft.clear();
+                      _loadedWeekStart = null;
+                      _hasUnsavedEdits = false;
                     });
                   }
                 : null,
@@ -339,6 +350,8 @@ class _ScheduleRegisterScreenState
                       onTap: () => setState(() {
                         _selectedWeekIndex = _thisWeekIndex;
                         _draft.clear();
+                        _loadedWeekStart = null;
+                        _hasUnsavedEdits = false;
                       }),
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
@@ -394,6 +407,8 @@ class _ScheduleRegisterScreenState
                     setState(() {
                       _selectedWeekIndex++;
                       _draft.clear();
+                      _loadedWeekStart = null;
+                      _hasUnsavedEdits = false;
                     });
                   }
                 : null,

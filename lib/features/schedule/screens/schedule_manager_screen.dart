@@ -37,7 +37,8 @@ class _ScheduleManagerScreenState
   // Local editable schedule: userId → DaySchedule
   final Map<String, DaySchedule> _draft = {};
   bool _saving = false;
-  bool _draftLoaded = false;
+  String? _loadedWeekStart;
+  bool _hasUnsavedEdits = false;
 
   static const List<String> _dayNames = [
     'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN',
@@ -86,16 +87,17 @@ class _ScheduleManagerScreenState
   }
 
   void _loadDraft(ScheduleModel? schedule, List<MemberModel> members) {
-    if (_draftLoaded) return;
+    if (_loadedWeekStart == _currentWeek && _hasUnsavedEdits) return;
     _draft.clear();
     for (final m in members) {
       _draft[m.userId] = schedule?.getScheduleForUser(m.userId) ??
           DaySchedule.allOff();
     }
-    _draftLoaded = true;
+    _loadedWeekStart = _currentWeek;
   }
 
   void _setShift(String userId, int dayIndex, List<String> shifts) {
+    _hasUnsavedEdits = true;
     final current = _draft[userId] ?? DaySchedule.allOff();
     setState(() {
       _draft[userId] = switch (dayIndex) {
@@ -118,6 +120,8 @@ class _ScheduleManagerScreenState
     try {
       final repo = ref.read(scheduleRepositoryProvider);
       await repo.setFullSchedule(storeId, _currentWeek, _draft);
+      _hasUnsavedEdits = false;
+      _loadedWeekStart = _currentWeek;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Đã lưu lịch làm việc'),
@@ -599,7 +603,11 @@ class _ScheduleManagerScreenState
             .toList();
 
     scheduleAsync.whenData((schedule) {
-      _loadDraft(schedule, members);
+      // Only skip reload if we're on the same week AND user has unsaved local edits.
+      // This ensures data saved on web is reflected once the Firestore stream emits.
+      if (_loadedWeekStart != _currentWeek || !_hasUnsavedEdits) {
+        _loadDraft(schedule, members);
+      }
     });
 
     return Scaffold(
@@ -714,7 +722,8 @@ class _ScheduleManagerScreenState
                 onPressed: _selectedWeekIndex > 0
                     ? () => setState(() {
                           _selectedWeekIndex--;
-                          _draftLoaded = false;
+                          _loadedWeekStart = null;
+                          _hasUnsavedEdits = false;
                           _draft.clear();
                         })
                     : null,
@@ -740,7 +749,8 @@ class _ScheduleManagerScreenState
                         child: InkWell(
                           onTap: () => setState(() {
                             _selectedWeekIndex = _thisWeekIndex;
-                            _draftLoaded = false;
+                            _loadedWeekStart = null;
+                            _hasUnsavedEdits = false;
                             _draft.clear();
                           }),
                           borderRadius: BorderRadius.circular(12),
@@ -795,7 +805,8 @@ class _ScheduleManagerScreenState
                 onPressed: _selectedWeekIndex < _weeks.length - 1
                     ? () => setState(() {
                           _selectedWeekIndex++;
-                          _draftLoaded = false;
+                          _loadedWeekStart = null;
+                          _hasUnsavedEdits = false;
                           _draft.clear();
                         })
                     : null,

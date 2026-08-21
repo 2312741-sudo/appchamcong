@@ -167,8 +167,10 @@ class ScheduleModel extends Equatable {
   });
 
   factory ScheduleModel.fromJson(Map<String, dynamic> json, String id) {
-    final shiftsData = json['shifts'];
     final parsedShifts = <String, DaySchedule>{};
+
+    // 1. Parse standard nested map json['shifts']
+    final shiftsData = json['shifts'];
     if (shiftsData is Map) {
       for (final entry in shiftsData.entries) {
         final key = entry.key.toString();
@@ -177,6 +179,17 @@ class ScheduleModel extends Equatable {
         }
       }
     }
+
+    // 2. Also parse any flattened 'shifts.<userId>' keys at root level
+    for (final entry in json.entries) {
+      if (entry.key.startsWith('shifts.') && entry.key.length > 7) {
+        final userId = entry.key.substring(7);
+        if (entry.value != null && !parsedShifts.containsKey(userId)) {
+          parsedShifts[userId] = DaySchedule.fromJson(entry.value);
+        }
+      }
+    }
+
     return ScheduleModel(
       id: id,
       storeId: json['storeId'] as String? ?? '',
