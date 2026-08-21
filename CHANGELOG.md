@@ -13,6 +13,10 @@ Tất cả các thay đổi đáng chú ý của dự án **Chấm Công Trạm*
   - Hỗ trợ kéo-thả (ReorderableListView) để sắp xếp thứ tự hiển thị nhân viên tùy ý trong danh sách thành viên và bảng lịch làm việc.
   - Thứ tự được đồng bộ tức thì lên đám mây (`stores/{storeId}.memberOrder`) và áp dụng nhất quán trên cả Web và Mobile.
   - **Phân quyền:** Chỉ Chủ cửa hàng (Owner) mới có quyền kéo-thả đổi thứ tự; các vai trò khác (Quản lý 1, Quản lý 2, Nhân viên) chỉ xem theo thứ tự Chủ đã xếp.
+- **Đồng bộ thứ tự sắp xếp nhân viên trong tất cả file xuất Excel:**
+  - **Lịch làm việc tuần (`exportWeeklyScheduleToExcel`):** Thứ tự danh sách nhân viên trong bảng Excel được xuất ra chính xác 100% theo đúng thứ tự tùy chỉnh của Chủ quán.
+  - **Bảng công tháng (`exportMonthlyAttendance`):** Các hàng nhân viên tự động sắp xếp theo thứ tự `memberOrder`.
+  - **Báo cáo lương tháng (`exportMonthlySalary`):** Các dòng tính lương đồng bộ sắp xếp theo thứ tự Chủ quán đã thiết lập.
 - **Ẩn lịch nhân viên tùy chọn trong tab Lịch cửa hàng:**
   - Bổ sung nút chuyển đổi nhanh (👁️ Hiện / 🙈 Ẩn lịch) trên màn hình Lịch làm việc và chi tiết thành viên.
   - Nhân viên bị ẩn lịch sẽ chỉ hiển thị với Chủ quán (có nhãn 🙈 `Ẩn`) và bản thân nhân viên đó (trên tab lịch cá nhân). Các Quản lý và Nhân viên khác hoàn toàn không nhìn thấy.
@@ -25,10 +29,15 @@ Tất cả các thay đổi đáng chú ý của dự án **Chấm Công Trạm*
   - Lối tắt truy cập nhanh: Chấm công, Lịch sử công của tôi, Lịch làm cá nhân & Đăng ký ca, Bảng lương & Tạm ứng cá nhân.
   - Giờ công của Chủ quán được tích hợp đầy đủ vào Bảng công và file xuất báo cáo Excel.
 
-### ⚡ Tối Ưu Hóa & Tương Thích
+### ⚡ Sửa Lỗi & Tối Ưu Hóa (Bug Fixes & Improvements)
+- **Vá lỗi mất dữ liệu Lịch làm việc khi đồng bộ (Critical Bug Fix):**
+  - Sửa hàm `saveUserSchedule` sử dụng Firestore dot-notation (`shifts.$userId`) để cập nhật nguyên tử (atomic) đúng slot của từng nhân viên mà không ghi đè hoặc làm mất lịch của nhân viên khác.
+  - Thêm type check an toàn và cơ chế fallback trong `ScheduleModel.fromFirestore` và `DaySchedule.fromJson` để xử lý dữ liệu trả về từ Firestore Web & Mobile.
+- **Khắc phục lỗi hiển thị Thẻ chấm công của Chủ quán:**
+  - Sửa lỗi co hẹp chiều ngang khiến chữ bị nhảy dòng thành cột dọc ("C-h-ư-a...") bằng cách bổ sung `width: double.infinity` và `CrossAxisAlignment.stretch`.
 - **Nâng cấp SDK & Dependencies:** Cập nhật `sign_in_with_apple: ^6.1.3` và `mobile_scanner: ^6.0.11` tương thích hoàn toàn với Flutter Dart 3.6 SDK.
 - **Kiểm thử tự động:** Vượt qua toàn bộ 55/55 test suites (`flutter test`).
-- **Mã phiên bản (Version):** Nâng cấp lên `1.0.3` (Build `4`).
+- **Mã phiên bản (Version):** `1.0.3` (Build `4`).
 
 ---
 
