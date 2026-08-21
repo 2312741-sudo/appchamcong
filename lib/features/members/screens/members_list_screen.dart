@@ -12,12 +12,17 @@ class MembersListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activeMembersAsync = ref.watch(storeMembersProvider); // Only active ones by default from watchMembers but let's filter just in case
-    
+    final activeMembers = ref.watch(activeMembersProvider);
+    final store = ref.watch(currentStoreProvider).valueOrNull;
+    final currentMember = ref.watch(currentMemberStreamProvider).valueOrNull;
+    final isOwner = currentMember?.isOwner ?? false;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Danh sách nhân viên', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
+        title: const Text('Danh sách nhân viên',
+            style: TextStyle(
+                fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -31,36 +36,81 @@ class MembersListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: activeMembersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (err, _) => Center(child: Text('Lỗi: $err')),
-        data: (members) {
-          final activeMembers = members.where((m) => m.isActive).toList();
-          if (activeMembers.isEmpty) {
-            return const Center(
+      body: activeMembers.isEmpty
+          ? const Center(
               child: Text(
                 'Chưa có nhân viên nào trong cửa hàng.',
-                style: TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary),
+                style: TextStyle(
+                    fontFamily: 'BeVietnamPro', color: AppColors.textSecondary),
               ),
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: activeMembers.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final member = activeMembers[index];
-              return _buildMemberCard(context, member);
-            },
-          );
-        },
-      ),
+            )
+          : isOwner
+              ? ReorderableListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: activeMembers.length,
+                  onReorder: (oldIndex, newIndex) {
+                    if (oldIndex < newIndex) newIndex -= 1;
+                    final items = List<MemberModel>.from(activeMembers);
+                    final item = items.removeAt(oldIndex);
+                    items.insert(newIndex, item);
+                    final newOrder = items.map((m) => m.userId).toList();
+                    if (store != null) {
+                      ref
+                          .read(storeRepositoryProvider)
+                          .updateMemberOrder(store.id, newOrder);
+                    }
+                  },
+                  itemBuilder: (context, index) {
+                    final member = activeMembers[index];
+                    final isHidden = store?.hiddenScheduleUserIds
+                            .contains(member.userId) ??
+                        false;
+                    return Padding(
+                      key: ValueKey(member.userId),
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildMemberCard(
+                        context,
+                        member,
+                        key: ValueKey('card_${member.userId}'),
+                        isOwner: isOwner,
+                        isHidden: isHidden,
+                        index: index,
+                      ),
+                    );
+                  },
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: activeMembers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final member = activeMembers[index];
+                    final isHidden = store?.hiddenScheduleUserIds
+                            .contains(member.userId) ??
+                        false;
+                    return _buildMemberCard(
+                      context,
+                      member,
+                      key: ValueKey(member.userId),
+                      isOwner: isOwner,
+                      isHidden: isHidden,
+                      index: index,
+                    );
+                  },
+                ),
     );
   }
 
-  Widget _buildMemberCard(BuildContext context, MemberModel member) {
+  Widget _buildMemberCard(
+    BuildContext context,
+    MemberModel member, {
+    required Key key,
+    required bool isOwner,
+    required bool isHidden,
+    required int index,
+  }) {
     return InkWell(
+      key: key,
       onTap: () {
         context.push(AppRoutes.memberDetail, extra: {'userId': member.userId});
       },
@@ -71,11 +121,24 @@ class MembersListScreen extends ConsumerWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
           children: [
+            if (isOwner) ...[
+              ReorderableDragStartListener(
+                index: index,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Icon(Icons.drag_handle_rounded,
+                      color: AppColors.textDisabled, size: 20),
+                ),
+              ),
+            ],
             CircleAvatar(
               radius: 24,
               backgroundColor: AppColors.primary.withOpacity(0.1),
@@ -83,7 +146,9 @@ class MembersListScreen extends ConsumerWidget {
               child: getAvatarImageProvider(member.avatarUrl) == null
                   ? Text(
                       member.initials,
-                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold),
                     )
                   : null,
             ),
@@ -92,20 +157,58 @@ class MembersListScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    member.name,
-                    style: const TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.neutral,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          member.name,
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.neutral,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isHidden) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3CD),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: const Color(0xFFFFEEBA)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.visibility_off_rounded,
+                                  size: 11, color: Color(0xFFD9480F)),
+                              SizedBox(width: 3),
+                              Text(
+                                'Ẩn lịch',
+                                style: TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFD9480F),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: _getRoleColor(member.role).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -123,7 +226,8 @@ class MembersListScreen extends ConsumerWidget {
                       if (member.isLegacyManager) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF3CD),
                             borderRadius: BorderRadius.circular(4),
@@ -154,7 +258,8 @@ class MembersListScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textDisabled),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textDisabled),
           ],
         ),
       ),

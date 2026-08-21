@@ -23,6 +23,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   final _standardHoursCtrl = TextEditingController();
   final _employeeCodeCtrl = TextEditingController();
   DateTime? _joinedAt;
+  bool _hideSchedule = false;
 
   bool _isInit = false;
   bool _isLoading = false;
@@ -45,6 +46,8 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     _monthlySalaryCtrl.text = member.baseMonthlySalary.toStringAsFixed(0);
     _hourlyRateCtrl.text = member.baseHourlyRate.toStringAsFixed(0);
     _standardHoursCtrl.text = member.standardHoursPerMonth.toStringAsFixed(0);
+    final store = ref.read(currentStoreProvider).valueOrNull;
+    _hideSchedule = store?.hiddenScheduleUserIds.contains(widget.userId) ?? false;
     _isInit = true;
   }
 
@@ -71,6 +74,9 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
         _employeeCodeCtrl.text.trim(), 
         _joinedAt ?? DateTime.now()
       );
+
+      // Update hide schedule
+      await repo.toggleHideMemberSchedule(storeId, widget.userId, _hideSchedule);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -331,7 +337,36 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SwitchListTile(
+                    activeColor: AppColors.primary,
+                    title: const Text(
+                      'Ẩn lịch trên Lịch cửa hàng',
+                      style: TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Khi bật, chỉ Chủ cửa hàng mới nhìn thấy lịch của nhân viên này trên bảng Lịch cửa hàng.',
+                      style: TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    value: _hideSchedule,
+                    onChanged: (v) => setState(() => _hideSchedule = v),
+                  ),
+                ),
+
+                const SizedBox(height: 36),
                 SizedBox(
                   width: double.infinity,
                   height: 50,

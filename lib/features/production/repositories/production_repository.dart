@@ -87,6 +87,72 @@ class ProductionRepository {
     }
   }
 
+  // Lấy toàn bộ danh sách task (kể cả inactive) để quản lý & sắp xếp (Stream)
+  Stream<List<ProductionTask>> watchAllTasks(String storeId) {
+    return _tasksRef(storeId).snapshots().map((snap) {
+      final list = snap.docs
+          .map((doc) => ProductionTask.fromJson(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => a.order.compareTo(b.order));
+      return list;
+    });
+  }
+
+  // Sắp xếp lại thứ tự checklist tasks
+  Future<void> reorderTasks(String storeId, List<ProductionTask> tasks) async {
+    try {
+      final batch = _firestore.batch();
+      for (int i = 0; i < tasks.length; i++) {
+        final ref = _tasksRef(storeId).doc(tasks[i].id);
+        batch.update(ref, {'order': i + 1});
+      }
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Lỗi khi sắp xếp lại checklist: $e');
+    }
+  }
+
+  // Thêm mới task
+  Future<void> addTask(
+    String storeId, {
+    required String name,
+    required ProductionUnitType unit,
+    required String unitLabel,
+    required int order,
+  }) async {
+    try {
+      await _tasksRef(storeId).add({
+        'name': name.trim(),
+        'unit': unit.value,
+        'unitLabel': unitLabel.trim(),
+        'active': true,
+        'order': order,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Thêm công việc thất bại: $e');
+    }
+  }
+
+  // Cập nhật task
+  Future<void> updateTask(
+      String storeId, String taskId, Map<String, dynamic> data) async {
+    try {
+      await _tasksRef(storeId).doc(taskId).update(data);
+    } catch (e) {
+      throw Exception('Cập nhật công việc thất bại: $e');
+    }
+  }
+
+  // Xóa task
+  Future<void> deleteTask(String storeId, String taskId) async {
+    try {
+      await _tasksRef(storeId).doc(taskId).delete();
+    } catch (e) {
+      throw Exception('Xóa công việc thất bại: $e');
+    }
+  }
+
   // Submit báo cáo
   Future<void> submitReport(String storeId, ProductionReport report) async {
     try {

@@ -575,6 +575,30 @@ class StoreRepository {
     }
   }
 
+  Future<void> updateMemberOrder(String storeId, List<String> memberOrder) async {
+    try {
+      await _stores.doc(storeId).update({'memberOrder': memberOrder});
+    } catch (e) {
+      throw Exception('Cập nhật thứ tự nhân viên thất bại: $e');
+    }
+  }
+
+  Future<void> toggleHideMemberSchedule(String storeId, String userId, bool hide) async {
+    try {
+      if (hide) {
+        await _stores.doc(storeId).update({
+          'hiddenScheduleUserIds': FieldValue.arrayUnion([userId])
+        });
+      } else {
+        await _stores.doc(storeId).update({
+          'hiddenScheduleUserIds': FieldValue.arrayRemove([userId])
+        });
+      }
+    } catch (e) {
+      throw Exception('Cập nhật trạng thái ẩn lịch thất bại: $e');
+    }
+  }
+
   Future<String> regenerateStoreCode(String storeId) async {
     try {
       final newCode = _generateCode();

@@ -589,6 +589,15 @@ class _ScheduleManagerScreenState
     final store = storeAsync.valueOrNull;
     if (store == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    final hiddenIds = store.hiddenScheduleUserIds;
+    final visibleMembers = isOwner
+        ? members
+        : members
+            .where((m) =>
+                !hiddenIds.contains(m.userId) ||
+                m.userId == currentMember?.userId)
+            .toList();
+
     scheduleAsync.whenData((schedule) {
       _loadDraft(schedule, members);
     });
@@ -613,7 +622,7 @@ class _ScheduleManagerScreenState
                       final schedule = scheduleAsync.valueOrNull;
                       await ExportUtils.exportWeeklyScheduleToExcel(
                         weekStart: _currentWeek,
-                        members: members,
+                        members: visibleMembers,
                         schedule: schedule,
                         store: store,
                         storeName: store.name,
@@ -651,7 +660,7 @@ class _ScheduleManagerScreenState
           : null,
       body: Column(
         children: [
-          _buildHeader(store, members, scheduleAsync.valueOrNull, canManageSchedule, canTick),
+          _buildHeader(store, visibleMembers, scheduleAsync.valueOrNull, canManageSchedule, canTick),
           if (!canManageSchedule)
             Container(
               width: double.infinity,
@@ -681,7 +690,7 @@ class _ScheduleManagerScreenState
             ),
           Expanded(
             child: scheduleAsync.when(
-              data: (_) => _buildByEmployeeView(members, store, isOwner, canManageSchedule, canTick),
+              data: (_) => _buildByEmployeeView(visibleMembers, store, isOwner, canManageSchedule, canTick),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Lỗi: $e')),
@@ -881,15 +890,77 @@ class _ScheduleManagerScreenState
                     _Avatar(member: m, size: 34),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        m.name,
-                        style: GoogleFonts.beVietnamPro(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              m.name,
+                              style: GoogleFonts.beVietnamPro(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (store.hiddenScheduleUserIds.contains(m.userId)) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF3CD),
+                                borderRadius: BorderRadius.circular(4),
+                                border:
+                                    Border.all(color: const Color(0xFFFFEEBA)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.visibility_off_rounded,
+                                      size: 10, color: Color(0xFFD9480F)),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    'Ẩn',
+                                    style: TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFFD9480F),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
+                    if (isOwner) ...[
+                      IconButton(
+                        icon: Icon(
+                          store.hiddenScheduleUserIds.contains(m.userId)
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 18,
+                          color: store.hiddenScheduleUserIds.contains(m.userId)
+                              ? AppColors.danger
+                              : AppColors.textSecondary,
+                        ),
+                        tooltip: store.hiddenScheduleUserIds.contains(m.userId)
+                            ? 'Đang ẩn với người khác (Bấm để hiện)'
+                            : 'Đang hiện (Bấm để ẩn khỏi người khác)',
+                        onPressed: () {
+                          final currentlyHidden =
+                              store.hiddenScheduleUserIds.contains(m.userId);
+                          ref
+                              .read(storeRepositoryProvider)
+                              .toggleHideMemberSchedule(
+                                  store.id, m.userId, !currentlyHidden);
+                        },
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 10),

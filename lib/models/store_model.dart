@@ -79,6 +79,8 @@ class StoreModel extends Equatable {
   final bool departmentSelectionEnabled; // cho phép NV/QL chọn bộ phận khi đăng ký ca
   final List<StoreWifi> wifis;
   final String status;
+  final List<String> memberOrder;
+  final List<String> hiddenScheduleUserIds;
 
   bool get isDeleted => status == 'deleted';
 
@@ -103,6 +105,8 @@ class StoreModel extends Equatable {
     this.departmentSelectionEnabled = true,
     this.wifis = const [],
     this.status = 'active',
+    this.memberOrder = const [],
+    this.hiddenScheduleUserIds = const [],
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json, String id) {
@@ -157,6 +161,14 @@ class StoreModel extends Equatable {
       departmentSelectionEnabled: json['departmentSelectionEnabled'] as bool? ?? true,
       wifis: resolvedWifis,
       status: json['status'] as String? ?? 'active',
+      memberOrder: (json['memberOrder'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      hiddenScheduleUserIds: (json['hiddenScheduleUserIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 
@@ -186,6 +198,8 @@ class StoreModel extends Equatable {
       'departmentSelectionEnabled': departmentSelectionEnabled,
       'wifis': wifis.map((w) => w.toJson()).toList(),
       'status': status,
+      'memberOrder': memberOrder,
+      'hiddenScheduleUserIds': hiddenScheduleUserIds,
     };
   }
 
@@ -210,6 +224,8 @@ class StoreModel extends Equatable {
     bool? departmentSelectionEnabled,
     List<StoreWifi>? wifis,
     String? status,
+    List<String>? memberOrder,
+    List<String>? hiddenScheduleUserIds,
     bool clearAddress = false,
     bool clearNetworkIP = false,
     bool clearLocation = false,
@@ -235,6 +251,8 @@ class StoreModel extends Equatable {
       departmentSelectionEnabled: departmentSelectionEnabled ?? this.departmentSelectionEnabled,
       wifis: wifis ?? this.wifis,
       status: status ?? this.status,
+      memberOrder: memberOrder ?? this.memberOrder,
+      hiddenScheduleUserIds: hiddenScheduleUserIds ?? this.hiddenScheduleUserIds,
     );
   }
 
@@ -263,6 +281,8 @@ class StoreModel extends Equatable {
         departmentSelectionEnabled,
         wifis,
         status,
+        memberOrder,
+        hiddenScheduleUserIds,
       ];
 
   @override

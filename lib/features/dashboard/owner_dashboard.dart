@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../app/router.dart';
 import '../../models/member_model.dart';
+import '../../models/attendance_model.dart';
 import '../../features/store/providers/store_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/auth_notifier.dart';
@@ -57,6 +58,21 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
           _OwnerSettingsTab(),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push(AppRoutes.checkIn),
+        backgroundColor: const Color(0xFFC8102E),
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.fingerprint_rounded, size: 22),
+        label: const Text(
+          'Chấm công',
+          style: TextStyle(
+            fontFamily: 'BeVietnamPro',
+            fontWeight: FontWeight.w700,
+            fontSize: 13.5,
+          ),
+        ),
+      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -104,9 +120,10 @@ class _OwnerHomeTab extends ConsumerWidget {
     final membersAsync = ref.watch(storeMembersProvider);
     final pendingAsync = ref.watch(pendingMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
+    final ownerAttendanceAsync = ref.watch(todayAttendanceProvider);
 
     final activeCount = membersAsync.valueOrNull?.where((m) => m.isActive).length ?? 0;
-    final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
+    final pendingCount = pendingAsync.valueOrNull?.where((m) => m.isActive && m.status == MemberStatus.pending).length ?? (pendingAsync.valueOrNull?.length ?? 0);
     final unclassifiedManagers = membersAsync.valueOrNull?.where((m) => m.isActive && m.isLegacyManager).toList() ?? [];
     final workingNow = attendancesAsync.valueOrNull?.where((a) => a.checkOut == null).length ?? 0;
     final doneToday = attendancesAsync.valueOrNull?.where((a) => a.checkOut != null).length ?? 0;
@@ -189,6 +206,21 @@ class _OwnerHomeTab extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+        ),
+
+        // Owner's Personal Check-in Status Card
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ownerAttendanceAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (att) => _OwnerPersonalAttendanceCard(
+                attendance: att,
+                userId: userId,
               ),
             ),
           ),
@@ -369,6 +401,8 @@ class _OwnerHomeTab extends ConsumerWidget {
               children: [
                 const Text('Công cụ quản lý', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
                 const SizedBox(height: 12),
+                _ToolCard(icon: Icons.fingerprint_rounded, label: 'Chấm công của tôi', sub: 'Chấm vào/ra ca nhanh', color: const Color(0xFFC8102E), onTap: () => GoRouter.of(context).push(AppRoutes.checkIn)),
+                const SizedBox(height: 10),
                 _ToolCard(icon: Icons.calendar_month_rounded, label: 'Quản lý lịch làm', sub: 'Xem & chỉnh lịch toàn bộ NV', color: const Color(0xFF1C4E6B), onTap: () => GoRouter.of(context).push(AppRoutes.scheduleManager)),
                 const SizedBox(height: 10),
                 _ToolCard(icon: Icons.payments_rounded, label: 'Báo cáo lương', sub: 'Tổng hợp lương tháng', color: const Color(0xFF1A6B5A), onTap: () => GoRouter.of(context).push(AppRoutes.salaryOverview)),
@@ -450,6 +484,40 @@ class _OwnerSettingsTab extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
+
+          _SettingsSection(title: 'Chấm công & Cá nhân', items: [
+            _SettingsItem(
+              icon: Icons.fingerprint_rounded,
+              label: 'Chấm công',
+              sub: 'Chấm vào ca / ra ca (WiFi, GPS, QR)',
+              color: const Color(0xFFC8102E),
+              onTap: () => GoRouter.of(context).push(AppRoutes.checkIn),
+            ),
+            _SettingsItem(
+              icon: Icons.history_rounded,
+              label: 'Lịch sử chấm công của tôi',
+              sub: 'Xem chi tiết ngày công và giờ vào/ra',
+              color: const Color(0xFF1C4E6B),
+              onTap: () => GoRouter.of(context).push(
+                Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': user?.id}).toString(),
+              ),
+            ),
+            _SettingsItem(
+              icon: Icons.calendar_month_rounded,
+              label: 'Lịch làm việc & Đăng ký ca',
+              sub: 'Xem và đăng ký ca làm cá nhân',
+              color: const Color(0xFF1A6B5A),
+              onTap: () => GoRouter.of(context).push(AppRoutes.scheduleRegister),
+            ),
+            _SettingsItem(
+              icon: Icons.payments_rounded,
+              label: 'Bảng lương của tôi',
+              sub: 'Xem lương và tạm ứng cá nhân',
+              color: const Color(0xFFB8860B),
+              onTap: () => GoRouter.of(context).push(AppRoutes.salary),
+            ),
+          ]),
+          const SizedBox(height: 12),
 
           _SettingsSection(title: 'Cửa hàng', items: [
             _SettingsItem(icon: Icons.store_rounded, label: 'Cài đặt cửa hàng', sub: store.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
@@ -642,6 +710,195 @@ class _OwnerNavItem extends StatelessWidget {
               Text(label, style: TextStyle(fontSize: 10, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: isSelected ? const Color(0xFFC8102E) : Colors.grey, fontFamily: 'BeVietnamPro')),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OwnerPersonalAttendanceCard extends StatelessWidget {
+  final AttendanceModel? attendance;
+  final String userId;
+
+  const _OwnerPersonalAttendanceCard({
+    required this.attendance,
+    required this.userId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = attendance != null && attendance!.isActive;
+    final isDone = attendance != null && !attendance!.isActive;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? const Color(0xFF1A6B5A).withOpacity(0.12)
+                      : isDone
+                          ? const Color(0xFF1C4E6B).withOpacity(0.12)
+                          : const Color(0xFFC8102E).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isActive
+                      ? Icons.timer_rounded
+                      : isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.fingerprint_rounded,
+                  color: isActive
+                      ? const Color(0xFF1A6B5A)
+                      : isDone
+                          ? const Color(0xFF1C4E6B)
+                          : const Color(0xFFC8102E),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isActive
+                          ? 'Đang trong ca làm việc'
+                          : isDone
+                              ? 'Đã hoàn thành ca hôm nay'
+                              : 'Chưa chấm công hôm nay',
+                      style: GoogleFonts.beVietnamPro(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isActive
+                          ? 'Vào ca lúc ${DateFormat('HH:mm').format(attendance!.checkIn)}'
+                          : isDone && attendance?.checkOut != null
+                              ? 'Tổng giờ: ${(attendance!.totalHours ?? 0).toStringAsFixed(1)}h (${DateFormat('HH:mm').format(attendance!.checkIn)} - ${DateFormat('HH:mm').format(attendance!.checkOut!)})'
+                              : 'Chạm để chấm vào ca làm việc của bạn',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => context.push(AppRoutes.checkIn),
+                icon: Icon(
+                  isActive ? Icons.logout_rounded : Icons.fingerprint_rounded,
+                  size: 16,
+                ),
+                label: Text(
+                  isActive ? 'Ra ca' : 'Chấm công',
+                  style: GoogleFonts.beVietnamPro(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isActive
+                      ? const Color(0xFF1A6B5A)
+                      : const Color(0xFFC8102E),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _PersonalQuickLink(
+                icon: Icons.history_rounded,
+                label: 'Lịch sử công',
+                onTap: () => context.push(
+                  Uri(
+                    path: AppRoutes.attendanceHistory,
+                    queryParameters: {'userId': userId},
+                  ).toString(),
+                ),
+              ),
+              _PersonalQuickLink(
+                icon: Icons.calendar_month_rounded,
+                label: 'Lịch cá nhân',
+                onTap: () => context.push(AppRoutes.scheduleRegister),
+              ),
+              _PersonalQuickLink(
+                icon: Icons.payments_rounded,
+                label: 'Lương cá nhân',
+                onTap: () => context.push(AppRoutes.salary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonalQuickLink extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _PersonalQuickLink({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF1C4E6B)),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1C4E6B),
+              ),
+            ),
+          ],
         ),
       ),
     );

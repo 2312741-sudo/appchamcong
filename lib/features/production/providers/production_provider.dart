@@ -14,3 +14,11 @@ final activeProductionTasksProvider = StreamProvider<List<ProductionTask>>((ref)
   final repo = ref.watch(productionRepositoryProvider);
   return repo.watchActiveTasks(storeId);
 });
+
+final allProductionTasksProvider = StreamProvider<List<ProductionTask>>((ref) {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return Stream.value([]);
+  
+  final repo = ref.watch(productionRepositoryProvider);
+  return repo.watchAllTasks(storeId);
+});
