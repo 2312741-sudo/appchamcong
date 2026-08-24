@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../core/utils/excel_export_service.dart';
 import '../../../core/widgets/export_modal.dart';
+import '../../../core/auth/app_permissions.dart';
 import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/attendance_repository.dart';
@@ -30,6 +31,68 @@ class AttendanceTableScreen extends ConsumerWidget {
     final storeId = ref.watch(currentStoreIdProvider);
     final membersAsync = ref.watch(storeMembersProvider);
     final store = ref.watch(currentStoreProvider).valueOrNull;
+    final currentMember = ref.watch(currentMemberProvider);
+    final canView = AppPermissions.canViewAllAttendance(currentMember?.role);
+
+    if (!canView) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          title: const Text('Bảng công', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.lock_rounded, size: 40, color: AppColors.primary),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Không có quyền truy cập',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.neutral,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Quản lý 2 không có quyền xem bảng chấm công của nhân viên khác.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => context.pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Quay lại', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,

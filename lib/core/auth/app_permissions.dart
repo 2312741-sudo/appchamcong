@@ -10,10 +10,32 @@ import '../../models/member_model.dart';
 /// | Xếp/tick chở hàng               |  ✓  |     ✓     |     ✓     |           ✓            |     ✗ (*) |
 /// | Xếp/tick giao hàng              |  ✓  |     ✓     |     ✓     |           ✓            |     ✗ (*) |
 /// | Chấp nhận (duyệt) TV mới       |  ✓  |  ✓ (MỚI)  |     ✗     |           ✓            |     ✗     |
+/// | Xem bảng chấm công toàn bộ NV   |  ✓  |     ✓     |     ✗     |           ✓            |     ✗     |
+/// | Sửa giờ in/out công của NV      |  ✓  |     ✓     |     ✗     |           ✓            |     ✗     |
 /// | Quản lý vai trò / nhân sự      |  ✓  |     ✗     |     ✗     |           ✗            |     ✗     |
 /// | Cài đặt cửa hàng                |  ✓  |     ✗     |     ✗     |           ✗            |     ✗     |
 class AppPermissions {
   const AppPermissions._();
+
+  /// Quyền Chỉnh sửa / thêm mới giờ công (vào/ra) cho nhân viên khác
+  /// Áp dụng cho: Chủ, Quản lý 1, và Quản lý cũ (tạm thời)
+  /// Quản lý 2 và Nhân viên: KHÔNG có quyền (false)
+  static bool canEditAttendance(UserRole? role) {
+    if (role == null) return false;
+    return role == UserRole.owner ||
+        role == UserRole.manager1 ||
+        role == UserRole.legacyManager;
+  }
+
+  /// Quyền Xem bảng chấm công / danh sách công của toàn bộ nhân viên
+  /// Áp dụng cho: Chủ, Quản lý 1, và Quản lý cũ (tạm thời)
+  /// Quản lý 2 và Nhân viên: KHÔNG có quyền (false)
+  static bool canViewAllAttendance(UserRole? role) {
+    if (role == null) return false;
+    return role == UserRole.owner ||
+        role == UserRole.manager1 ||
+        role == UserRole.legacyManager;
+  }
 
   /// Quyền Xếp / tạo / sửa / xóa / lưu lịch làm việc cho toàn bộ cửa hàng
   static bool canManageSchedule(UserRole? role) {

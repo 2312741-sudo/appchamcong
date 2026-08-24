@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/auth/app_permissions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/member_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/attendance_repository.dart';
 
@@ -66,8 +68,76 @@ class _MonthlyAttendanceScreenState
   Widget build(BuildContext context) {
     final storeId = ref.watch(currentStoreIdProvider);
     final currentMember = ref.watch(currentMemberProvider);
-    final isOwnerOrManager = currentMember?.isOwner == true ||
-        currentMember?.isManager == true;
+    final currentUid = ref.watch(currentUserIdProvider);
+
+    final canViewAll = AppPermissions.canViewAllAttendance(currentMember?.role);
+    final canEdit = AppPermissions.canEditAttendance(currentMember?.role);
+
+    // If user is trying to view someone else's attendance without permission (e.g. Manager 2 or Employee)
+    if (widget.memberId != currentUid && !canViewAll) {
+      return Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: Text(widget.memberName,
+              style: const TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.lock_rounded, size: 40, color: AppColors.primary),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Không có quyền truy cập',
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.neutral,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Bạn không có quyền xem bảng chấm công của nhân viên khác.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => context.pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Quay lại', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     if (storeId == null) {
       return const Scaffold(
@@ -113,7 +183,7 @@ class _MonthlyAttendanceScreenState
             storeId: storeId,
             memberId: widget.memberId,
             memberName: widget.memberName,
-            canEdit: isOwnerOrManager,
+            canEdit: canEdit,
             onPrevMonth: _prevMonth,
             onNextMonth: _nextMonth,
           );
@@ -669,6 +739,13 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
   }
 
   Future<void> _save() async {
+    if (!widget.canEdit) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Bạn không có quyền chỉnh sửa giờ công'),
+        backgroundColor: AppColors.primary,
+      ));
+      return;
+    }
     setState(() => _saving = true);
     try {
       final repo = ref.read(attendanceRepositoryProvider);

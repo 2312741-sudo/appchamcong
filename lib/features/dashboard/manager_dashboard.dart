@@ -126,6 +126,7 @@ class _ManagerHomeTab extends ConsumerWidget {
     final role = currentMember?.role;
     final canApproveMembers = AppPermissions.canApproveMembers(role);
     final canManageSchedule = AppPermissions.canManageSchedule(role);
+    final canViewAllAttendance = AppPermissions.canViewAllAttendance(role);
 
     final membersAsync = ref.watch(storeMembersProvider);
     final pendingAsync = ref.watch(pendingMembersProvider);
@@ -367,14 +368,16 @@ class _ManagerHomeTab extends ConsumerWidget {
                   color: const Color(0xFF1C4E6B),
                   onTap: () => context.push(AppRoutes.scheduleManager),
                 ),
-                const SizedBox(height: 10),
-                _MgrToolCard(
-                  icon: Icons.table_chart_rounded,
-                  label: 'Bảng chấm công',
-                  sub: 'Xem bảng công hôm nay',
-                  color: const Color(0xFF1A6B5A),
-                  onTap: () => context.push(AppRoutes.attendanceTable),
-                ),
+                if (canViewAllAttendance) ...[
+                  const SizedBox(height: 10),
+                  _MgrToolCard(
+                    icon: Icons.table_chart_rounded,
+                    label: 'Bảng chấm công',
+                    sub: 'Xem bảng công hôm nay',
+                    color: const Color(0xFF1A6B5A),
+                    onTap: () => context.push(AppRoutes.attendanceTable),
+                  ),
+                ],
               ],
             ),
           ),

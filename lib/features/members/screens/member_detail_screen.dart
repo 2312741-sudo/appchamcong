@@ -418,7 +418,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
               ),
               SizedBox(height: 4),
               Text(
-                '• Xếp ca / Sửa / Xóa lịch làm việc cho cả cửa hàng\n• Chấp nhận (duyệt) thành viên mới xin gia nhập\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• Xem bảng chấm công toàn bộ nhân viên',
+                '• Xếp ca / Sửa / Xóa lịch làm việc cho cả cửa hàng\n• Chấp nhận (duyệt) thành viên mới xin gia nhập\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• Xem và chỉnh sửa bảng chấm công toàn bộ nhân viên',
                 style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF2C3E50), height: 1.4),
               ),
             ],
@@ -441,7 +441,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
               ),
               SizedBox(height: 4),
               Text(
-                '• Xem lịch làm việc của cả cửa hàng (Chỉ xem)\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• ❌ KHÔNG được tạo/sửa/xoá ca làm việc của nhân viên\n• ❌ KHÔNG được duyệt thành viên mới xin vào',
+                '• Xem lịch làm việc của cả cửa hàng (Chỉ xem)\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• ❌ KHÔNG được tạo/sửa/xoá ca làm việc của nhân viên\n• ❌ KHÔNG được duyệt thành viên mới xin vào\n• ❌ KHÔNG được xem/sửa bảng chấm công của nhân viên khác',
                 style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF004D40), height: 1.4),
               ),
             ],

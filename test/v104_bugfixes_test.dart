@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cham_cong_tram/core/auth/app_permissions.dart';
+import 'package:cham_cong_tram/models/member_model.dart';
 import 'package:cham_cong_tram/models/production_model.dart';
 import 'package:cham_cong_tram/models/attendance_model.dart';
 import 'package:cham_cong_tram/app/router.dart';
@@ -107,6 +109,24 @@ void main() {
       expect(AppRoutes.notifications, equals('/notifications'));
       expect(AppRoutes.scheduleManager, equals('/schedule-manager'));
       expect(AppRoutes.checkIn, equals('/check-in'));
+    });
+  });
+
+  group('NEW: Manager 2 Attendance Restrictions Tests', () {
+    test('Manager 2 cannot edit attendance of other employees', () {
+      expect(AppPermissions.canEditAttendance(UserRole.manager2), isFalse);
+      expect(AppPermissions.canEditAttendance(UserRole.employee), isFalse);
+      expect(AppPermissions.canEditAttendance(UserRole.manager1), isTrue);
+      expect(AppPermissions.canEditAttendance(UserRole.owner), isTrue);
+      expect(AppPermissions.canEditAttendance(UserRole.legacyManager), isTrue);
+    });
+
+    test('Manager 2 cannot view all employees attendance table', () {
+      expect(AppPermissions.canViewAllAttendance(UserRole.manager2), isFalse);
+      expect(AppPermissions.canViewAllAttendance(UserRole.employee), isFalse);
+      expect(AppPermissions.canViewAllAttendance(UserRole.manager1), isTrue);
+      expect(AppPermissions.canViewAllAttendance(UserRole.owner), isTrue);
+      expect(AppPermissions.canViewAllAttendance(UserRole.legacyManager), isTrue);
     });
   });
 }

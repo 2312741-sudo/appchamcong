@@ -70,6 +70,24 @@ void main() {
       expect(AppPermissions.canApproveMembers(null), isFalse);
     });
 
+    test('AppPermissions - canEditAttendance (Chủ, Quản lý 1, Legacy có quyền, Quản lý 2 & NV không)', () {
+      expect(AppPermissions.canEditAttendance(UserRole.owner), isTrue);
+      expect(AppPermissions.canEditAttendance(UserRole.manager1), isTrue);
+      expect(AppPermissions.canEditAttendance(UserRole.legacyManager), isTrue);
+      expect(AppPermissions.canEditAttendance(UserRole.manager2), isFalse);
+      expect(AppPermissions.canEditAttendance(UserRole.employee), isFalse);
+      expect(AppPermissions.canEditAttendance(null), isFalse);
+    });
+
+    test('AppPermissions - canViewAllAttendance (Chủ, Quản lý 1, Legacy có quyền, Quản lý 2 & NV không)', () {
+      expect(AppPermissions.canViewAllAttendance(UserRole.owner), isTrue);
+      expect(AppPermissions.canViewAllAttendance(UserRole.manager1), isTrue);
+      expect(AppPermissions.canViewAllAttendance(UserRole.legacyManager), isTrue);
+      expect(AppPermissions.canViewAllAttendance(UserRole.manager2), isFalse);
+      expect(AppPermissions.canViewAllAttendance(UserRole.employee), isFalse);
+      expect(AppPermissions.canViewAllAttendance(null), isFalse);
+    });
+
     test('AppPermissions - canAssignRoles (Chỉ Chủ có quyền)', () {
       expect(AppPermissions.canAssignRoles(UserRole.owner), isTrue);
       expect(AppPermissions.canAssignRoles(UserRole.manager1), isFalse);
