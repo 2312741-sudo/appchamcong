@@ -58,6 +58,18 @@ class NotificationService {
 
       await _localNotifications!.initialize(initSettings);
 
+      // Create Android Notification Channel
+      const androidChannel = AndroidNotificationChannel(
+        'cham_cong_notifications',
+        'Thông báo Chấm Công',
+        description: 'Thông báo lịch làm việc, chấm công, tạm ứng và duyệt đơn',
+        importance: Importance.max,
+        playSound: true,
+      );
+      await _localNotifications!
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(androidChannel);
+
       // Handle foreground messages — store subscription to allow cancellation
       _onMessageSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         if (message.notification != null) {
@@ -135,11 +147,12 @@ class NotificationService {
     if (notification == null || _localNotifications == null) return;
 
     const androidDetails = AndroidNotificationDetails(
-      'schedule_updates',
-      'Cập nhật lịch làm',
-      channelDescription: 'Thông báo khi có thay đổi lịch làm',
+      'cham_cong_notifications',
+      'Thông báo Chấm Công',
+      channelDescription: 'Thông báo lịch làm việc, chấm công, tạm ứng và duyệt đơn',
       importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
     );
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,

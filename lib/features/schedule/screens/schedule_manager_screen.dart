@@ -714,9 +714,8 @@ class _ScheduleManagerScreenState
     final scheduleAsync = ref.watch(weekScheduleProvider(_currentWeek));
     final members = ref.watch(activeMembersProvider);
     final currentMember = ref.watch(currentMemberProvider);
-    final isOwner = currentMember?.role == UserRole.owner;
-    final isManager2 = currentMember?.role == UserRole.manager2;
-    final isEmployee = currentMember?.role == UserRole.employee;
+    final isOwner = currentMember?.isOwner ?? false;
+    final isManager2 = AppPermissions.isManager2(currentMember?.role);
     final canManageSchedule = !widget.isReadOnly && AppPermissions.canManageSchedule(currentMember?.role);
     final canTick = !widget.isReadOnly &&
         (AppPermissions.canTickDelivery(currentMember?.role) ||
@@ -1027,7 +1026,8 @@ class _ScheduleManagerScreenState
         final m = members[i];
         final schedule = _draft[m.userId] ?? DaySchedule.allOff();
 
-        // Calculate weekly hours & delivery count for this employee
+        // LƯU Ý: Thống kê giờ công dự kiến tính theo LỊCH ĐÃ XẾP (shifts) của tuần được chọn
+        // (không phải giờ chấm công thực tế attendances, để quản lý tiện đối chiếu định mức xếp ca).
         double totalWeeklyHours = 0;
         int totalDeliveryCount = 0;
         for (int day = 1; day <= 7; day++) {

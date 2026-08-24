@@ -81,6 +81,11 @@ class AppPermissions {
         role == UserRole.legacyManager;
   }
 
+  /// Kiểm tra có phải Quản lý 2
+  static bool isManager2(UserRole? role) {
+    return role == UserRole.manager2;
+  }
+
   /// Kiểm tra tài khoản Quản lý cũ chưa được phân loại
   static bool isUnclassifiedManager(UserRole? role) {
     return role == UserRole.legacyManager;
