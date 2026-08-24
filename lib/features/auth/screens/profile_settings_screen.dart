@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/avatar_widget.dart';
 import '../../../models/member_model.dart';
 import '../../../models/user_model.dart';
 import '../providers/auth_notifier.dart';
@@ -25,6 +27,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
   DateTime? _selectedBirthday;
   bool _isSavingProfile = false;
   bool _isSavingDept = false;
+  bool _isUploadingAvatar = false;
   String? _selectedDepartmentId;
   bool _initialized = false;
 
@@ -45,6 +48,100 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       _selectedDepartmentId = currentMember.department;
     }
     _initialized = true;
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || _isUploadingAvatar) return;
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Cập nhật ảnh đại diện',
+                style: GoogleFonts.beVietnamPro(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                title: Text('Chọn từ thư viện ảnh', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                title: Text('Chụp ảnh mới', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingAvatar = true);
+      final bytes = await pickedFile.readAsBytes();
+      final store = ref.read(currentStoreProvider).valueOrNull;
+
+      final downloadUrl = await ref.read(authNotifierProvider.notifier).uploadAvatar(
+        uid: uid,
+        imageBytes: bytes,
+        currentStoreId: store?.id,
+      );
+
+      if (mounted) {
+        if (downloadUrl != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đã cập nhật ảnh đại diện thành công'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        } else {
+          final err = ref.read(authNotifierProvider).errorMessage ?? 'Không thể tải lên ảnh đại diện';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(err),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải ảnh: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
   }
 
   Future<void> _selectBirthday() async {
@@ -214,23 +311,63 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             child: Column(
               children: [
                 Center(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 3),
-                    ),
-                    child: CircleAvatar(
-                      radius: 46,
-                      backgroundColor: AppColors.primary.withOpacity(0.12),
-                      child: Text(
-                        currentDisplayName.isNotEmpty ? currentDisplayName[0].toUpperCase() : 'U',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 3),
+                        ),
+                        child: AvatarWidget(
+                          avatarUrl: userAsync.valueOrNull?.avatarUrl ?? currentMember?.avatarUrl ?? fbUser?.photoURL,
+                          name: currentDisplayName,
+                          radius: 46,
                         ),
                       ),
-                    ),
+                      if (_isUploadingAvatar)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: InkWell(
+                          onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.15),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),

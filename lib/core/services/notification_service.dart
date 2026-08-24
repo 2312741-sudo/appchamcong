@@ -40,9 +40,20 @@ class NotificationService {
         return;
       }
 
+      // Enable foreground notification presentation on iOS
+      await _fcm!.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
       // Initialize local notifications for foreground display
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosInit = DarwinInitializationSettings();
+      const iosInit = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
 
       await _localNotifications!.initialize(initSettings);

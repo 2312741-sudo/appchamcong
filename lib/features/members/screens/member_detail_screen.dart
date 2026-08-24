@@ -171,13 +171,10 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                 // Header info
                 Row(
                   children: [
-                    CircleAvatar(
+                    AvatarWidget(
+                      avatarUrl: member.avatarUrl,
+                      name: member.name,
                       radius: 32,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      backgroundImage: getAvatarImageProvider(member.avatarUrl),
-                      child: getAvatarImageProvider(member.avatarUrl) == null
-                          ? Text(member.initials, style: const TextStyle(fontSize: 24, color: AppColors.primary))
-                          : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(

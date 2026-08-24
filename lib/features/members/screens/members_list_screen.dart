@@ -139,18 +139,10 @@ class MembersListScreen extends ConsumerWidget {
                 ),
               ),
             ],
-            CircleAvatar(
+            AvatarWidget(
+              avatarUrl: member.avatarUrl,
+              name: member.name,
               radius: 24,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              backgroundImage: getAvatarImageProvider(member.avatarUrl),
-              child: getAvatarImageProvider(member.avatarUrl) == null
-                  ? Text(
-                      member.initials,
-                      style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold),
-                    )
-                  : null,
             ),
             const SizedBox(width: 16),
             Expanded(

@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'app/app.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+    debugPrint('Handling background message: ${message.messageId}');
+  } catch (e) {
+    debugPrint('Error in background message handler: $e');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +37,9 @@ void main() async {
             options: DefaultFirebaseOptions.currentPlatform,
           );
         }
+        // Register FCM background handler & initialize notification service
+        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+        await NotificationService().initialize();
       } catch (e) {
         debugPrint('Firebase initialization: $e');
       }

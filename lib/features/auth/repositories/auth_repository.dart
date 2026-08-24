@@ -12,12 +12,15 @@ import '../../../models/user_model.dart';
 class AuthRepository {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
 
   AuthRepository({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
   })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance;
 
   // ── Auth State ────────────────────────────────────────────────────────────
 
@@ -152,14 +155,71 @@ class AuthRepository {
 
   Future<void> updateFirebaseProfile({
     String? displayName,
+    String? photoURL,
   }) async {
     try {
       final user = _auth.currentUser;
-      if (user != null && displayName != null && displayName.isNotEmpty) {
-        await user.updateDisplayName(displayName);
+      if (user != null) {
+        if (displayName != null && displayName.isNotEmpty) {
+          await user.updateDisplayName(displayName);
+        }
+        if (photoURL != null && photoURL.isNotEmpty) {
+          await user.updatePhotoURL(photoURL);
+        }
       }
     } catch (_) {
       // Ignored: Non-fatal Firebase Auth profile cache error
+    }
+  }
+
+  /// Uploads user avatar image bytes to Firebase Storage and syncs URL to user & members docs
+  Future<String> uploadAvatar({
+    required String uid,
+    required Uint8List imageBytes,
+    String? currentStoreId,
+  }) async {
+    try {
+      final ref = _storage.ref().child('avatars').child('$uid.jpg');
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'uploadedBy': uid, 'updatedAt': DateTime.now().toIso8601String()},
+      );
+      
+      final uploadTask = await ref.putData(imageBytes, metadata);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+      // 1. Update Firestore /users/{uid}
+      await updateUserDocument(uid: uid, data: {'avatarUrl': downloadUrl});
+
+      // 2. Update Firebase Auth photoURL
+      await updateFirebaseProfile(photoURL: downloadUrl);
+
+      // 3. Real-time sync to all store members subcollections
+      try {
+        final userDoc = await getUserDocument(uid);
+        final storeIds = <String>{};
+        if (currentStoreId != null && currentStoreId.isNotEmpty) {
+          storeIds.add(currentStoreId);
+        }
+        if (userDoc != null) {
+          if (userDoc.currentStoreId != null && userDoc.currentStoreId!.isNotEmpty) {
+            storeIds.add(userDoc.currentStoreId!);
+          }
+          storeIds.addAll(userDoc.storeIds);
+        }
+
+        for (final sId in storeIds) {
+          final memberRef = _firestore.collection('stores').doc(sId).collection('members').doc(uid);
+          final mDoc = await memberRef.get();
+          if (mDoc.exists) {
+            await memberRef.update({'avatarUrl': downloadUrl});
+          }
+        }
+      } catch (_) {}
+
+      return downloadUrl;
+    } catch (e) {
+      throw Exception('Tải lên ảnh đại diện thất bại: $e');
     }
   }
 
@@ -167,6 +227,7 @@ class AuthRepository {
     required String uid,
     required String name,
     String? phone,
+    String? avatarUrl,
     DateTime? birthday,
     String? currentStoreId,
   }) async {
@@ -174,6 +235,7 @@ class AuthRepository {
       'name': name.trim(),
     };
     if (phone != null) updateData['phone'] = phone.trim();
+    if (avatarUrl != null) updateData['avatarUrl'] = avatarUrl.trim();
     if (birthday != null) {
       updateData['birthday'] = birthday.toIso8601String();
     }
@@ -181,10 +243,13 @@ class AuthRepository {
     // 1. Update main Firestore user doc
     await updateUserDocument(uid: uid, data: updateData);
 
-    // 2. Best-effort update Firebase Auth display name (never throws)
-    await updateFirebaseProfile(displayName: name.trim());
+    // 2. Best-effort update Firebase Auth display name & photoURL (never throws)
+    await updateFirebaseProfile(
+      displayName: name.trim(),
+      photoURL: avatarUrl?.trim(),
+    );
 
-    // 3. Sync name, phone, birthday to store members subcollections
+    // 3. Sync name, phone, avatarUrl, birthday to store members subcollections
     try {
       final userDoc = await getUserDocument(uid);
       final storeIds = <String>{};
@@ -204,6 +269,7 @@ class AuthRepository {
         if (mDoc.exists) {
           final memberUpdate = <String, dynamic>{'name': name.trim()};
           if (phone != null) memberUpdate['phone'] = phone.trim();
+          if (avatarUrl != null) memberUpdate['avatarUrl'] = avatarUrl.trim();
           if (birthday != null) memberUpdate['birthday'] = birthday.toIso8601String();
           await memberRef.update(memberUpdate);
         }

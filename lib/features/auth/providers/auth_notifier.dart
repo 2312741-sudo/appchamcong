@@ -260,6 +260,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String uid,
     required String name,
     String? phone,
+    String? avatarUrl,
     DateTime? birthday,
     String? currentStoreId,
   }) async {
@@ -269,6 +270,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         uid: uid,
         name: name,
         phone: phone,
+        avatarUrl: avatarUrl,
         birthday: birthday,
         currentStoreId: currentStoreId,
       );
@@ -286,6 +288,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: 'Có lỗi khi cập nhật hồ sơ: $e',
       );
       return false;
+    }
+  }
+
+  // ── Upload Avatar ───────────────────────────────────────────────────────
+
+  Future<String?> uploadAvatar({
+    required String uid,
+    required Uint8List imageBytes,
+    String? currentStoreId,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
+    try {
+      final downloadUrl = await _repository.uploadAvatar(
+        uid: uid,
+        imageBytes: imageBytes,
+        currentStoreId: currentStoreId,
+      );
+
+      _invalidateAllUserData();
+
+      state = state.copyWith(
+        isLoading: false,
+        successMessage: 'Cập nhật ảnh đại diện thành công',
+      );
+      return downloadUrl;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Không thể tải lên ảnh đại diện: $e',
+      );
+      return null;
     }
   }
 
