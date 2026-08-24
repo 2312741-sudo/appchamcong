@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,11 +18,12 @@ import '../../schedule/providers/schedule_provider.dart';
 
 // File-local provider (private) to avoid name collision with the global
 // todayAttendanceProvider in attendance_provider.dart (which has a different signature).
+// Uses watchActiveAttendance to handle cross-midnight shifts correctly.
 final _localTodayAttendanceProvider = StreamProvider.family<AttendanceModel?, String>((ref, userId) {
   final storeId = ref.watch(currentStoreIdProvider);
   if (storeId == null || storeId.isEmpty) return Stream.value(null);
   final repo = ref.watch(attendanceRepositoryProvider);
-  return repo.watchTodayAttendance(storeId, userId);
+  return repo.watchActiveAttendance(storeId, userId);
 });
 
 
@@ -450,7 +452,7 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
       final hasUnit = t.unitLabel.trim().isNotEmpty;
       double val = 1.0;
       if (hasUnit) {
-        final valStr = _controllers[t.id]?.text ?? '0';
+        final valStr = (_controllers[t.id]?.text ?? '0').replaceAll(',', '.');
         val = double.tryParse(valStr) ?? 0.0;
         if (val <= 0) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vui lòng nhập số lượng hợp lệ cho ${t.name}')));
@@ -544,6 +546,9 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
                             child: TextField(
                               controller: _controllers[t.id],
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
+                              ],
                               decoration: InputDecoration(
                                 isDense: true,
                                 hintText: 'Nhập số lượng (${t.unitLabel})...',

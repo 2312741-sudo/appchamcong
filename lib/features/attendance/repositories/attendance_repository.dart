@@ -95,9 +95,9 @@ class AttendanceRepository {
         }
       }
 
+      // Find active attendance record (no date filter — handles cross-midnight shifts)
       final query = await _attendances(storeId)
           .where('userId', isEqualTo: userId)
-          .where('date', isEqualTo: date)
           .where('checkOut', isNull: true)
           .limit(1)
           .get();
@@ -138,6 +138,38 @@ class AttendanceRepository {
       
       // Otherwise, return the latest shift
       final list = snap.docs.map((d) => AttendanceModel.fromFirestore(d)).toList();
+      list.sort((a, b) => b.checkIn.compareTo(a.checkIn));
+      return list.first;
+    });
+  }
+
+  /// Watches for any ACTIVE attendance (checkOut == null) for this user,
+  /// regardless of which date the check-in started on.
+  /// This handles cross-midnight shifts: e.g. check-in at 22:00 Day 1,
+  /// still active at 01:00 Day 2.
+  /// Falls back to today's latest completed attendance if no active shift.
+  Stream<AttendanceModel?> watchActiveAttendance(
+      String storeId, String userId) {
+    // Primary: watch for any unclosed attendance record
+    return _attendances(storeId)
+        .where('userId', isEqualTo: userId)
+        .where('checkOut', isNull: true)
+        .limit(1)
+        .snapshots()
+        .asyncMap((activeSnap) async {
+      if (activeSnap.docs.isNotEmpty) {
+        return AttendanceModel.fromFirestore(activeSnap.docs.first);
+      }
+      // No active shift → fall back to today's latest completed record
+      final date = _todayDate();
+      final todaySnap = await _attendances(storeId)
+          .where('userId', isEqualTo: userId)
+          .where('date', isEqualTo: date)
+          .get();
+      if (todaySnap.docs.isEmpty) return null;
+      final list = todaySnap.docs
+          .map((d) => AttendanceModel.fromFirestore(d))
+          .toList();
       list.sort((a, b) => b.checkIn.compareTo(a.checkIn));
       return list.first;
     });

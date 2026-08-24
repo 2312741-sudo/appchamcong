@@ -103,7 +103,7 @@ class _AttendanceHistoryScreenState
 
   String _formatTime(DateTime? dt) {
     if (dt == null) return '--:--';
-    return DateFormat('HH:mm').format(dt);
+    return DateFormat('HH:mm').format(dt.toLocal());
   }
 
   String _formatDateHeader(String dateStr) {

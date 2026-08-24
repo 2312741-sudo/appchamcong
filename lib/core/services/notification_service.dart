@@ -1,14 +1,21 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/router.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
+
+  // Navigation pending state for cold start
+  static String? pendingRoute;
+  static Map<String, dynamic>? pendingRouteExtra;
 
   // Lazy-initialize these - do NOT access FirebaseMessaging.instance at field level
   FirebaseMessaging? _fcm;
@@ -18,7 +25,35 @@ class NotificationService {
 
   // Keep track of subscriptions so we can cancel them on dispose
   StreamSubscription<RemoteMessage>? _onMessageSubscription;
+  StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
   StreamSubscription<String>? _onTokenRefreshSubscription;
+
+  /// Handle navigating to the destination when user taps a notification
+  static void handleNotificationTap({String? routePath, Map<String, dynamic>? extra}) {
+    final targetRoute = (routePath != null && routePath.isNotEmpty) ? routePath : AppRoutes.notifications;
+    final context = rootNavigatorKey.currentContext;
+
+    debugPrint('Notification tapped -> routing to: $targetRoute');
+
+    if (context != null) {
+      try {
+        if (extra != null) {
+          context.push(targetRoute, extra: extra);
+        } else {
+          context.push(targetRoute);
+        }
+        pendingRoute = null;
+        pendingRouteExtra = null;
+        return;
+      } catch (e) {
+        debugPrint('Direct notification navigation failed: $e, queuing for splash');
+      }
+    }
+
+    // If navigator context is not ready yet, save as pending route
+    pendingRoute = targetRoute;
+    pendingRouteExtra = extra;
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -56,7 +91,22 @@ class NotificationService {
       );
       const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
 
-      await _localNotifications!.initialize(initSettings);
+      await _localNotifications!.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          if (response.payload != null && response.payload!.isNotEmpty) {
+            try {
+              final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+              final routePath = data['routePath'] as String?;
+              handleNotificationTap(routePath: routePath, extra: data);
+            } catch (_) {
+              handleNotificationTap(routePath: response.payload);
+            }
+          } else {
+            handleNotificationTap();
+          }
+        },
+      );
 
       // Create Android Notification Channel
       const androidChannel = AndroidNotificationChannel(
@@ -76,6 +126,19 @@ class NotificationService {
           _showLocalNotification(message);
         }
       });
+
+      // Handle notification taps when app is in background
+      _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        final routePath = message.data['routePath'] as String?;
+        handleNotificationTap(routePath: routePath, extra: message.data);
+      });
+
+      // Check if app was opened from terminated state via notification click
+      final initialMessage = await _fcm!.getInitialMessage();
+      if (initialMessage != null) {
+        final routePath = initialMessage.data['routePath'] as String?;
+        handleNotificationTap(routePath: routePath, extra: initialMessage.data);
+      }
 
       _initialized = true;
       debugPrint('NotificationService initialized successfully');
@@ -134,8 +197,10 @@ class NotificationService {
   /// Call this when the user logs out or app is being cleaned up
   Future<void> dispose() async {
     await _onMessageSubscription?.cancel();
+    await _onMessageOpenedAppSubscription?.cancel();
     await _onTokenRefreshSubscription?.cancel();
     _onMessageSubscription = null;
+    _onMessageOpenedAppSubscription = null;
     _onTokenRefreshSubscription = null;
     _initialized = false;
     _fcm = null;
@@ -161,11 +226,14 @@ class NotificationService {
     );
     const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
+    final payloadStr = jsonEncode(message.data);
+
     await _localNotifications!.show(
       notification.hashCode,
       notification.title,
       notification.body,
       details,
+      payload: payloadStr,
     );
   }
 }

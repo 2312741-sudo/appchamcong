@@ -93,8 +93,11 @@ class GoRouterRefreshStream extends ChangeNotifier {
   }
 }
 
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
@@ -255,7 +258,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
           final initialWeekIndex = extra?['initialWeekIndex'] as int? ?? 0;
-          return ScheduleManagerScreen(initialWeekIndex: initialWeekIndex);
+          final weekStart = extra?['weekStart'] as String?;
+          return ScheduleManagerScreen(
+            initialWeekIndex: initialWeekIndex,
+            initialWeekStart: weekStart,
+          );
         },
       ),
 

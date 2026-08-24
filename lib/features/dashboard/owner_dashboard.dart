@@ -365,7 +365,8 @@ class _OwnerHomeTab extends ConsumerWidget {
                           final member = members.where((m) => m.userId == att.userId).firstOrNull;
                           final name = member?.name ?? att.userId;
                           final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
-                          final checkInTime = '${att.checkIn.hour.toString().padLeft(2,'0')}:${att.checkIn.minute.toString().padLeft(2,'0')}';
+                          final localCheckIn = att.checkIn.toLocal();
+                          final checkInTime = '${localCheckIn.hour.toString().padLeft(2,'0')}:${localCheckIn.minute.toString().padLeft(2,'0')}';
                           return Material(
                             color: Colors.transparent,
                             child: ListTile(
@@ -797,9 +798,9 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       isActive
-                          ? 'Vào ca lúc ${DateFormat('HH:mm').format(attendance!.checkIn)}'
+                          ? 'Vào ca lúc ${DateFormat('HH:mm').format(attendance!.checkIn.toLocal())}'
                           : isDone && attendance?.checkOut != null
-                              ? 'Tổng: ${(attendance!.totalHours ?? 0).toStringAsFixed(1)}h (${DateFormat('HH:mm').format(attendance!.checkIn)} - ${DateFormat('HH:mm').format(attendance!.checkOut!)})'
+                              ? 'Tổng: ${(attendance!.totalHours ?? 0).toStringAsFixed(1)}h (${DateFormat('HH:mm').format(attendance!.checkIn.toLocal())} - ${DateFormat('HH:mm').format(attendance!.checkOut!.toLocal())})'
                               : 'Chạm để chấm vào ca làm việc',
                       style: const TextStyle(
                         fontFamily: 'BeVietnamPro',

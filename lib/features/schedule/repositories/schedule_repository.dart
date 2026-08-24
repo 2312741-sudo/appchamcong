@@ -157,13 +157,17 @@ class ScheduleRepository {
 
       final shiftsJson = allShifts.map((k, v) => MapEntry(k, v.toJson()));
       final now = Timestamp.now();
+      // Use merge: true to preserve shift entries from other users
+      // (e.g. employees who self-registered while the manager was editing).
+      // Each user ID is a separate key in the 'shifts' map, so merge
+      // correctly preserves keys not present in this save.
       await _schedules(storeId).doc(weekStart).set({
         'storeId': storeId,
         'weekStart': weekStart,
         'shifts': shiftsJson,
         'updatedAt': now,
         'updatedBy': caller?.uid,
-      });
+      }, SetOptions(merge: true));
 
       // Create notification for all members
       try {

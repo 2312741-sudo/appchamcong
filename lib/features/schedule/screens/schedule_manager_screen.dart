@@ -15,11 +15,13 @@ import '../repositories/schedule_repository.dart';
 
 class ScheduleManagerScreen extends ConsumerStatefulWidget {
   final int initialWeekIndex;
+  final String? initialWeekStart; // Optional: directly specify week start date (YYYY-MM-DD)
   final bool showAppBar;
   final bool isReadOnly;
   const ScheduleManagerScreen({
     super.key,
     this.initialWeekIndex = 0,
+    this.initialWeekStart,
     this.showAppBar = true,
     this.isReadOnly = false,
   });
@@ -55,9 +57,17 @@ class _ScheduleManagerScreenState
     final currentWeekStr = repo.getWeekStart(DateTime.now());
     final currentIdx = _weeks.indexOf(currentWeekStr);
     final defaultIdx = currentIdx >= 0 ? currentIdx : 8;
-    _selectedWeekIndex = (widget.initialWeekIndex >= 0 && widget.initialWeekIndex < _weeks.length)
-        ? (widget.initialWeekIndex == 0 ? defaultIdx : widget.initialWeekIndex)
-        : defaultIdx;
+
+    // If a specific weekStart was provided (e.g. from notification routing),
+    // find its index in the weeks array.
+    if (widget.initialWeekStart != null && widget.initialWeekStart!.isNotEmpty) {
+      final weekIdx = _weeks.indexOf(widget.initialWeekStart!);
+      _selectedWeekIndex = weekIdx >= 0 ? weekIdx : defaultIdx;
+    } else {
+      _selectedWeekIndex = (widget.initialWeekIndex >= 0 && widget.initialWeekIndex < _weeks.length)
+          ? (widget.initialWeekIndex == 0 ? defaultIdx : widget.initialWeekIndex)
+          : defaultIdx;
+    }
   }
 
   int get _thisWeekIndex {

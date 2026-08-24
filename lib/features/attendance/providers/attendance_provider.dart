@@ -6,12 +6,14 @@ import '../../store/providers/store_provider.dart';
 
 // ---------- Today's attendance ----------
 
+// Uses watchActiveAttendance to handle cross-midnight shifts correctly:
+// if a user checked in at 22:00 and it's now 01:00 next day, this still shows active.
 final todayAttendanceProvider = StreamProvider<AttendanceModel?>((ref) {
   final storeId = ref.watch(currentStoreIdProvider);
   final uid = ref.watch(currentUserIdProvider);
   if (storeId == null || uid == null) return Stream.value(null);
   final repo = ref.watch(attendanceRepositoryProvider);
-  return repo.watchTodayAttendance(storeId, uid);
+  return repo.watchActiveAttendance(storeId, uid);
 });
 
 // ---------- Month attendance (family) ----------

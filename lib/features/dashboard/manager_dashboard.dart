@@ -313,7 +313,8 @@ class _ManagerHomeTab extends ConsumerWidget {
                           final members = ref.watch(storeMembersProvider).valueOrNull ?? [];
                           final member = members.where((m) => m.userId == att.userId).firstOrNull;
                           final name = member?.name ?? att.userId;
-                          final checkInTime = '${att.checkIn.hour.toString().padLeft(2,'0')}:${att.checkIn.minute.toString().padLeft(2,'0')}';
+                          final localCheckIn = att.checkIn.toLocal();
+                          final checkInTime = '${localCheckIn.hour.toString().padLeft(2,'0')}:${localCheckIn.minute.toString().padLeft(2,'0')}';
                           return Material(
                             color: Colors.transparent,
                             child: ListTile(

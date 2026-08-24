@@ -177,6 +177,27 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
     context.go(route);
+
+    // If user tapped a push notification on cold start, push the notification route
+    final pending = NotificationService.pendingRoute;
+    final extra = NotificationService.pendingRouteExtra;
+    if (pending != null &&
+        (route == AppRoutes.ownerDashboard ||
+            route == AppRoutes.managerDashboard ||
+            route == AppRoutes.employeeDashboard)) {
+      NotificationService.pendingRoute = null;
+      NotificationService.pendingRouteExtra = null;
+      Future.delayed(const Duration(milliseconds: 350), () {
+        final navContext = rootNavigatorKey.currentContext;
+        if (navContext != null && navContext.mounted) {
+          if (extra != null) {
+            navContext.push(pending, extra: extra);
+          } else {
+            navContext.push(pending);
+          }
+        }
+      });
+    }
   }
 
   @override
