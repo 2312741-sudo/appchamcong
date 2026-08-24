@@ -5,10 +5,11 @@ service firebase.storage {
       return request.auth != null;
     }
     
-    match /avatars/{userId}.jpg {
+    // Quy tắc cho thư mục ảnh đại diện
+    match /avatars/{fileName} {
       allow read: if isSignedIn();
       allow write: if isSignedIn() 
-                   && request.auth.uid == userId
+                   && (fileName == request.auth.uid + '.jpg' || fileName == request.auth.uid)
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
