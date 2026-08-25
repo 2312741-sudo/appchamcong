@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../app/router.dart';
 import '../../models/member_model.dart';
 import '../../models/store_model.dart';
@@ -63,6 +64,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
 
     // Reactive role check: If user is actually Owner or Manager, auto-navigate to right dashboard
     ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
+      if (FirebaseAuth.instance.currentUser == null) return;
       if (next == null) return;
       if (next.status == MemberStatus.pending) {
         context.go(AppRoutes.pendingApproval);
@@ -81,6 +83,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
 
     // Kick out if removed
     ref.listen(storeMembersProvider, (prev, next) {
+      if (FirebaseAuth.instance.currentUser == null) return;
       if (uid == null) return;
       final prevList = prev?.valueOrNull;
       final nextList = next.valueOrNull;
@@ -749,10 +752,10 @@ class _ProfileTab extends ConsumerWidget {
               ],
             ));
             if (confirm == true) {
+              await ref.read(authNotifierProvider.notifier).signOut();
               if (context.mounted) {
                 context.go(AppRoutes.login);
               }
-              await ref.read(authNotifierProvider.notifier).signOut();
             }
           }),
         ],

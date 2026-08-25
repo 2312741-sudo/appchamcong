@@ -32,12 +32,10 @@ class StoreDrawer extends ConsumerWidget {
               style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro'),
             ),
             accountEmail: Text(user?.email ?? '', style: const TextStyle(fontFamily: 'BeVietnamPro')),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: AppColors.surface,
-              backgroundImage: getAvatarImageProvider(user?.avatarUrl),
-              child: getAvatarImageProvider(user?.avatarUrl) == null
-                  ? const Icon(Icons.person, color: AppColors.primary, size: 36)
-                  : null,
+            currentAccountPicture: AvatarWidget(
+              avatarUrl: user?.avatarUrl ?? ref.watch(currentFirebaseUserProvider)?.photoURL,
+              name: user?.name ?? 'Người dùng',
+              radius: 36,
             ),
           ),
           
@@ -180,8 +178,10 @@ class StoreDrawer extends ConsumerWidget {
             title: const Text('Đăng xuất', style: TextStyle(color: AppColors.danger, fontFamily: 'BeVietnamPro')),
             onTap: () async {
               Navigator.of(context).pop(); // Close drawer
-              context.go(AppRoutes.login);
               await ref.read(authNotifierProvider.notifier).signOut();
+              if (context.mounted) {
+                context.go(AppRoutes.login);
+              }
             },
           ),
           const SizedBox(height: 24),

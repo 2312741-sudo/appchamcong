@@ -115,23 +115,27 @@ class AvatarWidget extends StatelessWidget {
     }
 
     // Network image
-    return ClipOval(
-      child: CachedNetworkImage(
-        imageUrl: trimmed,
-        width: diameter,
-        height: diameter,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Shimmer.fromColors(
-          baseColor: const Color(0xFFECE8E2),
-          highlightColor: const Color(0xFFF8F4EE),
-          child: Container(
-            width: diameter,
-            height: diameter,
-            color: AppColors.white,
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: trimmed,
+          width: diameter,
+          height: diameter,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Shimmer.fromColors(
+            baseColor: const Color(0xFFECE8E2),
+            highlightColor: const Color(0xFFF8F4EE),
+            child: Container(
+              width: diameter,
+              height: diameter,
+              color: AppColors.white,
+            ),
           ),
+          errorWidget: (context, url, error) => _buildFallback(bgColor),
         ),
-        errorWidget: (context, url, error) => _buildFallback(bgColor),
-      ),
-    );
+      );
+    }
+
+    return _buildFallback(bgColor);
   }
 }

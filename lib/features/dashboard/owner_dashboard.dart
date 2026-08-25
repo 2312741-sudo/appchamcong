@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../app/router.dart';
 import '../../models/member_model.dart';
 import '../../models/attendance_model.dart';
@@ -13,6 +14,8 @@ import '../../features/attendance/providers/attendance_provider.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
 import '../../core/widgets/avatar_widget.dart';
+import '../../core/utils/attendance_utils.dart';
+import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/members/screens/members_list_screen.dart';
 import '../../features/attendance/screens/attendance_table_screen.dart';
 
@@ -30,6 +33,7 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
   Widget build(BuildContext context) {
     // Reactive role check: If user role changed to Manager or Employee, auto-navigate
     ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
+      if (FirebaseAuth.instance.currentUser == null) return;
       if (next == null) return;
       if (next.status == MemberStatus.pending) {
         context.go(AppRoutes.pendingApproval);
@@ -121,6 +125,10 @@ class _OwnerHomeTab extends ConsumerWidget {
     final pendingAsync = ref.watch(pendingMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
     final ownerAttendanceAsync = ref.watch(todayAttendanceProvider);
+
+    final weekStart = ref.watch(currentWeekStartProvider);
+    final scheduleAsync = ref.watch(weekScheduleProvider(weekStart));
+    final schedule = scheduleAsync.valueOrNull;
 
     final activeCount = membersAsync.valueOrNull?.where((m) => m.isActive).length ?? 0;
     final pendingCount = pendingAsync.valueOrNull?.where((m) => m.isActive && m.status == MemberStatus.pending).length ?? (pendingAsync.valueOrNull?.length ?? 0);
@@ -364,18 +372,59 @@ class _OwnerHomeTab extends ConsumerWidget {
                           final members = ref.watch(storeMembersProvider).valueOrNull ?? [];
                           final member = members.where((m) => m.userId == att.userId).firstOrNull;
                           final name = member?.name ?? att.userId;
-                          final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
                           final localCheckIn = att.checkIn.toLocal();
                           final checkInTime = '${localCheckIn.hour.toString().padLeft(2,'0')}:${localCheckIn.minute.toString().padLeft(2,'0')}';
+                          final lateWarning = AttendanceUtils.calculateLateString(
+                            checkIn: localCheckIn,
+                            userId: att.userId,
+                            store: store,
+                            schedule: schedule,
+                          );
                           return Material(
                             color: Colors.transparent,
                             child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: const Color(0xFF1A6B5A).withOpacity(0.15),
-                                child: Text(initial, style: const TextStyle(color: Color(0xFF1A6B5A), fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                              leading: AvatarWidget(
+                                avatarUrl: member?.avatarUrl,
+                                name: name,
+                                radius: 20,
                               ),
                               title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
-                              subtitle: Text('Vào ca: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text('Vào ca: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                                    if (lateWarning != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFF3E0),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.6), width: 0.8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.warning_amber_rounded, size: 11, color: Color(0xFFE65100)),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              lateWarning,
+                                              style: const TextStyle(
+                                                color: Color(0xFFE65100),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                fontFamily: 'BeVietnamPro',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                               trailing: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(color: const Color(0xFF1A6B5A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
@@ -536,9 +585,11 @@ class _OwnerSettingsTab extends ConsumerWidget {
                   TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Đăng xuất', style: TextStyle(color: Colors.red))),
                 ],
               ));
-              if (confirm == true && context.mounted) {
-                context.go(AppRoutes.login);
+              if (confirm == true) {
                 await ref.read(authNotifierProvider.notifier).signOut();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
               }
             }),
           ]),

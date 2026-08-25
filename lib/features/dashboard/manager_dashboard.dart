@@ -14,6 +14,7 @@ import '../../features/auth/providers/auth_notifier.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
 import '../../core/widgets/avatar_widget.dart';
+import '../../core/utils/attendance_utils.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/schedule/screens/employee_schedule_tab.dart';
@@ -35,6 +36,7 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
 
     // Reactive role check: If user role changed to Owner or Employee, auto-navigate
     ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
+      if (FirebaseAuth.instance.currentUser == null) return;
       if (next == null) return;
       if (next.status == MemberStatus.pending) {
         context.go(AppRoutes.pendingApproval);
@@ -53,6 +55,7 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
 
     // Kick out if removed
     ref.listen(storeMembersProvider, (prev, next) {
+      if (FirebaseAuth.instance.currentUser == null) return;
       if (uid == null) return;
       final prevList = prev?.valueOrNull;
       final nextList = next.valueOrNull;
@@ -131,6 +134,9 @@ class _ManagerHomeTab extends ConsumerWidget {
     final membersAsync = ref.watch(storeMembersProvider);
     final pendingAsync = ref.watch(pendingMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
+    final weekStart = ref.watch(currentWeekStartProvider);
+    final scheduleAsync = ref.watch(weekScheduleProvider(weekStart));
+    final schedule = scheduleAsync.valueOrNull;
     final now = DateTime.now();
 
     final activeCount = membersAsync.valueOrNull?.where((m) => m.isActive).length ?? 0;
@@ -316,15 +322,57 @@ class _ManagerHomeTab extends ConsumerWidget {
                           final name = member?.name ?? att.userId;
                           final localCheckIn = att.checkIn.toLocal();
                           final checkInTime = '${localCheckIn.hour.toString().padLeft(2,'0')}:${localCheckIn.minute.toString().padLeft(2,'0')}';
+                          final lateWarning = AttendanceUtils.calculateLateString(
+                            checkIn: localCheckIn,
+                            userId: att.userId,
+                            store: store,
+                            schedule: schedule,
+                          );
                           return Material(
                             color: Colors.transparent,
                             child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: const Color(0xFF1C4E6B).withOpacity(0.15),
-                                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: Color(0xFF1C4E6B), fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                              leading: AvatarWidget(
+                                avatarUrl: member?.avatarUrl,
+                                name: name,
+                                radius: 20,
                               ),
                               title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', fontSize: 14)),
-                              subtitle: Text('Vào: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text('Vào: $checkInTime', style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
+                                    if (lateWarning != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFF3E0),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: const Color(0xFFFFB74D).withOpacity(0.6), width: 0.8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.warning_amber_rounded, size: 11, color: Color(0xFFE65100)),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              lateWarning,
+                                              style: const TextStyle(
+                                                color: Color(0xFFE65100),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                fontFamily: 'BeVietnamPro',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                               trailing: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(color: const Color(0xFF1A6B5A).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
@@ -475,8 +523,10 @@ class _ManagerProfileTab extends ConsumerWidget {
               ),
             );
             if (confirm == true) {
-              if (context.mounted) context.go(AppRoutes.login);
               await ref.read(authNotifierProvider.notifier).signOut();
+              if (context.mounted) {
+                context.go(AppRoutes.login);
+              }
             }
           }),
         ],

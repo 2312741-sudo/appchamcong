@@ -102,30 +102,30 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: false,
     refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
     redirect: (BuildContext context, GoRouterState state) {
-      final authState = ref.read(authStateChangesProvider);
-      final isAuthenticated =
-          authState.whenOrNull(data: (user) => user != null) ?? false;
-      final isLoading = authState.isLoading;
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final isAuthenticated = currentUser != null;
       final currentPath = state.matchedLocation;
-
-      // Don't redirect while loading
-      if (isLoading) return null;
 
       // Allow splash to handle its own redirect
       if (currentPath == AppRoutes.splash) return null;
 
-      // Allow welcome, profile-setup, create-store, join-store screens
+      // Public screens (unauthenticated)
       final publicScreens = [
         AppRoutes.welcome,
         AppRoutes.login,
         AppRoutes.register,
+      ];
+      final isOnPublicScreen = publicScreens.contains(currentPath);
+
+      // Onboarding screens (require authentication, but user might not have a store yet)
+      final onboardingScreens = [
         AppRoutes.profileSetup,
         AppRoutes.createStore,
         AppRoutes.joinStore,
         AppRoutes.joinStoreQr,
         AppRoutes.pendingApproval,
       ];
-      final isOnPublicScreen = publicScreens.contains(currentPath);
+      final isOnOnboardingScreen = onboardingScreens.contains(currentPath);
 
       // Auth screens only
       final authScreens = [

@@ -1,4 +1,4 @@
-﻿rules_version = '2';
+rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     function isSignedIn() {
@@ -7,7 +7,7 @@ service firebase.storage {
     
     // Quy tắc cho thư mục ảnh đại diện
     match /avatars/{fileName} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isSignedIn() 
                    && (fileName == request.auth.uid + '.jpg' || fileName == request.auth.uid)
                    && request.resource.size < 5 * 1024 * 1024

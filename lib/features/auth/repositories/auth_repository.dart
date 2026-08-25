@@ -130,6 +130,18 @@ class AuthRepository {
         createdAt: DateTime.now().toUtc(),
       );
       await createUserDocument(userModel);
+    } else {
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final existingAvatar = data['avatarUrl'] as String?;
+      if ((existingAvatar == null || existingAvatar.trim().isEmpty) &&
+          user.photoURL != null &&
+          user.photoURL!.trim().isNotEmpty) {
+        try {
+          await _firestore.collection('users').doc(user.uid).update({
+            'avatarUrl': user.photoURL,
+          });
+        } catch (_) {}
+      }
     }
   }
 
@@ -148,6 +160,12 @@ class AuthRepository {
   // ── Sign Out ──────────────────────────────────────────────────────────────
 
   Future<void> signOut() async {
+    try {
+      final googleSignIn = GoogleSignIn();
+      if (await googleSignIn.isSignedIn()) {
+        await googleSignIn.signOut();
+      }
+    } catch (_) {}
     await _auth.signOut();
   }
 

@@ -147,7 +147,7 @@ class NotificationService {
     }
   }
 
-  /// Call this AFTER user logs in to save FCM token
+  /// Call this AFTER user logs in to save FCM token and remove stale associations
   Future<void> saveTokenForUser(String uid) async {
     if (_fcm == null) return;
     try {
@@ -165,6 +165,35 @@ class NotificationService {
       final token = await _fcm!.getToken();
       if (token == null) return;
 
+      // 1. Deduplication: Clear this token from any OTHER user documents in Firestore
+      try {
+        final existingWithToken = await FirebaseFirestore.instance
+            .collection('users')
+            .where('fcmToken', isEqualTo: token)
+            .get();
+
+        if (existingWithToken.docs.isNotEmpty) {
+          final batch = FirebaseFirestore.instance.batch();
+          bool hasOtherUsers = false;
+          for (final doc in existingWithToken.docs) {
+            if (doc.id != uid) {
+              batch.update(doc.reference, {
+                'fcmToken': FieldValue.delete(),
+                'tokenClearedAt': FieldValue.serverTimestamp(),
+              });
+              hasOtherUsers = true;
+            }
+          }
+          if (hasOtherUsers) {
+            await batch.commit();
+            debugPrint('Deduplicated FCM token: cleared from previous accounts on this device');
+          }
+        }
+      } catch (e) {
+        debugPrint('Error deduplicating FCM tokens: $e');
+      }
+
+      // 2. Save token for the current active user
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'fcmToken': token,
         'tokenUpdatedAt': FieldValue.serverTimestamp(),
@@ -174,16 +203,58 @@ class NotificationService {
       await _onTokenRefreshSubscription?.cancel();
       _onTokenRefreshSubscription = _fcm!.onTokenRefresh.listen((newToken) async {
         try {
-          await FirebaseFirestore.instance.collection('users').doc(uid).set({
-            'fcmToken': newToken,
-            'tokenUpdatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          // Deduplicate new token
+          final staleDocs = await FirebaseFirestore.instance
+              .collection('users')
+              .where('fcmToken', isEqualTo: newToken)
+              .get();
+
+          final refreshBatch = FirebaseFirestore.instance.batch();
+          for (final doc in staleDocs.docs) {
+            if (doc.id != uid) {
+              refreshBatch.update(doc.reference, {
+                'fcmToken': FieldValue.delete(),
+              });
+            }
+          }
+          refreshBatch.set(
+            FirebaseFirestore.instance.collection('users').doc(uid),
+            {
+              'fcmToken': newToken,
+              'tokenUpdatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+          await refreshBatch.commit();
         } catch (e) {
-          debugPrint('Failed to update FCM token: $e');
+          debugPrint('Failed to update refreshed FCM token: $e');
         }
       });
     } catch (e) {
       debugPrint('Failed to save FCM token: $e');
+    }
+  }
+
+  /// Call this when the user logs out: removes token from Firestore, deletes device token and disposes listeners
+  Future<void> clearTokenForUser(String uid) async {
+    try {
+      if (uid.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'fcmToken': FieldValue.delete(),
+          'tokenClearedAt': FieldValue.serverTimestamp(),
+        }).catchError((e) {
+          debugPrint('Could not delete fcmToken on user doc: $e');
+        });
+      }
+      if (_fcm != null) {
+        await _fcm!.deleteToken().catchError((e) {
+          debugPrint('Could not delete FCM device token: $e');
+        });
+      }
+      await dispose();
+      debugPrint('FCM token successfully cleared for user $uid on logout');
+    } catch (e) {
+      debugPrint('Error clearing FCM token for user $uid: $e');
     }
   }
 

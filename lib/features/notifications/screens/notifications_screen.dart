@@ -26,6 +26,15 @@ class NotificationsScreen extends ConsumerWidget {
         foregroundColor: const Color(0xFF1A1A1A),
         elevation: 0,
         centerTitle: false,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF1A1A1A),
+            size: 20,
+          ),
+          onPressed: () => context.pop(),
+        ),
+        iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
         title: Text(
           'Thông báo',
           style: GoogleFonts.beVietnamPro(

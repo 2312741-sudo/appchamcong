@@ -3,6 +3,7 @@ import 'package:cham_cong_tram/core/auth/app_permissions.dart';
 import 'package:cham_cong_tram/models/member_model.dart';
 import 'package:cham_cong_tram/models/production_model.dart';
 import 'package:cham_cong_tram/models/attendance_model.dart';
+import 'package:cham_cong_tram/core/widgets/avatar_widget.dart';
 import 'package:cham_cong_tram/app/router.dart';
 
 void main() {
@@ -127,6 +128,29 @@ void main() {
       expect(AppPermissions.canViewAllAttendance(UserRole.manager1), isTrue);
       expect(AppPermissions.canViewAllAttendance(UserRole.owner), isTrue);
       expect(AppPermissions.canViewAllAttendance(UserRole.legacyManager), isTrue);
+    });
+  });
+
+  group('NEW: Avatar Helper & Fallback Tests', () {
+    test('getAvatarImageProvider returns null for empty or null url', () {
+      expect(getAvatarImageProvider(null), isNull);
+      expect(getAvatarImageProvider(''), isNull);
+      expect(getAvatarImageProvider('   '), isNull);
+    });
+
+    test('getAvatarImageProvider returns CachedNetworkImageProvider for http and https', () {
+      final p1 = getAvatarImageProvider('https://example.com/avatar.jpg');
+      expect(p1, isNotNull);
+      expect(p1.runtimeType.toString(), contains('CachedNetworkImageProvider'));
+
+      final p2 = getAvatarImageProvider('http://example.com/avatar.jpg');
+      expect(p2, isNotNull);
+      expect(p2.runtimeType.toString(), contains('CachedNetworkImageProvider'));
+    });
+
+    test('getAvatarImageProvider returns null for invalid non-url string', () {
+      final p = getAvatarImageProvider('invalid_path_not_url');
+      expect(p, isNull);
     });
   });
 }
