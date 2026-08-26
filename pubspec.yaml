@@ -1,6 +1,6 @@
 name: cham_cong_tram
 description: Ứng dụng chấm công thông minh cho doanh nghiệp Việt Nam
-version: 1.0.4
+version: 1.0.4+6
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
