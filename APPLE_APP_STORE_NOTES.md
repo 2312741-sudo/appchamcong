@@ -6,19 +6,25 @@
 ```text
 Dear App Review Team,
 
-This update (Version 1.0.4) brings several key operational enhancements and UX improvements for retail workforce management:
+First and foremost, we would like to extend our sincerest apologies for submitting multiple consecutive updates within a short timeframe, and our deepest gratitude for your continued patience, diligence, and invaluable support in reviewing our application.
 
-1. Cross-Midnight Active Attendance Tracking: Improved real-time active attendance streams so employees working overnight shifts remain accurately listed on the manager dashboard ("Working Employees") across midnight until they officially check out.
-2. Flexible Check-out Verification: Employees can now choose their verification method (Store Wi-Fi or GPS Location) when checking out, ensuring smooth check-out even if their mobile connection switched during the shift.
-3. Workday-Based Production Checklist: Enhanced production checklist logic that correlates with scheduled workdays and supports late check-outs (up to 03:00 AM next day) with single-submission per workday for multi-shift schedules.
-4. Schedule Registration UI Optimization: Redesigned shift selection bottom sheets and week schedule registration with pinned action buttons and smooth scrollability to support complex multi-shift and department selections.
+As our store operations run in real time with active retail staff, our internal testing and early user feedback uncovered several critical operational issues that needed immediate resolution. We have thoroughly addressed all of them in this comprehensive release (Version 1.0.4, Build 6):
 
-Demo Account Credentials for Review:
+1. Cross-Midnight Active Attendance Tracking: Resolved an issue where employees working night/overnight shifts temporarily disappeared from the manager's active roster ("Nhân viên đang làm") after 12:00 AM midnight. They now stay accurately listed in real time until their shift is officially completed.
+2. Flexible Check-out Verification (Wi-Fi & GPS): Employees can now actively select their preferred verification method (Store Wi-Fi or GPS Location) when checking out, resolving connection issues when mobile devices switch networks during shifts.
+3. Workday-Based Production Checklist: Restructured the checklist logic to align strictly with the scheduled workday (UTC+7) and support late check-outs (up to 03:00 AM the following day), ensuring single-submission per workday for multi-shift employees.
+4. Schedule Registration UI & Usability: Resolved layout and button accessibility issues in the shift selection bottom sheet and week schedule screen, ensuring the "Xác nhận" and "Lưu lịch" buttons remain permanently accessible and responsive regardless of device screen size or number of shifts.
+
+Demo Account Credentials for Testing:
 - Email: nguyenthanhlinh677@gmail.com
 - Password: Linh1234
 - Role: Store Owner
 
-All features can be tested directly from the home dashboard, attendance tab, and schedule management screens. Please let us know if any further information is needed. Thank you!
+All features and screens can be fully tested directly from the home dashboard, attendance tab, and schedule management screens.
+
+Once again, we truly appreciate your time, patience, and dedication in helping us deliver a stable and compliant experience to our users. Please do not hesitate to let us know if any further details or assistance are needed.
+
+Warm regards and thank you so much!
 ```
 
 ---
@@ -28,18 +34,18 @@ All features can be tested directly from the home dashboard, attendance tab, and
 
 ### 🇻🇳 Tiếng Việt:
 ```text
-Phiên bản 1.0.4 mang đến các cải tiến quan trọng về chấm công và quản lý ca làm việc:
+Phiên bản 1.0.4 mang đến các nâng cấp quan trọng về chấm công và trải nghiệm sử dụng:
 
-1. [MỚI] Theo dõi nhân viên làm xuyên đêm: Nhân viên làm ca đêm qua 12h đêm vẫn luôn hiển thị trong danh sách "Nhân viên đang làm" trên màn hình Tổng quan cho đến khi thực hiện ra ca.
-2. [MỚI] Tùy chọn phương thức khi ra ca: Nhân viên có thể linh hoạt chọn xác thực bằng WiFi hoặc Định vị GPS khi bấm Ra ca.
-3. Tối ưu Checklist sản xuất: Tự động nhận diện ca sản xuất theo ngày làm việc, hỗ trợ ca muộn đến 03:00 sáng hôm sau và tối ưu chỉ cần nộp 1 lần/ngày cho nhân viên làm nhiều ca.
-4. Nâng cấp giao diện đăng ký ca làm: Cố định nút "Xác nhận" và "Lưu lịch", hỗ trợ lướt danh sách mượt mà khi đăng ký nhiều ca và chọn bộ phận trong cùng một ngày.
-5. Cải thiện độ ổn định và hiệu năng tổng thể của ứng dụng.
+1. [MỚI] Theo dõi nhân viên làm ca đêm: Nhân viên làm việc qua 12h đêm luôn hiển thị liên tục trong danh sách "Nhân viên đang làm" trên màn hình Tổng quan cho tới khi ra ca.
+2. [MỚI] Tùy chọn linh hoạt khi ra ca: Cho phép nhân viên chủ động chọn xác thực bằng WiFi cửa hàng hoặc Định vị GPS khi bấm Ra ca.
+3. Tối ưu Checklist sản xuất: Tự động ghi nhận theo ngày làm việc, hỗ trợ ca muộn đến 03:00 sáng hôm sau và tối ưu chỉ cần nộp 1 lần/ngày cho nhân viên làm nhiều ca.
+4. Nâng cấp giao diện đăng ký lịch làm: Cố định nút "Xác nhận" và "Lưu lịch", cuộn danh sách chọn ca và bộ phận mượt mà.
+5. Cải thiện hiệu năng và độ ổn định tổng thể của ứng dụng.
 ```
 
 ### 🇬🇧 English:
 ```text
-Version 1.0.4 brings important enhancements for shift and attendance management:
+Version 1.0.4 brings key enhancements for shift operations and overall stability:
 - Cross-midnight active attendance: Overnight workers stay listed in the active staff overview until checkout.
 - Flexible check-out verification: Choose between store Wi-Fi or GPS location when checking out.
 - Workday-based production checklist: Supports late checkouts up to 03:00 AM and one-time daily submission.
