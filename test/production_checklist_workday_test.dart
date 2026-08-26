@@ -235,6 +235,105 @@ void main() {
       expect(result.isWithinValidWindow, isTrue, reason: '02:00 AM ngày 27/08 vẫn trước 03:00 AM ngày 27/08');
       expect(result.isRequired, isTrue);
     });
+
+    test('7. Ngày 25 KHÔNG có ca SX, ngày 26 CÓ ca SX: In 18h ngày 25, Out 00h20 ngày 26 -> KHÔNG BỊ BẮT CHECKLIST', () {
+      // Schedule: Tuesday 25/08 = Ca Tối Bar (không có SX), Wednesday 26/08 = Ca Sáng SX
+      const scheduleTuesdayNonSXWedSX = ScheduleModel(
+        id: '2026-08-24',
+        storeId: 'store_1',
+        weekStart: '2026-08-24',
+        shifts: {
+          'emp_1': DaySchedule(
+            tuesday: ['shift_evening|bar'], // 25/08: Ca tối không phải SX
+            wednesday: ['shift_morning|sx'], // 26/08: Ca sáng SX
+          ),
+        },
+      );
+
+      // CheckIn: 2026-08-25 18:00 VN (11:00 UTC)
+      final checkIn = DateTime.utc(2026, 8, 25, 11, 0);
+      // Checkout: 2026-08-26 00:20 VN (17:20 UTC ngày 25/08)
+      final now = DateTime.utc(2026, 8, 25, 17, 20);
+
+      final result = ProductionChecklistUtils.evaluateChecklistRequirement(
+        checkInTime: checkIn,
+        now: now,
+        userId: 'emp_1',
+        store: testStore,
+        memberDepartmentId: 'sx', // Dù nhân viên có bộ phận gốc là SX
+        schedule: scheduleTuesdayNonSXWedSX,
+        hasAlreadyReportedForWorkday: false,
+      );
+
+      expect(result.workdayDate, equals('2026-08-25'), reason: 'Ngày làm việc cố định theo ngày In ca (25/08)');
+      expect(result.hasProductionShiftOnWorkday, isFalse, reason: 'Ngày 25/08 không có ca SX nên không được xem là ca SX');
+      expect(result.isRequired, isFalse, reason: 'Tuyệt đối không bắt checklist khi ngày 25/08 không có ca SX');
+    });
+
+    test('8. Ngày 25 CÓ ca SX: In 18h ngày 25, Out 00h20 ngày 26 (sau 24h) -> VẪN BẮT BUỘC CHECKLIST vì trước 3h sáng', () {
+      // Schedule: Tuesday 25/08 = Ca Tối SX (18h-23h)
+      const scheduleTuesdaySX = ScheduleModel(
+        id: '2026-08-24',
+        storeId: 'store_1',
+        weekStart: '2026-08-24',
+        shifts: {
+          'emp_1': DaySchedule(
+            tuesday: ['shift_evening|sx'],
+          ),
+        },
+      );
+
+      // CheckIn: 2026-08-25 18:00 VN (11:00 UTC)
+      final checkIn = DateTime.utc(2026, 8, 25, 11, 0);
+      // Checkout: 2026-08-26 00:20 VN (17:20 UTC ngày 25/08)
+      final now = DateTime.utc(2026, 8, 25, 17, 20);
+
+      final result = ProductionChecklistUtils.evaluateChecklistRequirement(
+        checkInTime: checkIn,
+        now: now,
+        userId: 'emp_1',
+        store: testStore,
+        schedule: scheduleTuesdaySX,
+        hasAlreadyReportedForWorkday: false,
+      );
+
+      expect(result.workdayDate, equals('2026-08-25'));
+      expect(result.hasProductionShiftOnWorkday, isTrue);
+      expect(result.isWithinValidWindow, isTrue, reason: '00h20 ngày 26/08 vẫn nằm trong hạn đến 03h00 sáng ngày 26/08');
+      expect(result.isRequired, isTrue, reason: 'Bắt buộc phải nộp checklist');
+    });
+
+    test('9. Ngày 25 CÓ ca SX: In 18h ngày 25, Out 03h15 ngày 26 (quá 3h sáng) -> TỰ ĐỘNG THÔNG QUA, không chặn ra ca', () {
+      const scheduleTuesdaySX = ScheduleModel(
+        id: '2026-08-24',
+        storeId: 'store_1',
+        weekStart: '2026-08-24',
+        shifts: {
+          'emp_1': DaySchedule(
+            tuesday: ['shift_evening|sx'],
+          ),
+        },
+      );
+
+      // CheckIn: 2026-08-25 18:00 VN (11:00 UTC)
+      final checkIn = DateTime.utc(2026, 8, 25, 11, 0);
+      // Checkout: 2026-08-26 03:15 VN (20:15 UTC ngày 25/08)
+      final now = DateTime.utc(2026, 8, 25, 20, 15);
+
+      final result = ProductionChecklistUtils.evaluateChecklistRequirement(
+        checkInTime: checkIn,
+        now: now,
+        userId: 'emp_1',
+        store: testStore,
+        schedule: scheduleTuesdaySX,
+        hasAlreadyReportedForWorkday: false,
+      );
+
+      expect(result.workdayDate, equals('2026-08-25'));
+      expect(result.hasProductionShiftOnWorkday, isTrue);
+      expect(result.isWithinValidWindow, isFalse, reason: 'Đã quá mốc 03h00 sáng ngày 26/08');
+      expect(result.isRequired, isFalse, reason: 'Quá 3h sáng tự động thông qua checklist');
+    });
   });
 
   group('Active Attendance Across Midnight Tests (Vấn đề 1)', () {

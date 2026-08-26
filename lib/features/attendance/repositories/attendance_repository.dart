@@ -198,6 +198,23 @@ class AttendanceRepository {
     });
   }
 
+  /// Retrieves the currently open attendance record (checkOut == null) without a date filter.
+  Future<AttendanceModel?> getActiveAttendance(String storeId, String userId) async {
+    try {
+      final snap = await _attendances(storeId)
+          .where('userId', isEqualTo: userId)
+          .where('checkOut', isNull: true)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        return AttendanceModel.fromFirestore(snap.docs.first);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Stream<List<AttendanceModel>> watchMonthAttendance(
     String storeId,
     String userId,

@@ -104,7 +104,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
     }
   }
 
-  Future<void> _handleCheckIn(StoreModel store, String userId, bool isCheckedIn) async {
+  Future<void> _handleCheckIn(
+    StoreModel store,
+    String userId,
+    bool isCheckedIn, {
+    AttendanceModel? currentAttendance,
+  }) async {
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(attendanceRepositoryProvider);
@@ -113,18 +118,24 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       await _validateMethod(store, isCheckedIn);
 
       if (isCheckedIn) {
-        // ── CHECKOUT LOGIC (with workday-based production checklist) ──
-        final attendance = ref.read(_localTodayAttendanceProvider(userId)).valueOrNull;
-        final checkInTime = attendance?.checkIn ?? DateTime.now();
+        // ── CHECKOUT LOGIC (anchored strictly on Check-in Workday) ──
+        final activeAtt = currentAttendance ??
+            await repo.getActiveAttendance(store.id, userId);
+        if (activeAtt == null) {
+          throw Exception('Không tìm thấy ca làm việc nào đang hoạt động');
+        }
+        final checkInTime = activeAtt.checkIn;
 
         // 1. Resolve member's department
         final membersList = ref.read(storeMembersProvider).valueOrNull ?? [];
-        final currentMember = membersList.where((m) => m.userId == userId).firstOrNull;
+        final currentMember =
+            membersList.where((m) => m.userId == userId).firstOrNull;
         final memberDepartmentId = currentMember?.department;
 
-        // 2. Fetch weekly schedule for check-in week
+        // 2. Fetch weekly schedule strictly for the check-in workday week
         final checkInVN = checkInTime.toUtc().add(const Duration(hours: 7));
-        final mondayOfCheckIn = checkInVN.subtract(Duration(days: checkInVN.weekday - 1));
+        final mondayOfCheckIn =
+            checkInVN.subtract(Duration(days: checkInVN.weekday - 1));
         final weekStartStr =
             '${mondayOfCheckIn.year}-${mondayOfCheckIn.month.toString().padLeft(2, '0')}-${mondayOfCheckIn.day.toString().padLeft(2, '0')}';
 
@@ -134,14 +145,14 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
           schedule = await scheduleRepo.getWeekSchedule(store.id, weekStartStr);
         } catch (_) {}
 
-        // 3. Check if a report was already submitted for this workday
+        // 3. Check if a report was already submitted for this exact workday
         final workdayDateStr =
             '${checkInVN.year}-${checkInVN.month.toString().padLeft(2, '0')}-${checkInVN.day.toString().padLeft(2, '0')}';
         final productionRepo = ref.read(productionRepositoryProvider);
         final hasAlreadyReported =
             await productionRepo.hasReportToday(store.id, userId, workdayDateStr);
 
-        // 4. Evaluate checklist requirement via ProductionChecklistUtils
+        // 4. Evaluate checklist requirement strictly anchored on checkInTime
         final eval = ProductionChecklistUtils.evaluateChecklistRequirement(
           checkInTime: checkInTime,
           now: DateTime.now(),
@@ -341,7 +352,14 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                             return Transform.scale(
                               scale: isCheckedIn ? 1.0 : _pulseAnimation.value,
                               child: GestureDetector(
-                                onTap: _isLoading ? null : () => _handleCheckIn(store, userId, isCheckedIn),
+                                onTap: _isLoading
+                                    ? null
+                                    : () => _handleCheckIn(
+                                          store,
+                                          userId,
+                                          isCheckedIn,
+                                          currentAttendance: attendance,
+                                        ),
                                 child: Container(
                                   width: 200,
                                   height: 200,

@@ -66,7 +66,11 @@ class DepartmentUtils {
     List<String>? todayShiftEntries,
   }) {
     // 1. If today has specific shift assignments in the weekly schedule
-    if (todayShiftEntries != null && todayShiftEntries.isNotEmpty) {
+    if (todayShiftEntries != null) {
+      if (todayShiftEntries.isEmpty) {
+        // Explicitly no shifts scheduled on this workday -> Not a scheduled SX shift
+        return false;
+      }
       for (final entry in todayShiftEntries) {
         if (entry.contains('|')) {
           final deptId = entry.split('|')[1];
@@ -80,9 +84,11 @@ class DepartmentUtils {
           }
         }
       }
+      // If shifts are scheduled today but none of them match SX -> Not an SX shift
+      return false;
     }
 
-    // 2. Fallback: If no shift entries or entry has no dept, check member's base department
+    // 2. Fallback ONLY if todayShiftEntries is null (no schedule model available):
     if (memberDepartmentId != null && isProduction(deptId: memberDepartmentId, storeDepartments: store.departments)) {
       return true;
     }

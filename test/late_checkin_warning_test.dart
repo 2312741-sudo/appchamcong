@@ -49,8 +49,6 @@ void main() {
     );
 
     // Tuesday (2026-08-25 is Tuesday, weekday = 2)
-    final testDate = DateTime(2026, 8, 25);
-
     test('1. Shift start 11:00, check-in 11:15 -> "Đi muộn 15 phút"', () {
       final schedule = ScheduleModel(
         id: '2026-08-24',
