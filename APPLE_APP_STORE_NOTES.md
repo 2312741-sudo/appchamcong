@@ -6,7 +6,7 @@
 ```text
 Dear App Review Team,
 
-This update (Version 1.0.4, Build 6) brings several key operational enhancements and UX improvements for retail workforce management:
+This update (Version 1.0.4) brings several key operational enhancements and UX improvements for retail workforce management:
 
 1. Cross-Midnight Active Attendance Tracking: Improved real-time active attendance streams so employees working overnight shifts remain accurately listed on the manager dashboard ("Working Employees") across midnight until they officially check out.
 2. Flexible Check-out Verification: Employees can now choose their verification method (Store Wi-Fi or GPS Location) when checking out, ensuring smooth check-out even if their mobile connection switched during the shift.
