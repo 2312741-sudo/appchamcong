@@ -134,6 +134,7 @@ class _ManagerHomeTab extends ConsumerWidget {
     final membersAsync = ref.watch(storeMembersProvider);
     final pendingAsync = ref.watch(pendingMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
+    final activeAttendancesAsync = ref.watch(activeAttendancesProvider);
     final weekStart = ref.watch(currentWeekStartProvider);
     final scheduleAsync = ref.watch(weekScheduleProvider(weekStart));
     final schedule = scheduleAsync.valueOrNull;
@@ -141,7 +142,7 @@ class _ManagerHomeTab extends ConsumerWidget {
 
     final activeCount = membersAsync.valueOrNull?.where((m) => m.isActive).length ?? 0;
     final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
-    final workingNow = attendancesAsync.valueOrNull?.where((a) => a.checkOut == null).length ?? 0;
+    final workingNow = activeAttendancesAsync.valueOrNull?.length ?? 0;
     final doneToday = attendancesAsync.valueOrNull?.where((a) => a.checkOut != null).length ?? 0;
     final firstName = (user?.name ?? 'Quản lý').split(' ').last;
     final roleTitle = role?.label ?? 'Quản lý';
@@ -301,11 +302,11 @@ class _ManagerHomeTab extends ConsumerWidget {
               children: [
                 const Text('Nhân viên đang làm', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
                 const SizedBox(height: 12),
-                attendancesAsync.when(
+                activeAttendancesAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1C4E6B))),
                   error: (_, __) => const SizedBox.shrink(),
                   data: (atts) {
-                    final working = atts.where((a) => a.checkOut == null).take(5).toList();
+                    final working = atts.take(5).toList();
                     if (working.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(20),

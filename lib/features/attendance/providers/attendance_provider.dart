@@ -42,6 +42,16 @@ final allTodayAttendancesProvider =
   return repo.watchAllAttendances(storeId, date);
 });
 
+// ---------- All currently active attendances across shifts (checkOut == null) ----------
+
+final activeAttendancesProvider =
+    StreamProvider<List<AttendanceModel>>((ref) {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null) return Stream.value([]);
+  final repo = ref.watch(attendanceRepositoryProvider);
+  return repo.watchActiveAttendances(storeId);
+});
+
 // ---------- All attendances on a specific date (family) ----------
 
 final dateAttendancesProvider =

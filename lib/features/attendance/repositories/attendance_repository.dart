@@ -64,38 +64,9 @@ class AttendanceRepository {
     bool isProductionShift = false,
   }) async {
     try {
-      final date = _todayDate();
       final now = DateTime.now().toUtc();
 
-      // If user is in a production shift, verify that a production report was submitted today
-      if (isProductionShift) {
-        final reportsQuery = await _firestore
-            .collection('stores')
-            .doc(storeId)
-            .collection('production_reports')
-            .where('userId', isEqualTo: userId)
-            .where('date', isEqualTo: date)
-            .limit(1)
-            .get();
-
-        if (reportsQuery.docs.isEmpty) {
-          try {
-            await _firestore.collection('stores').doc(storeId).collection('notifications').add({
-              'storeId': storeId,
-              'title': 'Nhắc nhở: Chưa nộp báo cáo sản xuất',
-              'body': 'Bạn đang trong ca sản xuất ngày $date nhưng chưa nộp báo cáo checklist. Vui lòng hoàn thành để chấm ra.',
-              'type': 'checklist_reminder',
-              'createdAt': Timestamp.now(),
-              'targetUserId': userId,
-              'readBy': [],
-              'routePath': '/production/report',
-            });
-          } catch (_) {}
-          throw Exception('Bắt buộc phải hoàn thành và gửi báo cáo sản xuất trước khi ra ca.');
-        }
-      }
-
-      // Find active attendance record (no date filter — handles cross-midnight shifts)
+      // Find active attendance record first (no date filter — handles cross-midnight shifts)
       final query = await _attendances(storeId)
           .where('userId', isEqualTo: userId)
           .where('checkOut', isNull: true)
@@ -108,6 +79,58 @@ class AttendanceRepository {
 
       final doc = query.docs.first;
       final checkIn = (doc.data()['checkIn'] as Timestamp).toDate().toUtc();
+      final vnCheckIn = checkIn.add(const Duration(hours: 7));
+      final workdayDate =
+          '${vnCheckIn.year}-${vnCheckIn.month.toString().padLeft(2, '0')}-${vnCheckIn.day.toString().padLeft(2, '0')}';
+
+      // If user is in a production shift, verify that a production report was submitted for this workday
+      // (only within the valid window up to 03:00 AM the next day VN Time)
+      if (isProductionShift) {
+        final vnNow = now.add(const Duration(hours: 7));
+        final deadline = DateTime.utc(
+          vnCheckIn.year,
+          vnCheckIn.month,
+          vnCheckIn.day + 1,
+          3,
+          0,
+          0,
+        );
+        final isWithinValidWindow = vnNow.isBefore(deadline);
+
+        if (isWithinValidWindow) {
+          final reportsQuery = await _firestore
+              .collection('stores')
+              .doc(storeId)
+              .collection('production_reports')
+              .where('userId', isEqualTo: userId)
+              .where('date', isEqualTo: workdayDate)
+              .limit(1)
+              .get();
+
+          if (reportsQuery.docs.isEmpty) {
+            try {
+              await _firestore
+                  .collection('stores')
+                  .doc(storeId)
+                  .collection('notifications')
+                  .add({
+                'storeId': storeId,
+                'title': 'Nhắc nhở: Chưa nộp báo cáo sản xuất',
+                'body':
+                    'Bạn đang trong ca sản xuất ngày $workdayDate nhưng chưa nộp báo cáo checklist. Vui lòng hoàn thành để chấm ra.',
+                'type': 'checklist_reminder',
+                'createdAt': Timestamp.now(),
+                'targetUserId': userId,
+                'readBy': [],
+                'routePath': '/production/report',
+              });
+            } catch (_) {}
+            throw Exception(
+                'Bắt buộc phải hoàn thành và gửi báo cáo sản xuất trước khi ra ca.');
+          }
+        }
+      }
+
       final totalHours = now.difference(checkIn).inMinutes / 60.0;
 
       await doc.reference.update({
@@ -197,6 +220,21 @@ class AttendanceRepository {
       String storeId, String date) {
     return _attendances(storeId)
         .where('date', isEqualTo: date)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs
+              .map((d) => AttendanceModel.fromFirestore(d))
+              .toList();
+          list.sort((a, b) => a.checkIn.compareTo(b.checkIn));
+          return list;
+        });
+  }
+
+  /// Watches for all currently ACTIVE attendances (checkOut == null) across all users in the store.
+  /// Used for the real-time "Nhân viên đang làm" (Working Employees) dashboard box.
+  Stream<List<AttendanceModel>> watchActiveAttendances(String storeId) {
+    return _attendances(storeId)
+        .where('checkOut', isNull: true)
         .snapshots()
         .map((snap) {
           final list = snap.docs

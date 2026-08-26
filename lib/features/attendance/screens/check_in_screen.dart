@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/utils/location_utils.dart';
 import '../../../core/utils/department_utils.dart';
+import '../../../core/utils/production_checklist_utils.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/store_model.dart';
 import '../../../models/production_model.dart';
+import '../../../models/schedule_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../../store/screens/shift_settings_screen.dart';
@@ -34,106 +36,101 @@ class CheckInScreen extends ConsumerStatefulWidget {
   ConsumerState<CheckInScreen> createState() => _CheckInScreenState();
 }
 
-class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTickerProviderStateMixin {
-  bool _isLoading = false;
-  late Timer _timer;
-  DateTime _currentTime = DateTime.now();
+class _CheckInScreenState extends ConsumerState<CheckInScreen> {
   CheckInMethod _selectedMethod = CheckInMethod.wifi;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  bool _isLoading = false;
+  DateTime _currentTime = DateTime.now();
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _currentTime = DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentTime = DateTime.now();
+        });
+      }
     });
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
   }
 
   @override
   void dispose() {
-    _timer.cancel();
-    _pulseController.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
-  Future<void> _handleCheckIn(StoreModel store, String userId, bool isCheckedIn) async {
+  Future<void> _handleAttendanceAction(
+    AttendanceModel? attendance,
+    StoreModel store,
+    String userId,
+    AttendanceRepository repo,
+  ) async {
     setState(() => _isLoading = true);
+
     try {
-      final repo = ref.read(attendanceRepositoryProvider);
-      
-      if (isCheckedIn) {
-        // 1. Resolve member's default department ID
+      final hasCheckedIn = attendance != null && attendance.checkOut == null;
+
+      if (hasCheckedIn) {
+        // 1. Resolve member's department and active attendance check-in time
         final membersList = ref.read(storeMembersProvider).valueOrNull ?? [];
         final currentMember = membersList.where((m) => m.userId == userId).firstOrNull;
         final memberDepartmentId = currentMember?.department;
 
-        // 2. Resolve today's shift entries from schedule
-        List<String> todayShiftEntries = [];
+        final checkInTime = attendance.checkIn;
+
+        // 2. Fetch weekly schedule for check-in week
+        final checkInVN = checkInTime.toUtc().add(const Duration(hours: 7));
+        final mondayOfCheckIn = checkInVN.subtract(Duration(days: checkInVN.weekday - 1));
+        final weekStartStr =
+            '${mondayOfCheckIn.year}-${mondayOfCheckIn.month.toString().padLeft(2, '0')}-${mondayOfCheckIn.day.toString().padLeft(2, '0')}';
+
+        ScheduleModel? schedule;
         try {
-          final weekStart = ref.read(currentWeekStartProvider);
           final scheduleRepo = ref.read(scheduleRepositoryProvider);
-          final schedule = await scheduleRepo.getWeekSchedule(store.id, weekStart);
-          if (schedule != null) {
-            final userDaySchedule = schedule.getScheduleForUser(userId);
-            if (userDaySchedule != null) {
-              final todayWeekday = DateTime.now().weekday; // 1=Mon, 7=Sun
-              todayShiftEntries = userDaySchedule.shiftForDay(todayWeekday);
-            }
-          }
+          schedule = await scheduleRepo.getWeekSchedule(store.id, weekStartStr);
         } catch (_) {}
 
-        // 3. Robust check: is user in an SX shift or SX department today?
-        final isInSXShift = DepartmentUtils.isUserInProductionShiftToday(
+        // 3. Check if a report was already submitted for this workday
+        final workdayDateStr =
+            '${checkInVN.year}-${checkInVN.month.toString().padLeft(2, '0')}-${checkInVN.day.toString().padLeft(2, '0')}';
+        final productionRepo = ref.read(productionRepositoryProvider);
+        final hasAlreadyReported =
+            await productionRepo.hasReportToday(store.id, userId, workdayDateStr);
+
+        // 4. Evaluate checklist requirement via ProductionChecklistUtils
+        final eval = ProductionChecklistUtils.evaluateChecklistRequirement(
+          checkInTime: checkInTime,
+          now: DateTime.now(),
           userId: userId,
           store: store,
           memberDepartmentId: memberDepartmentId,
-          todayShiftEntries: todayShiftEntries,
+          schedule: schedule,
+          hasAlreadyReportedForWorkday: hasAlreadyReported,
         );
 
-        if (isInSXShift) {
-          // Find matching shift definition
-          final shifts = store.customShifts.isNotEmpty 
-              ? store.customShifts 
-              : ref.read(storeShiftsProvider);
-          final nowMinutes = _currentTime.hour * 60 + _currentTime.minute;
-          ShiftDefinition? currentShift;
-          for (final s in shifts) {
-            final sStart = s.startHour * 60 + s.startMinute;
-            var sEnd = s.endHour * 60 + s.endMinute;
-            if (sEnd < sStart) sEnd += 24 * 60;
-            if (nowMinutes >= sStart - 60 && nowMinutes <= sEnd + 60) {
-              currentShift = s;
-              break;
-            }
-          }
-          currentShift ??= shifts.firstOrNull ?? const ShiftDefinition(
-            id: 'default', name: 'Ca làm việc',
-            startHour: 8, startMinute: 0, endHour: 17, endMinute: 0,
-          );
-
-          // Always fetch active tasks async with kDefaultProductionTasks fallback
-          final productionRepo = ref.read(productionRepositoryProvider);
+        if (eval.isRequired) {
           final tasks = await productionRepo.getActiveTasks(store.id);
 
+          if (!mounted) return;
           setState(() => _isLoading = false);
-          final result = await _showProductionChecklist(context, tasks, currentShift, store, userId);
+          final result = await _showProductionChecklist(
+            context,
+            tasks,
+            eval.resolvedShift,
+            store,
+            userId,
+            eval.workdayDate,
+          );
           if (result != true) {
             // User cancelled/closed checklist modal -> halt checkout
             return;
           }
+          if (!mounted) return;
           setState(() => _isLoading = true);
         }
 
-        await repo.checkOut(store.id, userId, isProductionShift: isInSXShift);
+        await repo.checkOut(store.id, userId, isProductionShift: eval.hasProductionShiftOnWorkday);
         _showSuccess('Chấm ra thành công!');
         return;
       }
@@ -178,7 +175,14 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
     }
   }
 
-  Future<bool?> _showProductionChecklist(BuildContext context, List<ProductionTask> tasks, ShiftDefinition shift, StoreModel store, String userId) {
+  Future<bool?> _showProductionChecklist(
+    BuildContext context,
+    List<ProductionTask> tasks,
+    ShiftDefinition shift,
+    StoreModel store,
+    String userId,
+    String workdayDate,
+  ) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -189,6 +193,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
           shift: shift,
           storeId: store.id,
           userId: userId,
+          workdayDate: workdayDate,
           onSubmitted: () => Navigator.pop(ctx, true),
         );
       },
@@ -225,142 +230,175 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
             return Scaffold(
               backgroundColor: const Color(0xFFF5F6FA),
               appBar: AppBar(
-                title: const Text('Chấm Công', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                title: const Text('Chấm công', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
                 centerTitle: true,
-                backgroundColor: Colors.transparent,
                 elevation: 0,
-                leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87), onPressed: () => context.pop()),
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF1A1A1A),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  onPressed: () => context.pop(),
+                ),
               ),
-              body: SafeArea(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Glassmorphism Header
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFFC8102E), Color(0xFFE52040)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [BoxShadow(color: const Color(0xFFC8102E).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
-                          ),
-                          child: Column(
-                            children: [
-                              Text(DateFormat('EEEE, dd/MM/yyyy', 'vi').format(_currentTime), style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16, fontWeight: FontWeight.w500)),
-                              const SizedBox(height: 8),
-                              Text(DateFormat('HH:mm:ss').format(_currentTime), style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w800, letterSpacing: 2)),
-                              const SizedBox(height: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.storefront_rounded, color: Colors.white.withOpacity(0.9), size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(store.name, style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // Header Status Card
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isCheckedIn
+                              ? [const Color(0xFF1A6B5A), const Color(0xFF0F4C3F)]
+                              : [const Color(0xFF1A1A1A), const Color(0xFF2C2C2C)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        const SizedBox(height: 32),
-
-                        if (!isCheckedIn) ...[
-                          const Align(alignment: Alignment.centerLeft, child: Text('Phương thức chấm công', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87))),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              _buildMethodCard(CheckInMethod.wifi, Icons.wifi, 'WiFi', store.hasWifi),
-                              const SizedBox(width: 16),
-                              _buildMethodCard(CheckInMethod.gps, Icons.location_on, 'Vị trí', store.latitude != null),
-                            ],
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isCheckedIn ? const Color(0xFF1A6B5A) : Colors.black).withOpacity(0.2),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
                           ),
-                          const SizedBox(height: 32),
-                        ] else ...[
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
-                                  child: const Icon(Icons.login_rounded, color: Colors.green, size: 28),
-                                ),
-                                const SizedBox(width: 16),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Giờ vào ca', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
-                                    const SizedBox(height: 4),
-                                    Text(DateFormat('HH:mm').format(attendance!.checkIn.toLocal()), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.black87)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 32),
                         ],
-
-                        // Check Button
-                        AnimatedBuilder(
-                          animation: _pulseAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: isCheckedIn ? 1.0 : _pulseAnimation.value,
-                              child: GestureDetector(
-                                onTap: _isLoading ? null : () => _handleCheckIn(store, userId, isCheckedIn),
-                                child: Container(
-                                  width: 200,
-                                  height: 200,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: isCheckedIn 
-                                          ? [const Color(0xFF888780), const Color(0xFF666560)]
-                                          : [const Color(0xFF1A6B5A), const Color(0xFF124D41)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: isCheckedIn ? const Color(0xFF63E6BE) : Colors.orangeAccent,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: (isCheckedIn ? const Color(0xFF888780) : const Color(0xFF1A6B5A)).withOpacity(0.4),
-                                        blurRadius: 30,
-                                        spreadRadius: 10,
-                                      )
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: _isLoading
-                                        ? const CircularProgressIndicator(color: Colors.white)
-                                        : Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(isCheckedIn ? Icons.logout_rounded : Icons.fingerprint_rounded, color: Colors.white, size: 64),
-                                              const SizedBox(height: 12),
-                                              Text(isCheckedIn ? 'RA CA' : 'VÀO CA', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 2)),
-                                            ],
-                                          ),
-                                  ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      isCheckedIn ? 'ĐANG TRONG CA' : 'CHƯA VÀO CA',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, fontFamily: 'BeVietnamPro'),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        Text(isCheckedIn ? 'Bạn đang trong ca làm việc' : 'Nhấn để bắt đầu ca làm việc', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                      ],
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(_currentTime),
+                                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontFamily: 'BeVietnamPro'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            DateFormat('HH:mm:ss').format(_currentTime),
+                            style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', letterSpacing: 1),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            store.name,
+                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 15, fontWeight: FontWeight.w500, fontFamily: 'BeVietnamPro'),
+                          ),
+                          if (isCheckedIn && attendance?.checkIn != null) ...[
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.login_rounded, color: Colors.white70, size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Giờ vào ca: ${DateFormat('HH:mm').format(attendance!.checkIn.toLocal())}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+
+                    // Method Selector (Only for check-in)
+                    if (!isCheckedIn) ...[
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Phương thức xác thực',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _MethodCard(
+                              icon: Icons.wifi_rounded,
+                              label: 'WiFi Cửa hàng',
+                              isSelected: _selectedMethod == CheckInMethod.wifi,
+                              onTap: () => setState(() => _selectedMethod = CheckInMethod.wifi),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _MethodCard(
+                              icon: Icons.location_on_rounded,
+                              label: 'Định vị GPS',
+                              isSelected: _selectedMethod == CheckInMethod.gps,
+                              onTap: () => setState(() => _selectedMethod = CheckInMethod.gps),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+
+                    // Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () => _handleAttendanceAction(attendance, store, userId, ref.read(attendanceRepositoryProvider)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isCheckedIn ? const Color(0xFFC8102E) : const Color(0xFF1A6B5A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(isCheckedIn ? Icons.logout_rounded : Icons.login_rounded),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    isCheckedIn ? 'KẾT THÚC CA (CHẤM RA)' : 'BẮT ĐẦU CA (CHẤM VÀO)',
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro'),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -369,28 +407,56 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       },
     );
   }
+}
 
-  Widget _buildMethodCard(CheckInMethod method, IconData icon, String label, bool isAvailable) {
-    final isSelected = _selectedMethod == method;
-    return Expanded(
-      child: GestureDetector(
-        onTap: isAvailable ? () => setState(() => _selectedMethod = method) : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF1C4E6B) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isSelected ? const Color(0xFF1C4E6B) : Colors.grey.shade300, width: 2),
-            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF1C4E6B).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
+// ── Method Selector Card ──────────────────────────────────────────────────────
+
+class _MethodCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _MethodCard({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1A6B5A).withOpacity(0.08) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1A6B5A) : Colors.grey.shade200,
+            width: isSelected ? 2 : 1,
           ),
-          child: Column(
-            children: [
-              Icon(icon, color: isAvailable ? (isSelected ? Colors.white : Colors.grey.shade600) : Colors.grey.shade300, size: 32),
-              const SizedBox(height: 12),
-              Text(label, style: TextStyle(color: isAvailable ? (isSelected ? Colors.white : Colors.black87) : Colors.grey.shade400, fontWeight: FontWeight.w600)),
-            ],
-          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? const Color(0xFF1A6B5A) : Colors.grey,
+              size: 28,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? const Color(0xFF1A6B5A) : Colors.grey.shade700,
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -404,6 +470,7 @@ class _ProductionChecklistDialog extends ConsumerStatefulWidget {
   final ShiftDefinition shift;
   final String storeId;
   final String userId;
+  final String workdayDate;
   final VoidCallback onSubmitted;
 
   const _ProductionChecklistDialog({
@@ -411,6 +478,7 @@ class _ProductionChecklistDialog extends ConsumerStatefulWidget {
     required this.shift,
     required this.storeId,
     required this.userId,
+    required this.workdayDate,
     required this.onSubmitted,
   });
 
@@ -473,13 +541,12 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
       final members = ref.read(storeMembersProvider).valueOrNull ?? [];
       final member = members.where((m) => m.userId == widget.userId).firstOrNull;
       final memberName = member?.name ?? 'Nhân viên';
-      final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
       final report = ProductionReport(
         id: '',
         userId: widget.userId,
         memberName: memberName,
-        date: dateStr,
+        date: widget.workdayDate,
         shiftId: widget.shift.id,
         shiftName: widget.shift.name,
         checkoutTime: DateTime.now(),

@@ -124,6 +124,7 @@ class _OwnerHomeTab extends ConsumerWidget {
     final membersAsync = ref.watch(storeMembersProvider);
     final pendingAsync = ref.watch(pendingMembersProvider);
     final attendancesAsync = ref.watch(allTodayAttendancesProvider);
+    final activeAttendancesAsync = ref.watch(activeAttendancesProvider);
     final ownerAttendanceAsync = ref.watch(todayAttendanceProvider);
 
     final weekStart = ref.watch(currentWeekStartProvider);
@@ -133,7 +134,7 @@ class _OwnerHomeTab extends ConsumerWidget {
     final activeCount = membersAsync.valueOrNull?.where((m) => m.isActive).length ?? 0;
     final pendingCount = pendingAsync.valueOrNull?.where((m) => m.isActive && m.status == MemberStatus.pending).length ?? (pendingAsync.valueOrNull?.length ?? 0);
     final unclassifiedManagers = membersAsync.valueOrNull?.where((m) => m.isActive && m.isLegacyManager).toList() ?? [];
-    final workingNow = attendancesAsync.valueOrNull?.where((a) => a.checkOut == null).length ?? 0;
+    final workingNow = activeAttendancesAsync.valueOrNull?.length ?? 0;
     final doneToday = attendancesAsync.valueOrNull?.where((a) => a.checkOut != null).length ?? 0;
     final now = DateTime.now();
     final firstName = (user?.name ?? 'Chủ').split(' ').last;
@@ -352,11 +353,11 @@ class _OwnerHomeTab extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                attendancesAsync.when(
+                activeAttendancesAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC8102E))),
                   error: (_, __) => const SizedBox.shrink(),
                   data: (atts) {
-                    final working = atts.where((a) => a.checkOut == null).take(5).toList();
+                    final working = atts.take(5).toList();
                     if (working.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(20),
