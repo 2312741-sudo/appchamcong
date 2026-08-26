@@ -161,97 +161,113 @@ class _ScheduleRegisterScreenState
             final hasDelivery = selectedShifts.contains('delivery');
             final hasGiaoHang = selectedShifts.contains('giaohang');
             return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Chọn ca làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
-                  const SizedBox(height: 16),
-                  if (store.customShifts.isEmpty)
-                    const Text('Chưa có ca làm nào được thiết lập.'),
-                  ...store.customShifts.map((shift) {
-                    final currentSelected = selectedShifts.where((s) => s.startsWith('${shift.id}|') || s == shift.id).firstOrNull ?? '';
-                    final isSelected = currentSelected.isNotEmpty;
-                    String selectedDeptId = (isSelected && currentSelected.contains('|')) ? currentSelected.split('|')[1] : '';
-                    return Column(
-                      children: [
-                        CheckboxListTile(
-                          title: Text('${shift.name} (${shift.timeRange})', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
-                          value: isSelected,
-                          onChanged: (val) {
-                            setModalState(() {
-                              if (val == true) {
-                                selectedShifts.add(shift.id);
-                              } else {
-                                selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
-                              }
-                            });
-                          },
-                        ),
-                        if (isSelected && store.departments.isNotEmpty && (isOwner || store.departmentSelectionEnabled))
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            child: DropdownButtonFormField<String>(
-                              value: selectedDeptId.isEmpty ? null : selectedDeptId,
-                              hint: const Text('Chọn bộ phận'),
-                              items: store.departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.7,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Chọn ca làm', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 18)),
+                      const SizedBox(height: 16),
+                      // Scrollable shift list
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (store.customShifts.isEmpty)
+                                const Text('Chưa có ca làm nào được thiết lập.'),
+                              ...store.customShifts.map((shift) {
+                                final currentSelected = selectedShifts.where((s) => s.startsWith('${shift.id}|') || s == shift.id).firstOrNull ?? '';
+                                final isSelected = currentSelected.isNotEmpty;
+                                String selectedDeptId = (isSelected && currentSelected.contains('|')) ? currentSelected.split('|')[1] : '';
+                                return Column(
+                                  children: [
+                                    CheckboxListTile(
+                                      title: Text('${shift.name} (${shift.timeRange})', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
+                                      value: isSelected,
+                                      onChanged: (val) {
+                                        setModalState(() {
+                                          if (val == true) {
+                                            selectedShifts.add(shift.id);
+                                          } else {
+                                            selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    if (isSelected && store.departments.isNotEmpty && (isOwner || store.departmentSelectionEnabled))
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                        child: DropdownButtonFormField<String>(
+                                          value: selectedDeptId.isEmpty ? null : selectedDeptId,
+                                          hint: const Text('Chọn bộ phận'),
+                                          items: store.departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
+                                          onChanged: (val) {
+                                            if (val != null) {
+                                              setModalState(() {
+                                                selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
+                                                selectedShifts.add('${shift.id}|$val');
+                                              });
+                                            }
+                                          }
+                                        ),
+                                      ),
+                                    const Divider(),
+                                  ],
+                                );
+                              }),
+                              CheckboxListTile(
+                                title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                value: hasDelivery,
+                                onChanged: (val) {
                                   setModalState(() {
-                                    selectedShifts.removeWhere((s) => s.startsWith('${shift.id}|') || s == shift.id);
-                                    selectedShifts.add('${shift.id}|$val');
+                                    if (val == true) selectedShifts.add('delivery');
+                                    else selectedShifts.remove('delivery');
                                   });
                                 }
-                              }
-                            ),
+                              ),
+                              CheckboxListTile(
+                                title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                value: hasGiaoHang,
+                                onChanged: (val) {
+                                  setModalState(() {
+                                    if (val == true) selectedShifts.add('giaohang');
+                                    else selectedShifts.remove('giaohang');
+                                  });
+                                }
+                              ),
+                            ],
                           ),
-                        const Divider(),
-                      ],
-                    );
-                  }),
-                  CheckboxListTile(
-                    title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    value: hasDelivery,
-                    onChanged: (val) {
-                      setModalState(() {
-                        if (val == true) selectedShifts.add('delivery');
-                        else selectedShifts.remove('delivery');
-                      });
-                    }
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Fixed confirm button at bottom
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _draft[dayIndex] = List.from(selectedShifts);
+                              _hasUnsavedEdits = true;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                          child: const Text('Xác nhận'),
+                        ),
+                      )
+                    ],
                   ),
-                  CheckboxListTile(
-                    title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    value: hasGiaoHang,
-                    onChanged: (val) {
-                      setModalState(() {
-                        if (val == true) selectedShifts.add('giaohang');
-                        else selectedShifts.remove('giaohang');
-                      });
-                    }
-                  ),
-                    const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _draft[dayIndex] = List.from(selectedShifts);
-                          _hasUnsavedEdits = true;
-                        });
-                        Navigator.pop(ctx);
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
-                      child: const Text('Xác nhận'),
-                    ),
-                  )
-                ],
+                ),
               ),
-            ),
-          );
-        }
-      ),
+            );
+          }
+        ),
     );
   }
 
@@ -306,9 +322,9 @@ class _ScheduleRegisterScreenState
               error: (e, _) => Center(child: Text('Lỗi: $e')),
             ),
           ),
-          _buildSaveButton(pastDeadline),
         ],
       ),
+      bottomNavigationBar: _buildSaveButton(pastDeadline),
     );
   }
 

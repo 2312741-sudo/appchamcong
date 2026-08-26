@@ -36,48 +36,91 @@ class CheckInScreen extends ConsumerStatefulWidget {
   ConsumerState<CheckInScreen> createState() => _CheckInScreenState();
 }
 
-class _CheckInScreenState extends ConsumerState<CheckInScreen> {
-  CheckInMethod _selectedMethod = CheckInMethod.wifi;
+class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  late Timer _timer;
   DateTime _currentTime = DateTime.now();
-  Timer? _timer;
+  CheckInMethod _selectedMethod = CheckInMethod.wifi;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          _currentTime = DateTime.now();
-        });
-      }
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _currentTime = DateTime.now());
     });
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    ));
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _timer.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleAttendanceAction(
-    AttendanceModel? attendance,
-    StoreModel store,
-    String userId,
-    AttendanceRepository repo,
-  ) async {
+  Future<void> _validateMethod(StoreModel store, bool isCheckedIn) async {
+    final actionText = isCheckedIn ? 'chấm ra' : 'chấm công';
+    if (_selectedMethod == CheckInMethod.wifi) {
+      final allowedIPs = <String>[];
+      if (store.networkIP != null && store.networkIP!.trim().isNotEmpty) {
+        allowedIPs.add(store.networkIP!.trim());
+      }
+      for (final wifi in store.wifis) {
+        if (wifi.ip.trim().isNotEmpty && !allowedIPs.contains(wifi.ip.trim())) {
+          allowedIPs.add(wifi.ip.trim());
+        }
+      }
+
+      if (allowedIPs.isEmpty) {
+        if (!store.hasWifi) {
+          throw Exception('Cửa hàng chưa cấu hình WiFi chấm công.');
+        }
+      } else {
+        final isWifiCorrect = await LocationUtils.isOnStoreNetwork(allowedIPs);
+        if (!isWifiCorrect) {
+          throw Exception(
+              'Bạn chưa kết nối đúng mạng WiFi của cửa hàng (hoặc đang dùng 4G/5G). Vui lòng kết nối WiFi tại nơi làm việc để $actionText.');
+        }
+      }
+    } else if (_selectedMethod == CheckInMethod.gps) {
+      if (store.latitude == null || store.longitude == null) {
+        throw Exception('Cửa hàng chưa cấu hình Vị trí.');
+      }
+      final canProceed = await LocationUtils.isInStoreRange(
+          store.latitude!, store.longitude!, store.radiusMeters.toDouble());
+      if (!canProceed) {
+        throw Exception(
+            'Bạn không ở trong phạm vi cửa hàng. Vui lòng đến cửa hàng để $actionText.');
+      }
+    }
+  }
+
+  Future<void> _handleCheckIn(StoreModel store, String userId, bool isCheckedIn) async {
     setState(() => _isLoading = true);
-
     try {
-      final hasCheckedIn = attendance != null && attendance.checkOut == null;
+      final repo = ref.read(attendanceRepositoryProvider);
+      
+      // 1. Validate WiFi or GPS based on the selected method
+      await _validateMethod(store, isCheckedIn);
 
-      if (hasCheckedIn) {
-        // 1. Resolve member's department and active attendance check-in time
+      if (isCheckedIn) {
+        // ── CHECKOUT LOGIC (with workday-based production checklist) ──
+        final attendance = ref.read(_localTodayAttendanceProvider(userId)).valueOrNull;
+        final checkInTime = attendance?.checkIn ?? DateTime.now();
+
+        // 1. Resolve member's department
         final membersList = ref.read(storeMembersProvider).valueOrNull ?? [];
         final currentMember = membersList.where((m) => m.userId == userId).firstOrNull;
         final memberDepartmentId = currentMember?.department;
-
-        final checkInTime = attendance.checkIn;
 
         // 2. Fetch weekly schedule for check-in week
         final checkInVN = checkInTime.toUtc().add(const Duration(hours: 7));
@@ -133,37 +176,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         await repo.checkOut(store.id, userId, isProductionShift: eval.hasProductionShiftOnWorkday);
         _showSuccess('Chấm ra thành công!');
         return;
-      }
-
-      // Handle check-in
-      bool canCheckIn = false;
-
-      if (_selectedMethod == CheckInMethod.wifi) {
-        final allowedIPs = <String>[];
-        if (store.networkIP != null && store.networkIP!.trim().isNotEmpty) {
-          allowedIPs.add(store.networkIP!.trim());
-        }
-        for (final wifi in store.wifis) {
-          if (wifi.ip.trim().isNotEmpty && !allowedIPs.contains(wifi.ip.trim())) {
-            allowedIPs.add(wifi.ip.trim());
-          }
-        }
-
-        if (allowedIPs.isEmpty) {
-          if (!store.hasWifi) throw Exception('Cửa hàng chưa cấu hình WiFi chấm công.');
-        } else {
-          final isWifiCorrect = await LocationUtils.isOnStoreNetwork(allowedIPs);
-          if (!isWifiCorrect) {
-            throw Exception('Bạn chưa kết nối đúng mạng WiFi của cửa hàng (hoặc đang dùng 4G/5G). Vui lòng kết nối WiFi tại nơi làm việc để chấm công.');
-          }
-        }
-        canCheckIn = true;
-      } else if (_selectedMethod == CheckInMethod.gps) {
-        if (store.latitude == null || store.longitude == null) throw Exception('Cửa hàng chưa cấu hình Vị trí.');
-        canCheckIn = await LocationUtils.isInStoreRange(store.latitude!, store.longitude!, store.radiusMeters.toDouble());
-        if (!canCheckIn) throw Exception('Bạn không ở trong phạm vi cửa hàng.');
-      } else {
-        canCheckIn = true; // qr or manual
       }
 
       await repo.checkIn(store.id, userId, _selectedMethod);
@@ -230,175 +242,148 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
             return Scaffold(
               backgroundColor: const Color(0xFFF5F6FA),
               appBar: AppBar(
-                title: const Text('Chấm công', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                title: const Text('Chấm Công', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
                 centerTitle: true,
+                backgroundColor: Colors.transparent,
                 elevation: 0,
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF1A1A1A),
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                  onPressed: () => context.pop(),
-                ),
+                leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87), onPressed: () => context.pop()),
               ),
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // Header Status Card
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isCheckedIn
-                              ? [const Color(0xFF1A6B5A), const Color(0xFF0F4C3F)]
-                              : [const Color(0xFF1A1A1A), const Color(0xFF2C2C2C)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (isCheckedIn ? const Color(0xFF1A6B5A) : Colors.black).withOpacity(0.2),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
+              body: SafeArea(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Glassmorphism Header
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFC8102E), Color(0xFFE52040)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [BoxShadow(color: const Color(0xFFC8102E).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Column(
                             children: [
+                              Text(DateFormat('EEEE, dd/MM/yyyy', 'vi').format(_currentTime), style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16, fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 8),
+                              Text(DateFormat('HH:mm:ss').format(_currentTime), style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                              const SizedBox(height: 16),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: isCheckedIn ? const Color(0xFF63E6BE) : Colors.orangeAccent,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      isCheckedIn ? 'ĐANG TRONG CA' : 'CHƯA VÀO CA',
-                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, fontFamily: 'BeVietnamPro'),
-                                    ),
+                                    Icon(Icons.storefront_rounded, color: Colors.white.withOpacity(0.9), size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(store.name, style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
-                              Text(
-                                DateFormat('dd/MM/yyyy').format(_currentTime),
-                                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontFamily: 'BeVietnamPro'),
-                              ),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        if (isCheckedIn) ...[
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+                                  child: const Icon(Icons.login_rounded, color: Colors.green, size: 28),
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Giờ vào ca', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
+                                    const SizedBox(height: 4),
+                                    Text(DateFormat('HH:mm').format(attendance!.checkIn.toLocal()), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.black87)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 24),
-                          Text(
-                            DateFormat('HH:mm:ss').format(_currentTime),
-                            style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', letterSpacing: 1),
+                        ],
+
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            isCheckedIn ? 'Phương thức ra ca' : 'Phương thức chấm công',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            store.name,
-                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 15, fontWeight: FontWeight.w500, fontFamily: 'BeVietnamPro'),
-                          ),
-                          if (isCheckedIn && attendance?.checkIn != null) ...[
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.login_rounded, color: Colors.white70, size: 16),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Giờ vào ca: ${DateFormat('HH:mm').format(attendance!.checkIn.toLocal())}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
-                                  ),
-                                ],
-                              ),
-                            ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            _buildMethodCard(CheckInMethod.wifi, Icons.wifi, 'WiFi', store.hasWifi),
+                            const SizedBox(width: 16),
+                            _buildMethodCard(CheckInMethod.gps, Icons.location_on, 'Vị trí', store.latitude != null),
                           ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Method Selector (Only for check-in)
-                    if (!isCheckedIn) ...[
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Phương thức xác thực',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A)),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _MethodCard(
-                              icon: Icons.wifi_rounded,
-                              label: 'WiFi Cửa hàng',
-                              isSelected: _selectedMethod == CheckInMethod.wifi,
-                              onTap: () => setState(() => _selectedMethod = CheckInMethod.wifi),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _MethodCard(
-                              icon: Icons.location_on_rounded,
-                              label: 'Định vị GPS',
-                              isSelected: _selectedMethod == CheckInMethod.gps,
-                              onTap: () => setState(() => _selectedMethod = CheckInMethod.gps),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-                    ],
+                        const SizedBox(height: 32),
 
-                    // Action Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () => _handleAttendanceAction(attendance, store, userId, ref.read(attendanceRepositoryProvider)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isCheckedIn ? const Color(0xFFC8102E) : const Color(0xFF1A6B5A),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 0,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(isCheckedIn ? Icons.logout_rounded : Icons.login_rounded),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    isCheckedIn ? 'KẾT THÚC CA (CHẤM RA)' : 'BẮT ĐẦU CA (CHẤM VÀO)',
-                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro'),
+                        // Check Button
+                        AnimatedBuilder(
+                          animation: _pulseAnimation,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: isCheckedIn ? 1.0 : _pulseAnimation.value,
+                              child: GestureDetector(
+                                onTap: _isLoading ? null : () => _handleCheckIn(store, userId, isCheckedIn),
+                                child: Container(
+                                  width: 200,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: isCheckedIn 
+                                          ? [const Color(0xFF888780), const Color(0xFF666560)]
+                                          : [const Color(0xFF1A6B5A), const Color(0xFF124D41)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (isCheckedIn ? const Color(0xFF888780) : const Color(0xFF1A6B5A)).withOpacity(0.4),
+                                        blurRadius: 30,
+                                        spreadRadius: 10,
+                                      )
+                                    ],
                                   ),
-                                ],
+                                  child: Center(
+                                    child: _isLoading
+                                        ? const CircularProgressIndicator(color: Colors.white)
+                                        : Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(isCheckedIn ? Icons.logout_rounded : Icons.fingerprint_rounded, color: Colors.white, size: 64),
+                                              const SizedBox(height: 12),
+                                              Text(isCheckedIn ? 'RA CA' : 'VÀO CA', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                                            ],
+                                          ),
+                                  ),
+                                ),
                               ),
-                      ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        Text(isCheckedIn ? 'Bạn đang trong ca làm việc' : 'Nhấn để bắt đầu ca làm việc', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             );
@@ -407,56 +392,28 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       },
     );
   }
-}
 
-// ── Method Selector Card ──────────────────────────────────────────────────────
-
-class _MethodCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _MethodCard({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1A6B5A).withOpacity(0.08) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF1A6B5A) : Colors.grey.shade200,
-            width: isSelected ? 2 : 1,
+  Widget _buildMethodCard(CheckInMethod method, IconData icon, String label, bool isAvailable) {
+    final isSelected = _selectedMethod == method;
+    return Expanded(
+      child: GestureDetector(
+        onTap: isAvailable ? () => setState(() => _selectedMethod = method) : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF1C4E6B) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isSelected ? const Color(0xFF1C4E6B) : Colors.grey.shade300, width: 2),
+            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF1C4E6B).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
           ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF1A6B5A) : Colors.grey,
-              size: 28,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? const Color(0xFF1A6B5A) : Colors.grey.shade700,
-                fontFamily: 'BeVietnamPro',
-              ),
-            ),
-          ],
+          child: Column(
+            children: [
+              Icon(icon, color: isAvailable ? (isSelected ? Colors.white : Colors.grey.shade600) : Colors.grey.shade300, size: 32),
+              const SizedBox(height: 12),
+              Text(label, style: TextStyle(color: isAvailable ? (isSelected ? Colors.white : Colors.black87) : Colors.grey.shade400, fontWeight: FontWeight.w600)),
+            ],
+          ),
         ),
       ),
     );
