@@ -300,13 +300,26 @@ class _ManagerHomeTab extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Nhân viên đang làm', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
-                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        workingNow > 0 ? 'Nhân viên đang làm ($workingNow)' : 'Nhân viên đang làm',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A)),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => GoRouter.of(context).push(AppRoutes.activeStaff),
+                      child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFC8102E), fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 activeAttendancesAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1C4E6B))),
                   error: (_, __) => const SizedBox.shrink(),
                   data: (atts) {
-                    final working = atts.take(5).toList();
+                    final working = atts.take(8).toList();
                     if (working.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(20),

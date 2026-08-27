@@ -345,10 +345,15 @@ class _OwnerHomeTab extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Expanded(child: Text('Đang làm việc', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A)))),
+                    Expanded(
+                      child: Text(
+                        workingNow > 0 ? 'Đang làm việc ($workingNow)' : 'Đang làm việc',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A)),
+                      ),
+                    ),
                     TextButton(
-                      onPressed: () => GoRouter.of(context).push(AppRoutes.attendanceTable),
-                      child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFC8102E), fontFamily: 'BeVietnamPro')),
+                      onPressed: () => GoRouter.of(context).push(AppRoutes.activeStaff),
+                      child: const Text('Xem tất cả', style: TextStyle(color: Color(0xFFC8102E), fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
                     ),
                   ],
                 ),
@@ -357,7 +362,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                   loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC8102E))),
                   error: (_, __) => const SizedBox.shrink(),
                   data: (atts) {
-                    final working = atts.take(5).toList();
+                    final working = atts.take(8).toList();
                     if (working.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(20),

@@ -18,6 +18,7 @@ import '../features/store/screens/shift_settings_screen.dart';
 import '../features/store/screens/qr_display_screen.dart';
 import '../features/production/screens/production_tasks_screen.dart';
 import '../features/attendance/screens/check_in_screen.dart';
+import '../features/attendance/screens/active_staff_screen.dart';
 import '../features/attendance/screens/attendance_history_screen.dart';
 import '../features/attendance/screens/attendance_table_screen.dart';
 import '../features/attendance/screens/monthly_attendance_screen.dart';
@@ -56,6 +57,7 @@ class AppRoutes {
   static const String employeeDashboard = '/employee-dashboard';
 
   static const String checkIn = '/check-in';
+  static const String activeStaff = '/active-staff';
   static const String attendanceHistory = '/attendance-history';
   static const String attendanceTable = '/attendance-table';
   static const String monthlyAttendance = '/monthly-attendance';
@@ -218,6 +220,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.checkIn,
         name: 'check-in',
         builder: (context, state) => const CheckInScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.activeStaff,
+        name: 'active-staff',
+        builder: (context, state) => const ActiveStaffScreen(),
       ),
       GoRoute(
         path: AppRoutes.attendanceHistory,
