@@ -31,6 +31,7 @@ import '../features/members/screens/members_list_screen.dart';
 import '../features/members/screens/member_detail_screen.dart';
 import '../features/members/screens/pending_members_screen.dart';
 import '../features/auth/screens/profile_settings_screen.dart';
+import '../features/auth/screens/about_app_screen.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/dashboard/owner_dashboard.dart';
 import '../features/dashboard/manager_dashboard.dart';
@@ -74,6 +75,7 @@ class AppRoutes {
   static const String shiftSettings = '/shift-settings';
   static const String qrDisplay = '/qr-display';
   static const String profileSettings = '/profile-settings';
+  static const String aboutApp = '/about-app';
   static const String notifications = '/notifications';
   static const String productionTasks = '/production-tasks';
 }
@@ -341,6 +343,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.profileSettings,
         name: 'profile-settings',
         builder: (context, state) => const ProfileSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.aboutApp,
+        name: 'about-app',
+        builder: (context, state) => const AboutAppScreen(),
       ),
       GoRoute(
         path: AppRoutes.notifications,

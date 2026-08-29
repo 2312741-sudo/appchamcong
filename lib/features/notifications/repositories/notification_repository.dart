@@ -15,8 +15,9 @@ class NotificationRepository {
   Stream<List<AppNotificationModel>> watchNotifications(
     String storeId,
     String? userId,
-    UserRole? role,
-  ) {
+    UserRole? role, {
+    bool notifyShiftInOut = true,
+  }) {
     if (storeId.isEmpty) return Stream.value([]);
 
     return _notificationsRef(storeId)
@@ -24,7 +25,14 @@ class NotificationRepository {
         .map((snapshot) {
       final list = snapshot.docs
           .map((doc) => AppNotificationModel.fromFirestore(doc))
-          .where((n) => n.isRelevantFor(userId, role))
+          .where((n) {
+            if (!notifyShiftInOut &&
+                (n.type == AppNotificationType.checkIn ||
+                    n.type == AppNotificationType.checkOut)) {
+              return false;
+            }
+            return n.isRelevantFor(userId, role);
+          })
           .toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
@@ -35,11 +43,17 @@ class NotificationRepository {
   Stream<int> watchUnreadCount(
     String storeId,
     String? userId,
-    UserRole? role,
-  ) {
+    UserRole? role, {
+    bool notifyShiftInOut = true,
+  }) {
     if (storeId.isEmpty || userId == null) return Stream.value(0);
 
-    return watchNotifications(storeId, userId, role).map((list) {
+    return watchNotifications(
+      storeId,
+      userId,
+      role,
+      notifyShiftInOut: notifyShiftInOut,
+    ).map((list) {
       return list.where((n) => !n.isReadByUser(userId)).length;
     });
   }
@@ -121,13 +135,18 @@ class NotificationRepository {
             type: AppNotificationType.scheduleRegistrationReminder,
             createdAt: DateTime.now(),
             targetRoles: [
+              UserRole.owner,
               UserRole.manager1,
               UserRole.manager2,
               UserRole.legacyManager,
               UserRole.employee,
             ],
             routePath: '/schedule',
-            routeExtra: {'reminderKey': reminderKey, 'weekStart': nextWeekStr},
+            routeExtra: {
+              'storeId': storeId,
+              'reminderKey': reminderKey,
+              'weekStart': nextWeekStr
+            },
           ),
         );
       }
@@ -186,6 +205,7 @@ class NotificationRepository {
                 targetUserId: null,
                 routePath: null,
                 routeExtra: {
+                  'storeId': storeId,
                   'birthdayKey': birthdayKey,
                   'memberId': member.userId,
                   'memberName': member.name,

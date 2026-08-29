@@ -21,6 +21,8 @@ import '../attendance/screens/attendance_history_screen.dart';
 import '../../features/schedule/screens/employee_schedule_tab.dart';
 import '../../features/schedule/screens/schedule_register_screen.dart';
 
+import '../../core/services/app_update_service.dart';
+
 class EmployeeDashboard extends ConsumerStatefulWidget {
   const EmployeeDashboard({super.key});
 
@@ -49,6 +51,11 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateService().checkAppVersion(context);
+      }
+    });
   }
 
   @override

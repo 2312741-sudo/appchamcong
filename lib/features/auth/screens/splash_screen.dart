@@ -4,13 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../providers/auth_provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../app/router.dart';
-import '../../store/providers/user_repository.dart';
 import '../../store/providers/store_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/app_update_service.dart';
+import '../../../core/utils/version_utils.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -35,6 +36,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (_hasNavigated || !mounted) return;
 
     try {
+      // 0. Version Control Check (Force Update)
+      try {
+        final updateConfig = await AppUpdateService().fetchVersionConfig();
+        if (updateConfig != null) {
+          final packageInfo = await PackageInfo.fromPlatform();
+          if (VersionUtils.isBelow(packageInfo.version, updateConfig.minimumRequiredVersion)) {
+            if (mounted) {
+              await AppUpdateService().checkAppVersion(context);
+            }
+            return; // Block execution, do not navigate away
+          }
+        }
+      } catch (e) {
+        debugPrint('Version check error on splash: $e');
+      }
+
       // 1. Check current auth state
       final authUser = FirebaseAuth.instance.currentUser;
       if (authUser == null) {
@@ -187,7 +204,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             route == AppRoutes.employeeDashboard)) {
       NotificationService.pendingRoute = null;
       NotificationService.pendingRouteExtra = null;
-      Future.delayed(const Duration(milliseconds: 350), () {
+      Future.delayed(const Duration(milliseconds: 350), () async {
+        final targetStoreId = extra?['storeId'] as String? ?? extra?['store_id'] as String?;
+        final user = FirebaseAuth.instance.currentUser;
+        if (targetStoreId != null && targetStoreId.isNotEmpty && user != null) {
+          try {
+            await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+              'currentStoreId': targetStoreId,
+            });
+          } catch (_) {}
+        }
         final navContext = rootNavigatorKey.currentContext;
         if (navContext != null && navContext.mounted) {
           if (extra != null) {

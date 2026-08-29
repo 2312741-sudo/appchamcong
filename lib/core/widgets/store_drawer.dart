@@ -174,6 +174,14 @@ class StoreDrawer extends ConsumerWidget {
           const Divider(),
           
           ListTile(
+            leading: const Icon(Icons.info_outline_rounded, color: AppColors.neutral),
+            title: const Text('Thông tin ứng dụng', style: TextStyle(fontFamily: 'BeVietnamPro')),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(AppRoutes.aboutApp);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.logout, color: AppColors.danger),
             title: const Text('Đăng xuất', style: TextStyle(color: AppColors.danger, fontFamily: 'BeVietnamPro')),
             onTap: () async {

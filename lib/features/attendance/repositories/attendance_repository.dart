@@ -53,6 +53,44 @@ class AttendanceRepository {
         'editNote': null,
         'isOffline': false,
       });
+
+      // Send notification for Owner & Managers
+      try {
+        final memberDoc = await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('members')
+            .doc(userId)
+            .get();
+        final storeDoc = await _firestore.collection('stores').doc(storeId).get();
+        final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
+        final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
+        final vnTime = now.add(const Duration(hours: 7));
+        final timeStr =
+            '${vnTime.hour.toString().padLeft(2, '0')}:${vnTime.minute.toString().padLeft(2, '0')}';
+
+        await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('notifications')
+            .add({
+          'storeId': storeId,
+          'title': 'Nhân viên vào ca',
+          'body': '$memberName tại $storeName đã vào ca lúc $timeStr.',
+          'type': 'check_in',
+          'createdAt': Timestamp.fromDate(now),
+          'targetRoles': [
+            'owner',
+            'manager_1',
+            'manager_2',
+            'manager',
+            'legacyManager'
+          ],
+          'readBy': [userId],
+          'routePath': '/active-staff',
+          'routeExtra': {'storeId': storeId, 'userId': userId, 'date': date},
+        });
+      } catch (_) {}
     } catch (e) {
       throw Exception('Chấm vào thất bại: $e');
     }
@@ -137,6 +175,49 @@ class AttendanceRepository {
         'checkOut': Timestamp.fromDate(now),
         'totalHours': double.parse(totalHours.toStringAsFixed(2)),
       });
+
+      // Send notification for Owner & Managers
+      try {
+        final memberDoc = await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('members')
+            .doc(userId)
+            .get();
+        final storeDoc = await _firestore.collection('stores').doc(storeId).get();
+        final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
+        final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
+        final vnTime = now.add(const Duration(hours: 7));
+        final timeStr =
+            '${vnTime.hour.toString().padLeft(2, '0')}:${vnTime.minute.toString().padLeft(2, '0')}';
+
+        await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('notifications')
+            .add({
+          'storeId': storeId,
+          'title': 'Nhân viên kết thúc ca',
+          'body':
+              '$memberName tại $storeName đã kết thúc ca lúc $timeStr (Tổng: ${totalHours.toStringAsFixed(1)}h).',
+          'type': 'check_out',
+          'createdAt': Timestamp.fromDate(now),
+          'targetRoles': [
+            'owner',
+            'manager_1',
+            'manager_2',
+            'manager',
+            'legacyManager'
+          ],
+          'readBy': [userId],
+          'routePath': '/attendance-table',
+          'routeExtra': {
+            'storeId': storeId,
+            'userId': userId,
+            'date': workdayDate
+          },
+        });
+      } catch (_) {}
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Chấm ra thất bại: $e');

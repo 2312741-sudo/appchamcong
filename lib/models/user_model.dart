@@ -9,6 +9,7 @@ class UserModel extends Equatable {
   final DateTime? birthday;
   final String? currentStoreId;
   final List<String> storeIds;
+  final bool notifyShiftInOut;
   final DateTime createdAt;
 
   bool get hasStore => currentStoreId != null && currentStoreId!.isNotEmpty;
@@ -22,6 +23,7 @@ class UserModel extends Equatable {
     this.birthday,
     this.currentStoreId,
     this.storeIds = const [],
+    this.notifyShiftInOut = true,
     required this.createdAt,
   });
 
@@ -42,6 +44,7 @@ class UserModel extends Equatable {
       birthday: parsedBirthday,
       currentStoreId: json['currentStoreId'],
       storeIds: List<String>.from(json['storeIds'] ?? []),
+      notifyShiftInOut: json['notifyShiftInOut'] as bool? ?? true,
       createdAt: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt'].toString()) 
           : DateTime.now(),
@@ -58,6 +61,7 @@ class UserModel extends Equatable {
       if (birthday != null) 'birthday': birthday!.toIso8601String(),
       'currentStoreId': currentStoreId,
       'storeIds': storeIds,
+      'notifyShiftInOut': notifyShiftInOut,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -76,6 +80,7 @@ class UserModel extends Equatable {
     DateTime? birthday,
     String? currentStoreId,
     List<String>? storeIds,
+    bool? notifyShiftInOut,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -87,6 +92,7 @@ class UserModel extends Equatable {
       birthday: birthday ?? this.birthday,
       currentStoreId: currentStoreId ?? this.currentStoreId,
       storeIds: storeIds ?? this.storeIds,
+      notifyShiftInOut: notifyShiftInOut ?? this.notifyShiftInOut,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -101,6 +107,7 @@ class UserModel extends Equatable {
         birthday,
         currentStoreId,
         storeIds,
+        notifyShiftInOut,
         createdAt,
       ];
 }

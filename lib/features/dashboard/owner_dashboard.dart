@@ -19,6 +19,8 @@ import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/members/screens/members_list_screen.dart';
 import '../../features/attendance/screens/attendance_table_screen.dart';
 
+import '../../core/services/app_update_service.dart';
+
 class OwnerDashboard extends ConsumerStatefulWidget {
   const OwnerDashboard({super.key});
 
@@ -28,6 +30,16 @@ class OwnerDashboard extends ConsumerStatefulWidget {
 
 class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateService().checkAppVersion(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

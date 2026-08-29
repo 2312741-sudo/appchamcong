@@ -20,6 +20,8 @@ import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/schedule/screens/employee_schedule_tab.dart';
 import '../../features/schedule/screens/schedule_manager_screen.dart';
 
+import '../../core/services/app_update_service.dart';
+
 class ManagerDashboard extends ConsumerStatefulWidget {
   const ManagerDashboard({super.key});
 
@@ -29,6 +31,16 @@ class ManagerDashboard extends ConsumerStatefulWidget {
 
 class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        AppUpdateService().checkAppVersion(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

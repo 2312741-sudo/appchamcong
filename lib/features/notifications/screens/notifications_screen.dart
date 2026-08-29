@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/app_notification_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
+import '../../store/providers/user_repository.dart';
 import '../providers/notification_provider.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -145,6 +146,7 @@ class NotificationsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final notif = notifications[index];
               final isRead = notif.isReadByUser(userId);
+              final notifStoreId = notif.storeId.isNotEmpty ? notif.storeId : storeId;
 
               return _NotificationCard(
                 notification: notif,
@@ -153,7 +155,15 @@ class NotificationsScreen extends ConsumerWidget {
                   if (!isRead) {
                     await ref
                         .read(notificationRepositoryProvider)
-                        .markAsRead(storeId, notif.id, userId);
+                        .markAsRead(notifStoreId, notif.id, userId);
+                  }
+
+                  // Auto-switch store if notification belongs to a different store
+                  if (notifStoreId.isNotEmpty && notifStoreId != storeId && userId.isNotEmpty) {
+                    try {
+                      final userRepo = ref.read(userRepositoryProvider);
+                      await userRepo.updateCurrentStoreId(userId, notifStoreId);
+                    } catch (_) {}
                   }
 
                   if (notif.routePath != null && notif.routePath!.isNotEmpty && context.mounted) {
@@ -346,6 +356,10 @@ class _NotificationCard extends StatelessWidget {
         return const _TypeConfig(Icons.local_shipping_rounded, Color(0xFF7B1FA2));
       case AppNotificationType.birthday:
         return const _TypeConfig(Icons.cake_rounded, Color(0xFFE91E63));
+      case AppNotificationType.checkIn:
+        return const _TypeConfig(Icons.login_rounded, Color(0xFF1A6B5A));
+      case AppNotificationType.checkOut:
+        return const _TypeConfig(Icons.logout_rounded, Color(0xFFC8102E));
       case AppNotificationType.general:
         return const _TypeConfig(Icons.notifications_rounded, Color(0xFF475569));
     }

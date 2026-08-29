@@ -81,7 +81,7 @@ class ScheduleRepository {
             'targetRoles': ['owner', 'manager_1', 'manager'],
             'readBy': caller?.uid != null ? [caller!.uid] : [],
             'routePath': '/schedule-manager',
-            'routeExtra': {'weekStart': weekStart, 'userId': userId},
+            'routeExtra': {'storeId': storeId, 'weekStart': weekStart, 'userId': userId},
           });
         } else {
           // Manager/Owner set schedule for this specific employee -> Notify this employee!
@@ -94,7 +94,7 @@ class ScheduleRepository {
             'targetUserId': userId,
             'readBy': caller?.uid != null ? [caller!.uid] : [],
             'routePath': '/schedule',
-            'routeExtra': {'weekStart': weekStart},
+            'routeExtra': {'storeId': storeId, 'weekStart': weekStart},
           });
         }
       } catch (_) {}
@@ -177,10 +177,10 @@ class ScheduleRepository {
           'body': 'Lịch làm việc tuần ($weekStart) đã được cập nhật. Nhấn để xem chi tiết ca của bạn.',
           'type': 'schedule_changed',
           'createdAt': now,
-          'targetRoles': ['employee', 'manager_1', 'manager_2', 'manager'],
+          'targetRoles': ['employee', 'manager_1', 'manager_2', 'manager', 'legacyManager'],
           'readBy': caller?.uid != null ? [caller!.uid] : [],
           'routePath': '/schedule',
-          'routeExtra': {'weekStart': weekStart},
+          'routeExtra': {'storeId': storeId, 'weekStart': weekStart},
         });
       } catch (_) {}
     } catch (e) {

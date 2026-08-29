@@ -13,6 +13,7 @@ import '../../../models/user_model.dart';
 import '../providers/auth_notifier.dart';
 import '../providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
+import '../../store/providers/user_repository.dart';
 
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -713,7 +714,166 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             error: (_, __) => const SizedBox.shrink(),
           ),
 
-          // ── 4. ACCOUNT MANAGEMENT ───────────────────────────────────────────
+          // ── 4. NOTIFICATION SETTINGS ─────────────────────────────────────────
+          if (currentMember?.role.isOwner == true || currentMember?.role.isManager == true) ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.notifications_active_outlined, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Cài đặt thông báo',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.neutral,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Thông báo nhân viên vào/ra ca',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Nhận thông báo thời gian thực khi nhân viên trong cửa hàng chấm công vào ca hoặc kết thúc ca.',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Switch.adaptive(
+                        value: userAsync.valueOrNull?.notifyShiftInOut ?? true,
+                        activeColor: AppColors.primary,
+                        onChanged: (val) async {
+                          final uid = FirebaseAuth.instance.currentUser?.uid;
+                          if (uid != null) {
+                            try {
+                              await ref.read(userRepositoryProvider).updateNotifyShiftInOut(uid, val);
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Lỗi cập nhật: $e')),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // ── 5. ABOUT APP ───────────────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.push(AppRoutes.aboutApp),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC8102E).withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFFC8102E),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Thông tin ứng dụng',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.neutral,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Phiên bản, chính sách bảo mật & hỗ trợ',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── 6. ACCOUNT MANAGEMENT ───────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

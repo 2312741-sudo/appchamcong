@@ -13,6 +13,8 @@ enum AppNotificationType {
   checklistReminder,
   deliveryUpdate,
   birthday,
+  checkIn,
+  checkOut,
   general,
 }
 
@@ -41,6 +43,10 @@ extension AppNotificationTypeExtension on AppNotificationType {
         return 'delivery_update';
       case AppNotificationType.birthday:
         return 'birthday';
+      case AppNotificationType.checkIn:
+        return 'check_in';
+      case AppNotificationType.checkOut:
+        return 'check_out';
       case AppNotificationType.general:
         return 'general';
     }
@@ -70,6 +76,10 @@ extension AppNotificationTypeExtension on AppNotificationType {
         return AppNotificationType.deliveryUpdate;
       case 'birthday':
         return AppNotificationType.birthday;
+      case 'check_in':
+        return AppNotificationType.checkIn;
+      case 'check_out':
+        return AppNotificationType.checkOut;
       case 'general':
       default:
         return AppNotificationType.general;
@@ -100,6 +110,10 @@ extension AppNotificationTypeExtension on AppNotificationType {
         return 'Chở hàng / Giao hàng';
       case AppNotificationType.birthday:
         return 'Sinh nhật';
+      case AppNotificationType.checkIn:
+        return 'Nhân viên vào ca';
+      case AppNotificationType.checkOut:
+        return 'Nhân viên kết thúc ca';
       case AppNotificationType.general:
         return 'Thông báo';
     }

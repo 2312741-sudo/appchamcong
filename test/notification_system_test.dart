@@ -166,5 +166,54 @@ void main() {
       expect(birthdayNotif.isRelevantFor('u_emp1', UserRole.employee), isTrue);
       expect(birthdayNotif.isRelevantFor('u1', UserRole.employee), isTrue);
     });
+
+    test('Check-in and Check-out notifications are delivered to Owner and Managers', () {
+      final checkInNotif = AppNotificationModel(
+        id: 'ci_1',
+        storeId: 'store_1',
+        title: 'Nhân viên vào ca',
+        body: 'Nguyễn Văn A tại Trạm Chanh đã vào ca lúc 08:30.',
+        type: AppNotificationType.checkIn,
+        createdAt: DateTime.now(),
+        targetRoles: [
+          UserRole.owner,
+          UserRole.manager1,
+          UserRole.manager2,
+          UserRole.legacyManager,
+        ],
+        routePath: '/active-staff',
+        routeExtra: {'storeId': 'store_1', 'userId': 'u_emp', 'date': '2026-08-30'},
+      );
+
+      final checkOutNotif = AppNotificationModel(
+        id: 'co_1',
+        storeId: 'store_1',
+        title: 'Nhân viên kết thúc ca',
+        body: 'Nguyễn Văn A tại Trạm Chanh đã kết thúc ca lúc 17:30 (Tổng: 9.0h).',
+        type: AppNotificationType.checkOut,
+        createdAt: DateTime.now(),
+        targetRoles: [
+          UserRole.owner,
+          UserRole.manager1,
+          UserRole.manager2,
+          UserRole.legacyManager,
+        ],
+        routePath: '/attendance-table',
+        routeExtra: {'storeId': 'store_1', 'userId': 'u_emp', 'date': '2026-08-30'},
+      );
+
+      // Check-in & Check-out notifications are relevant for Owner and Managers
+      expect(checkInNotif.isRelevantFor('u_owner', UserRole.owner), isTrue);
+      expect(checkInNotif.isRelevantFor('u_mgr1', UserRole.manager1), isTrue);
+      expect(checkInNotif.isRelevantFor('u_mgr2', UserRole.manager2), isTrue);
+      expect(checkInNotif.isRelevantFor('u_emp', UserRole.employee), isFalse);
+
+      expect(checkOutNotif.isRelevantFor('u_owner', UserRole.owner), isTrue);
+      expect(checkOutNotif.isRelevantFor('u_mgr1', UserRole.manager1), isTrue);
+      expect(checkOutNotif.isRelevantFor('u_emp', UserRole.employee), isFalse);
+
+      expect(checkInNotif.routeExtra?['storeId'], equals('store_1'));
+      expect(checkOutNotif.routeExtra?['storeId'], equals('store_1'));
+    });
   });
 }

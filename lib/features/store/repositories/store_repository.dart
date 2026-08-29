@@ -295,9 +295,10 @@ class StoreRepository {
           'body': '$applicantName vừa gửi yêu cầu tham gia cửa hàng. Nhấn để duyệt.',
           'type': 'join_request',
           'createdAt': Timestamp.fromDate(now),
-          'targetRoles': ['owner', 'manager_1', 'manager'],
+          'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
           'readBy': [],
           'routePath': '/pending-members',
+          'routeExtra': {'storeId': storeId},
         });
       } catch (_) {}
     } catch (e) {
@@ -345,6 +346,7 @@ class StoreRepository {
           'targetUserId': userId,
           'readBy': [],
           'routePath': approve ? '/splash' : '/welcome',
+          'routeExtra': {'storeId': storeId},
         });
       } catch (_) {}
     } catch (e) {
@@ -657,7 +659,7 @@ class StoreRepository {
           .collection('advances')
           .add(request.toMap());
 
-      // Create notification for Store Owner
+      // Create notification for Store Owner & Managers
       try {
         final memberDoc = await _members(request.storeId).doc(request.userId).get();
         final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
@@ -669,9 +671,10 @@ class StoreRepository {
           'body': '$memberName vừa gửi yêu cầu tạm ứng $formattedAmount. Nhấn để duyệt.',
           'type': 'advance_request',
           'createdAt': Timestamp.now(),
-          'targetRoles': ['owner'],
+          'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
           'readBy': [],
           'routePath': '/manage-advances',
+          'routeExtra': {'storeId': request.storeId, 'advanceId': request.id},
         });
       } catch (_) {}
     } catch (e) {
@@ -715,6 +718,7 @@ class StoreRepository {
             'targetUserId': userId,
             'readBy': [],
             'routePath': '/salary',
+            'routeExtra': {'storeId': storeId, 'advanceId': advanceId},
           });
         }
       } catch (_) {}

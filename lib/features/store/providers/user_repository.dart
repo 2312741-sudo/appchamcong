@@ -45,6 +45,14 @@ class UserRepository {
       throw Exception('Cập nhật cửa hàng thất bại: $e');
     }
   }
+
+  Future<void> updateNotifyShiftInOut(String userId, bool enabled) async {
+    try {
+      await _users.doc(userId).update({'notifyShiftInOut': enabled});
+    } catch (e) {
+      throw Exception('Cập nhật cài đặt thông báo thất bại: $e');
+    }
+  }
 }
 
 // ---------- Providers ----------

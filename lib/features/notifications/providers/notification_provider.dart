@@ -14,6 +14,7 @@ final notificationsStreamProvider = StreamProvider.autoDispose<List<AppNotificat
   final storeId = ref.watch(currentStoreIdProvider);
   final userId = ref.watch(currentUserIdProvider);
   final member = ref.watch(currentMemberProvider);
+  final user = ref.watch(currentUserProvider).valueOrNull;
 
   if (storeId == null || storeId.isEmpty || userId == null) {
     return Stream.value([]);
@@ -25,7 +26,12 @@ final notificationsStreamProvider = StreamProvider.autoDispose<List<AppNotificat
   repo.checkAndGenerateWeeklyScheduleReminder(storeId);
   repo.checkAndGenerateBirthdayNotifications(storeId);
 
-  return repo.watchNotifications(storeId, userId, member?.role ?? UserRole.employee);
+  return repo.watchNotifications(
+    storeId,
+    userId,
+    member?.role ?? UserRole.employee,
+    notifyShiftInOut: user?.notifyShiftInOut ?? true,
+  );
 });
 
 /// Stream of unread notification count for current user in current store
@@ -33,11 +39,17 @@ final unreadNotificationCountProvider = StreamProvider.autoDispose<int>((ref) {
   final storeId = ref.watch(currentStoreIdProvider);
   final userId = ref.watch(currentUserIdProvider);
   final member = ref.watch(currentMemberProvider);
+  final user = ref.watch(currentUserProvider).valueOrNull;
 
   if (storeId == null || storeId.isEmpty || userId == null) {
     return Stream.value(0);
   }
 
   final repo = ref.watch(notificationRepositoryProvider);
-  return repo.watchUnreadCount(storeId, userId, member?.role ?? UserRole.employee);
+  return repo.watchUnreadCount(
+    storeId,
+    userId,
+    member?.role ?? UserRole.employee,
+    notifyShiftInOut: user?.notifyShiftInOut ?? true,
+  );
 });

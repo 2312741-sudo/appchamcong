@@ -29,13 +29,40 @@ class NotificationService {
   StreamSubscription<String>? _onTokenRefreshSubscription;
 
   /// Handle navigating to the destination when user taps a notification
-  static void handleNotificationTap({String? routePath, Map<String, dynamic>? extra}) {
+  static Future<void> handleNotificationTap({String? routePath, Map<String, dynamic>? extra}) async {
     final targetRoute = (routePath != null && routePath.isNotEmpty) ? routePath : AppRoutes.notifications;
-    final context = rootNavigatorKey.currentContext;
+    final targetStoreId = extra?['storeId'] as String? ?? extra?['store_id'] as String?;
 
+    // Auto-switch store if targetStoreId is present in payload
+    if (targetStoreId != null && targetStoreId.isNotEmpty) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            final userData = userDoc.data();
+            final currentStoreId = userData?['currentStoreId'] as String?;
+            final storeIds = List<String>.from(userData?['storeIds'] ?? []);
+
+            // Check if user has access to targetStoreId
+            final isMember = storeIds.contains(targetStoreId);
+            if (isMember && currentStoreId != targetStoreId) {
+              await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+                'currentStoreId': targetStoreId,
+              });
+              debugPrint('Auto-switched current store to: $targetStoreId from notification payload');
+            }
+          }
+        } catch (e) {
+          debugPrint('Error auto-switching store from notification: $e');
+        }
+      }
+    }
+
+    final context = rootNavigatorKey.currentContext;
     debugPrint('Notification tapped -> routing to: $targetRoute');
 
-    if (context != null) {
+    if (context != null && context.mounted) {
       try {
         if (extra != null) {
           context.push(targetRoute, extra: extra);
