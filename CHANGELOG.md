@@ -1,8 +1,20 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — 24/08/2026 & 25/08/2026
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.0.6 (31/08/2026 - 01/09/2026)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.0.4-patch` (Mobile: `1.0.4+5`, Web: `1.0.4`)
+**Phiên bản hiện tại:** `v1.0.6` (Mobile: `1.0.6+8`, Web: `1.0.6`)
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.0.6 (31/08/2026 - 01/09/2026)
+1. **[TÍNH NĂNG MỚI] Màn hình Thông tin ứng dụng (`AboutAppScreen`)**: Cung cấp phiên bản, build number động (`package_info_plus`), điều khoản sử dụng, chính sách bảo mật và nút kiểm tra cập nhật.
+2. **[TÍNH NĂNG MỚI] Dịch vụ Cập nhật Ứng dụng (`AppUpdateService`)**: Cơ chế tự động kiểm tra và bắt buộc cập nhật khi có phiên bản mới từ App Store / Play Store.
+3. **[NÂNG CẤP UI/UX] Box "Nhân viên đang làm" & Màn hình Chi tiết**: Mở rộng hiển thị 8 nhân sự, nút "Xem tất cả" mở màn hình chuyên biệt `/active-staff` lọc theo bộ phận.
+4. **[SỬA LỖI CỐT LÕI] Chuẩn hóa Múi giờ Việt Nam (UTC+7)**: Sửa dứt điểm lỗi lệch 7 tiếng trong Bảng lương (`SalaryDetailScreen`), đảm bảo hiển thị giờ vào/ra ca chính xác 100%.
+5. **[ĐIỀU TRA HỆ THỐNG] Xác minh Auto-Checkout 00:00**: Xác nhận không có tự động out ca ngầm; mọi ca 00:00:00 đều do quản lý chỉnh sửa thủ công và hiển thị nhầm UTC.
+6. **[TỐI ƯU THÔNG BÁO] Rà soát & Tối ưu FCM Push Notifications**: Đảm bảo phân phối thông báo nhắc việc và ca trực ổn định.
+
+---
 
 ---
 

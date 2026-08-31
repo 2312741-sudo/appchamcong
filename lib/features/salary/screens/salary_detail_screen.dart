@@ -970,8 +970,8 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
               Text('Chi tiết các ca làm:', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(height: 6),
               ...attendances.map((a) {
-                final inTime = DateFormat('HH:mm').format(a.checkIn);
-                final outTime = a.checkOut != null ? DateFormat('HH:mm').format(a.checkOut!) : 'Đang ca';
+                final inTime = DateFormat('HH:mm').format(a.checkIn.toLocal());
+                final outTime = a.checkOut != null ? DateFormat('HH:mm').format(a.checkOut!.toLocal()) : 'Đang ca';
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -1055,7 +1055,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                     const SizedBox(height: 2),
                     Text(
                       isActive
-                          ? 'Vào ca: ${DateFormat('HH:mm').format(attendance.checkIn)}'
+                          ? 'Vào ca: ${DateFormat('HH:mm').format(attendance.checkIn.toLocal())}'
                           : 'Nhấn Chấm công để quét QR',
                       style: GoogleFonts.beVietnamPro(
                         color: AppColors.textSecondary,

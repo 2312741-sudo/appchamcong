@@ -1,7 +1,8 @@
 # 🧠 CHẤM CÔNG TRẠM — TÀI LIỆU TOÀN DIỆN & CHỈ MỤC TRI THỨC HỆ THỐNG (AI KNOWLEDGE INDEX)
 
 > **Dành cho các AI Agents, Nhà phát triển & Kỹ sư hệ thống kế thừa.**  
-> Tài liệu này chuẩn hóa toàn bộ bức tranh kiến trúc, mô hình dữ liệu, phân quyền (RBAC), quy trình nghiệp vụ và các quy chuẩn kỹ thuật của hệ thống **Chấm Công Trạm**. Bất kỳ AI hoặc lập trình viên nào khi đọc tài liệu này đều có thể nắm bắt 100% ngữ cảnh để tiếp tục phát triển, bảo trì hoặc mở rộng hệ thống mà không làm gãy vỡ logic hiện tại.
+> Tài liệu này chuẩn hóa toàn bộ bức tranh kiến trúc, mô hình dữ liệu, phân quyền (RBAC), quy trình nghiệp vụ và các quy chuẩn kỹ thuật của hệ thống **Chấm Công Trạm**. Bất kỳ AI hoặc lập trình viên nào khi đọc tài liệu này đều có thể nắm bắt 100% ngữ cảnh để tiếp tục phát triển, bảo trì hoặc mở rộng hệ thống mà không làm gãy vỡ logic hiện tại.  
+> **Phiên bản hệ thống hiện tại:** `v1.0.6` (Mobile: `1.0.6+8`, Web: `1.0.6`)
 
 ---
 
@@ -212,8 +213,20 @@ Hệ thống phân cấp chặt chẽ thành **4 vai trò độc lập** (`AppPe
 - Người dùng chụp ảnh hoặc chọn ảnh từ máy $\rightarrow$ Client nén ảnh (`800x800`, chất lượng 85%) $\rightarrow$ Tải lên Firebase Storage `avatars/{userId}.jpg` $\rightarrow$ Cập nhật `/users/{userId}`, `FirebaseAuth.currentUser.photoURL` và tự động phát tán tới `/stores/{storeId}/members/{userId}` của toàn bộ cửa hàng liên quan.
 - Quy tắc `storage.rules` đảm bảo chỉ chính chủ mới có quyền ghi đè avatar của chính mình.
 
-### 5.5. Quy Trình Điều Hướng Thông Báo Đẩy (FCM Deep Linking)
-- Khi nhận được push notification trên màn hình khóa hoặc thanh thông báo hệ điều hành (kể cả khi app đang chạy ngầm hoặc bị tắt hoàn toàn), việc chạm vào thông báo sẽ tự động kích hoạt `handleNotificationTap` điều hướng người dùng thẳng vào màn hình danh sách Thông báo (`/notifications`) để xem chi tiết.
+### 5.6. Màn Hình Thông Tin Ứng Dụng & Kiểm Tra Cập Nhật (`AppUpdateService`)
+- Màn hình `/about-app` (`AboutAppScreen`) cung cấp thông tin thương hiệu, logo, phiên bản và build number từ `package_info_plus`.
+- Tích hợp kiểm tra phiên bản mới từ Firestore document `/system/app_version` hoặc cấu hình hệ thống:
+  - Cảnh báo cập nhật tự nguyện hoặc bắt buộc (`forceUpdate`).
+  - Hỗ trợ đường dẫn trực tiếp mở App Store (iOS) hoặc Google Play Store (Android).
+
+### 5.7. Giám Sát Nhân Sự Đang Làm Việc & Chi Tiết Toàn Bộ Ca (`ActiveStaffScreen`)
+- Dashboard hiển thị tối đa 8 nhân sự đang trong ca trực tiếp trên màn hình chính với ảnh đại diện, giờ vào ca, thời gian làm và cảnh báo đi muộn.
+- Nút "Xem tất cả" mở màn hình chuyên biệt `/active-staff` (`ActiveStaffScreen`), hỗ trợ tìm kiếm, lọc theo bộ phận (`SX`, `BH`, `KHO`) và hiển thị đầy đủ 100% nhân viên đang trong ca trực tuyến.
+
+### 5.8. Quy Chuẩn Múi Giờ Việt Nam (UTC+7 Standardization) & Nhật Ký Ca Làm
+- Mọi mốc thời gian `Timestamp` từ Firestore khi hiển thị giao diện bắt buộc phải gọi `.toLocal()` hoặc cộng múi giờ UTC+7 trước khi format bằng `DateFormat('HH:mm')`.
+- Đã rà soát và chuẩn hóa 100% các màn hình: Tổng quan Chủ quán (`owner_dashboard`), Quản lý (`manager_dashboard`), Nhân viên (`employee_dashboard`), Chi tiết lương (`salary_detail_screen`), Bảng công tháng (`monthly_attendance_screen`), Lịch sử chấm công (`attendance_history_screen`).
+- **Xác minh không có tự động Out ca (00:00 Auto-checkout)**: Kết quả truy vấn Firestore trên 93 bản ghi thực tế xác nhận hệ thống không có cron/trigger tự out ca. Các bản ghi 00:00:00 đều là do quản lý điều chỉnh thủ công (`isEdited: true`), và giờ 00:xx hiển thị trước đó là do hiện nhầm múi giờ UTC thay vì UTC+7.
 
 ---
 
@@ -232,7 +245,7 @@ Hệ thống phân cấp chặt chẽ thành **4 vai trò độc lập** (`AppPe
 1. **Tuân thủ RBAC**: Luôn kiểm tra quyền thông qua `AppPermissions` (Mobile) và `lib/types.ts` (Web). Tuyệt đối không hardcode logic kiểm tra vai trò đơn lẻ.
 2. **Đồng bộ song phương**: Bất kỳ nâng cấp logic nào về dữ liệu, tính lương, lịch làm việc hoặc checklist phải được cập nhật đồng thời trên cả Mobile và Web.
 3. **Kiểm thử tự động bắt buộc**:
-   - Mobile: Chạy `flutter test` (đảm bảo vượt qua toàn bộ 66/66 test cases) và `flutter analyze` (0 errors).
+   - Mobile: Chạy `flutter test` (đảm bảo vượt qua toàn bộ 95/95 test cases) và `flutter analyze` (0 errors).
    - Web: Chạy `npm run build` tại `cham_cong_web` (đảm bảo biên dịch thành công 12/12 routes).
 
 ---
