@@ -1,4 +1,4 @@
-# 🍎 APPLE APP STORE CONNECT — BỘ THÔNG TIN PHÁT HÀNH ĐẦY ĐỦ (v1.0.6)
+# 🍎 APPLE APP STORE CONNECT — BỘ THÔNG TIN PHÁT HÀNH ĐẦY ĐỦ (v1.0.7)
 
 ---
 
@@ -12,8 +12,8 @@
 | **Secondary Category** (Thể loại phụ) | **Productivity** (Năng suất) | |
 | **Bundle ID** | `com.chamcong.chamCongTram` | |
 | **SKU** | `chamcong_tram_ios` | |
-| **Version** (Phiên bản) | `1.0.6` | |
-| **Build Number** | `8` | |
+| **Version** (Phiên bản) | `1.0.7` | |
+| **Build Number** | `9` | |
 | **Age Rating** (Xếp hạng độ tuổi) | **4+** (Không có nội dung nhạy cảm / không giới hạn) | |
 | **Copyright** (Bản quyền) | `© 2026 Trạm Chanh. All rights reserved.` | |
 
@@ -45,8 +45,8 @@ Chấm Công Trạm là ứng dụng quản lý chấm công, xếp lịch ca l�
 TÍNH NĂNG NỔI BẬT:
 
 1. CHẤM CÔNG ĐA KÊNH CHÍNH XÁC:
-- Chấm công qua kết nối Wi-Fi tại cửa hàng (hỗ trợ nhiều điểm phát).
-- Chấm công qua Định vị GPS trong bán kính cho phép.
+- Chấm công qua kết nối Wi-Fi tại cửa hàng (hỗ trợ nhiều Access Point BSSID, Dual-band & Mesh).
+- Chấm công qua Định vị GPS với tối đa 5 vị trí linh hoạt (cổng, kho, bãi xe).
 - Quét mã QR Code động tại quầy thu ngân.
 - Hỗ trợ ca làm việc xuyên đêm (qua 00:00) tự động và chuẩn xác.
 
@@ -80,26 +80,26 @@ cham cong,tinh luong,quan ly ca,lich lam viec,nhan su,f&b,diem danh,bang cong,tr
 
 ---
 
-## 🚀 PHẦN 4: WHAT'S NEW IN THIS VERSION (PHIÊN BẢN 1.0.6)
+## 🚀 PHẦN 4: WHAT'S NEW IN THIS VERSION (PHIÊN BẢN 1.0.7)
 
 ### 🇻🇳 Tiếng Việt:
 ```text
-Phiên bản 1.0.6 mang đến các tính năng mới và cải tiến độ ổn định:
+Phiên bản 1.0.7 mang đến nâng cấp lớn về độ ổn định chấm công và khả năng cấu hình vị trí linh hoạt:
 
-1. [MỚI] Màn hình "Thông tin ứng dụng": Xem thông tin phiên bản, chính sách bảo mật, điều khoản sử dụng và kiểm tra bản cập nhật mới dễ dàng.
-2. [MỚI] Nâng cấp giám sát ca làm: Mở rộng danh sách nhân viên đang trong ca trên màn hình chính lên 8 nhân sự, kèm màn hình xem tất cả với bộ lọc tìm kiếm và phân loại theo bộ phận.
-3. [TỐI ƯU] Chuẩn hóa múi giờ: Đảm bảo giờ vào ca, ra ca và chi tiết ca làm trong Bảng lương luôn hiển thị chuẩn xác 100% theo giờ Việt Nam (UTC+7).
-4. [TỐI ƯU] Cải thiện hệ thống thông báo đẩy và nâng cao hiệu năng hoạt động tổng thể của ứng dụng.
+1. [NÂNG CẤP ĐỘT PHÁ] Xác thực Wi-Fi qua BSSID: Chuyển đổi toàn diện cơ chế chấm công Wi-Fi sang nhận diện phần cứng Access Point (BSSID). Hoàn toàn không còn phụ thuộc vào IP Public của mạng, giúp nhân viên chấm công mượt mà ngay cả khi modem đổi IP động hoặc khởi động lại. Hỗ trợ nhiều điểm phát Wi-Fi (Dual-band 2.4GHz / 5GHz & mạng Mesh).
+2. [MỚI] Thiết lập đa vị trí GPS cho cửa hàng: Hỗ trợ cấu hình lên tới 5 vị trí GPS cho mỗi cửa hàng (cổng chính, bãi xe, kho hàng, chi nhánh phụ) kèm tính năng đặt tên riêng biệt và tùy chỉnh bán kính cho từng điểm.
+3. [TỐI ƯU] Cấu hình một chạm: Tự động phát hiện và điền thông tin Wi-Fi hiện tại (SSID & BSSID) và tọa độ GPS trong phần Cài đặt cửa hàng chỉ với 1 chạm.
+4. [TỐI ƯU] Cải thiện hiệu năng, độ ổn định kết nối và tương thích tối đa với iOS mới nhất.
 ```
 
 ### 🇬🇧 English:
 ```text
-Version 1.0.6 introduces new features and stability enhancements:
+Version 1.0.7 introduces major upgrades to attendance reliability and multi-location flexibility:
 
-1. [NEW] About App Screen: Easily view app version details, privacy policy, terms of service, and check for the latest updates.
-2. [NEW] Active Staff Monitoring: Expanded the on-shift staff overview to 8 employees, with a dedicated full-screen view featuring search and department filters.
-3. [IMPROVEMENT] Standardized Timezone Handling: Fully synchronized shift details and salary records with Vietnam Time (UTC+7) for seamless accuracy.
-4. [IMPROVEMENT] Optimized push notification delivery and enhanced overall app performance.
+1. [MAJOR UPGRADE] Wi-Fi BSSID Attendance Verification: Upgraded Wi-Fi attendance to identify Access Point hardware BSSID (MAC Address). Completely removes dependency on dynamic public IPs, ensuring uninterrupted check-in even during router IP renewals or restarts. Supports multi-access points (Dual-band 2.4GHz/5GHz & Mesh networks).
+2. [NEW] Multi-Location GPS Configuration: Added support for up to 5 custom GPS locations per store with individual location naming and customizable check-in radiuses (e.g. main entrance, warehouse, parking area).
+3. [IMPROVEMENT] One-Tap Store Setup: Easily detect and populate current Wi-Fi details (SSID & BSSID) and GPS coordinates with a single tap in Store Settings.
+4. [IMPROVEMENT] Performance enhancements, connection resilience, and optimized compatibility with the latest iOS versions.
 ```
 
 ---
@@ -111,25 +111,25 @@ Version 1.0.6 introduces new features and stability enhancements:
 ```text
 Dear Apple App Review Team,
 
-First and foremost, we would like to express our sincerest apologies for submitting multiple consecutive updates within a short timeframe, and our deepest gratitude for your continued patience, diligence, and invaluable guidance throughout our review process.
+We would like to express our sincere gratitude for your continued diligence, guidance, and assistance in reviewing our application.
 
-Our application is a dedicated shift scheduling, attendance, and operational management tool for retail and F&B staff in Vietnam. To ensure optimal usability and data accuracy for our active store teams, we have resolved several key items in Version 1.0.6 (Build 8):
+Our application is a dedicated shift scheduling, attendance, and operational management tool for retail and F&B staff in Vietnam. In Version 1.0.7 (Build 9), we have implemented significant architectural enhancements to ensure reliable check-in and flexible multi-location operations for our store teams:
 
-1. About App Screen & Update Check: Added an About screen (/about-app) displaying live app version, build number, terms of service, privacy policy, and developer contact information.
-2. Active Staff Monitoring: Expanded real-time on-duty staff view on the home dashboard to 8 employees and introduced a dedicated screen (/active-staff) with search and department filtering.
-3. Accurate Local Timezone Formatting: Synchronized all shift timestamps across salary details, monthly attendance, and active roster to accurately display in local Vietnam Time (UTC+7).
-4. Notification & Performance Reliability: Further optimized FCM push notifications for shift reminders and advance salary requests.
+1. Wi-Fi Attendance via Hardware BSSID: Migrated Wi-Fi attendance verification from dynamic Public IP to Access Point hardware BSSID (MAC Address). This resolves common check-in failures caused by ISP dynamic IP renewals and router reboots in retail environments, while adding full support for multi-AP mesh networks and dual-band (2.4GHz/5GHz) routers.
+2. Multi-Location GPS Attendance: Enabled store managers to configure up to 5 named GPS locations per store with independent radiuses (e.g. Front Gate, Warehouse, Staff Entrance) to accommodate large store grounds and multi-door facilities.
+3. One-Tap Setup in Store Settings: Added instant Wi-Fi details detection and GPS capture for store administrators.
+4. Performance & Compatibility: General performance improvements and optimizations for the latest iOS release.
 
 Demo Account Credentials for App Review Testing:
 - Email: nguyenthanhlinh677@gmail.com
 - Password: Linh1234
 - Role: Store Owner (Full access to all dashboard features, staff lists, schedule planning, and settings)
 
-All features can be tested directly from the home dashboard, attendance tab, active staff screen, and schedule management screens.
+All features can be tested directly from the home dashboard, attendance tab, active staff screen, and store settings screen.
 
-Once again, we truly appreciate your time, patience, and dedication in reviewing our app. Please do not hesitate to contact us if you need any additional details or assistance.
+Once again, thank you very much for your time, patience, and support. Please feel free to contact us if any additional information is required.
 
-Warm regards and thank you so much!
+Warm regards!
 ```
 
 ---

@@ -1,8 +1,30 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.0.6 (31/08/2026 - 01/09/2026)
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.0.7 (06/09/2026)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.0.6` (Mobile: `1.0.6+8`, Web: `1.0.6`)
+**Phiên bản hiện tại:** `v1.0.7` (Mobile: `1.0.7+9`, Web: `1.0.7`)
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.0.7 (06/09/2026)
+1. **[NÂNG CẤP KIẾN TRÚC] Xác thực Wi-Fi qua BSSID (MAC Address Access Point)**:
+   - Loại bỏ hoàn toàn sự phụ thuộc vào IP Public (`api.ipify.org`, `icanhazip.com`).
+   - Nhân viên chấm công không còn bị gián đoạn khi nhà mạng đổi IP động hoặc khởi động lại modem router.
+   - Hỗ trợ đầy đủ hệ thống nhiều điểm phát Access Point: Dual-band 2.4GHz / 5GHz, mạng Mesh, router phụ.
+   - Cơ chế tương thích ngược (backward compatibility) 100% với dữ liệu cửa hàng cũ trên Firestore.
+2. **[TÍNH NĂNG MỚI] Thiết lập Đa Vị trí GPS cho Cửa hàng**:
+   - Cho phép một cửa hàng cấu hình lên đến **5 vị trí GPS** khác nhau (Cổng chính, Bãi xe, Kho hàng, Cổng phụ,...).
+   - Tùy chỉnh đặt tên riêng biệt và bán kính cho phép (radius) độc lập cho từng vị trí.
+   - Tự động phát hiện vị trí gần nhất và tính khoảng cách chính xác khi nhân viên chấm công.
+3. **[NÂNG CẤP UI/UX] Quản lý Cài đặt Cửa hàng Một Chạm**:
+   - Nút "Lấy Wi-Fi hiện tại" tự động quét và điền SSID & BSSID tức thì.
+   - Nút "Lấy tọa độ hiện tại" hỗ trợ điền nhanh GPS cho từng điểm của cửa hàng.
+   - Cảnh báo trực quan cho các Wi-Fi đời cũ chưa cập nhật BSSID.
+4. **[ĐỒNG BỘ WEB DASHBOARD] Hỗ trợ BSSID & Đa vị trí GPS trên Web**:
+   - Web Dashboard (`cham_cong_web`) quản lý cấu hình BSSID và 5 vị trí GPS đồng bộ hoàn hảo với Mobile App.
+5. **[KIỂM THỬ & CHẤT LƯỢNG] Đạt 110/110 Automated Unit Tests**:
+   - Bổ sung bộ unit test toàn diện cho tính năng BSSID và Multi-location GPS, chạy `flutter test` thành công 100%.
+   - Sửa triệt để các lỗi liên kết CocoaPods, tương thích hoàn toàn với iOS mới nhất.
 
 ---
 
