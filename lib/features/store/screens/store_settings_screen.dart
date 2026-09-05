@@ -26,10 +26,12 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   final _deptNameCtrl = TextEditingController();
   final _deptShortCtrl = TextEditingController();
   final _wifiNameCtrl = TextEditingController();
-  
+
   String? _networkIP;
   String? _detectedSsid;
-  bool _isFetchingIP = false;
+  String? _detectedBssid;
+  String? _detectedLocalIp;
+  bool _isFetchingWifi = false;
   List<StoreWifi> _wifis = [];
 
   bool _deliveryEnabled = true;
@@ -40,6 +42,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
   double _radius = 100;
   double? _lat;
   double? _lng;
+  List<StoreLocation> _locations = [];
   bool _isSaving = false;
   bool _isDeleting = false;
   bool _isFetchingLocation = false;
@@ -67,48 +70,75 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     _addressCtrl.text = storeModel.address ?? '';
     _networkIP = storeModel.networkIP;
     _wifis = List.from(storeModel.wifis);
+    _locations = List.from(storeModel.locations);
+    if (_locations.isEmpty &&
+        storeModel.latitude != null &&
+        storeModel.longitude != null) {
+      _locations.add(
+        StoreLocation(
+          id: 'loc_primary',
+          name: 'Vị trí chính',
+          latitude: storeModel.latitude!,
+          longitude: storeModel.longitude!,
+          radiusMeters: storeModel.radiusMeters,
+        ),
+      );
+    }
     _deliveryEnabled = storeModel.deliveryEnabled;
-    _deliveryAllowanceCtrl.text = (storeModel.deliveryAllowance ?? 0).toString();
+    _deliveryAllowanceCtrl.text =
+        (storeModel.deliveryAllowance ?? 0).toString();
     _giaoHangEnabled = storeModel.giaoHangEnabled;
-    _giaoHangAllowanceCtrl.text = (storeModel.giaoHangAllowance ?? 0).toString();
-    _radius = storeModel.radiusMeters.toDouble();
-    _lat = storeModel.latitude;
-    _lng = storeModel.longitude;
+    _giaoHangAllowanceCtrl.text =
+        (storeModel.giaoHangAllowance ?? 0).toString();
+    _radius = _locations.isNotEmpty
+        ? _locations.first.radiusMeters.toDouble()
+        : storeModel.radiusMeters.toDouble();
+    _lat =
+        _locations.isNotEmpty ? _locations.first.latitude : storeModel.latitude;
+    _lng = _locations.isNotEmpty
+        ? _locations.first.longitude
+        : storeModel.longitude;
     _departments = List.from(storeModel.departments);
     _deptSelectionEnabled = storeModel.departmentSelectionEnabled;
   }
 
-  Future<void> _fetchNetworkIP() async {
-    if (mounted) setState(() => _isFetchingIP = true);
+  Future<void> _fetchCurrentWifi() async {
+    if (mounted) setState(() => _isFetchingWifi = true);
     try {
       final details = await LocationUtils.getCurrentWifiDetails();
-      if (details.ip == null || details.ip!.isEmpty) {
-        throw Exception('Không lấy được IP mạng. Vui lòng đảm bảo thiết bị đang kết nối WiFi hoặc internet.');
+      if (details.bssid == null || !LocationUtils.isValidBssid(details.bssid)) {
+        throw Exception(
+          'Không thể đọc BSSID của WiFi hiện tại. Hãy kiểm tra quyền Vị trí/WiFi và đảm bảo thiết bị đang kết nối WiFi.',
+        );
       }
-      
+
       if (mounted) {
         setState(() {
-          _networkIP = details.ip;
+          _detectedBssid = details.bssid;
+          _detectedSsid = details.ssid;
+          _detectedLocalIp = details.localIp;
           if (details.ssid != null && details.ssid!.isNotEmpty) {
-            _detectedSsid = details.ssid;
             _wifiNameCtrl.text = details.ssid!;
           } else {
-            _detectedSsid = null;
             _wifiNameCtrl.text = 'WiFi ${_wifis.length + 1}';
           }
         });
         _showSuccess(_detectedSsid != null
-            ? 'Đã lấy WiFi: $_detectedSsid'
-            : 'Đã lấy IP mạng thành công');
+            ? 'Đã nhận diện WiFi: $_detectedSsid'
+            : 'Đã nhận diện BSSID: $_detectedBssid');
       }
     } catch (e) {
-      _showError('Không thể lấy thông tin WiFi: $e');
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _isFetchingIP = false);
+      if (mounted) setState(() => _isFetchingWifi = false);
     }
   }
 
   Future<void> _fetchLocation() async {
+    if (_locations.length >= 5) {
+      _showError('Cửa hàng đã đạt tối đa 5 vị trí GPS');
+      return;
+    }
     setState(() => _isFetchingLocation = true);
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -135,17 +165,294 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         ),
       );
       if (mounted) {
-        setState(() {
-          _lat = pos.latitude;
-          _lng = pos.longitude;
-        });
-        _showSuccess('Đã cập nhật vị trí GPS');
+        _showAddLocationDialog(pos.latitude, pos.longitude);
       }
     } catch (e) {
-      _showError('Không lấy được vị trí');
+      _showError('Không lấy được vị trí: $e');
     } finally {
       if (mounted) setState(() => _isFetchingLocation = false);
     }
+  }
+
+  void _showAddLocationDialog(double lat, double lng) {
+    final nameCtrl = TextEditingController(
+        text: _locations.isEmpty
+            ? 'Cơ sở chính'
+            : 'Vị trí ${_locations.length + 1}');
+    double dialogRadius = 100;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Thêm vị trí GPS',
+              style: TextStyle(
+                  fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên vị trí *',
+                    hintText: 'VD: Cơ sở chính, Kho sản xuất...',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.my_location_rounded,
+                          color: AppColors.success, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tọa độ: ${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 12,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Bán kính chấm công: ${dialogRadius.round()}m',
+                  style: const TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                Slider(
+                  value: dialogRadius,
+                  min: 50,
+                  max: 500,
+                  divisions: 45,
+                  activeColor: AppColors.primary,
+                  inactiveColor: AppColors.border,
+                  onChanged: (v) => setDialogState(() => dialogRadius = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Huỷ',
+                  style: TextStyle(fontFamily: 'BeVietnamPro')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                if (name.isEmpty) {
+                  _showError('Vui lòng nhập tên vị trí');
+                  return;
+                }
+                final newLoc = StoreLocation(
+                  id: 'loc_${DateTime.now().millisecondsSinceEpoch}',
+                  name: name,
+                  latitude: lat,
+                  longitude: lng,
+                  radiusMeters: dialogRadius.round(),
+                );
+                setState(() {
+                  _locations.add(newLoc);
+                  if (_locations.length == 1) {
+                    _lat = lat;
+                    _lng = lng;
+                    _radius = dialogRadius;
+                  }
+                });
+                Navigator.pop(ctx);
+                _showSuccess('Đã thêm vị trí: $name');
+              },
+              child: const Text('Thêm vị trí',
+                  style: TextStyle(fontFamily: 'BeVietnamPro')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditLocationDialog(int index, StoreLocation loc) {
+    final nameCtrl = TextEditingController(text: loc.name);
+    double dialogRadius = loc.radiusMeters.toDouble();
+    double currentLat = loc.latitude;
+    double currentLng = loc.longitude;
+    bool isUpdatingPos = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Chỉnh sửa vị trí GPS',
+              style: TextStyle(
+                  fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên vị trí *',
+                    hintText: 'VD: Cơ sở chính, Kho sản xuất...',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.my_location_rounded,
+                          color: AppColors.success, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tọa độ: ${currentLat.toStringAsFixed(5)}, ${currentLng.toStringAsFixed(5)}',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 12,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: isUpdatingPos
+                      ? null
+                      : () async {
+                          setDialogState(() => isUpdatingPos = true);
+                          try {
+                            final pos = await Geolocator.getCurrentPosition(
+                              locationSettings: const LocationSettings(
+                                accuracy: LocationAccuracy.high,
+                                timeLimit: Duration(seconds: 15),
+                              ),
+                            );
+                            setDialogState(() {
+                              currentLat = pos.latitude;
+                              currentLng = pos.longitude;
+                              isUpdatingPos = false;
+                            });
+                            _showSuccess('Đã cập nhật tọa độ GPS mới');
+                          } catch (e) {
+                            setDialogState(() => isUpdatingPos = false);
+                            _showError('Không lấy được vị trí: $e');
+                          }
+                        },
+                  icon: isUpdatingPos
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(
+                    isUpdatingPos
+                        ? 'Đang lấy...'
+                        : 'Lấy tọa độ vị trí hiện tại',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Bán kính chấm công: ${dialogRadius.round()}m',
+                  style: const TextStyle(
+                    fontFamily: 'BeVietnamPro',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                Slider(
+                  value: dialogRadius,
+                  min: 50,
+                  max: 500,
+                  divisions: 45,
+                  activeColor: AppColors.primary,
+                  inactiveColor: AppColors.border,
+                  onChanged: (v) => setDialogState(() => dialogRadius = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Huỷ',
+                  style: TextStyle(fontFamily: 'BeVietnamPro')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                final newName = nameCtrl.text.trim();
+                if (newName.isEmpty) {
+                  _showError('Vui lòng nhập tên vị trí');
+                  return;
+                }
+                setState(() {
+                  _locations[index] = loc.copyWith(
+                    name: newName,
+                    latitude: currentLat,
+                    longitude: currentLng,
+                    radiusMeters: dialogRadius.round(),
+                  );
+                  if (index == 0) {
+                    _lat = currentLat;
+                    _lng = currentLng;
+                    _radius = dialogRadius;
+                  }
+                });
+                Navigator.pop(ctx);
+                _showSuccess('Đã cập nhật vị trí: $newName');
+              },
+              child: const Text('Lưu thay đổi',
+                  style: TextStyle(fontFamily: 'BeVietnamPro')),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _save(String storeId) async {
@@ -153,6 +460,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     setState(() => _isSaving = true);
     try {
       final repo = ref.read(storeRepositoryProvider);
+      final primaryLoc = _locations.isNotEmpty ? _locations.first : null;
       await repo.updateStoreSettings(storeId, {
         'name': _nameCtrl.text.trim(),
         'address':
@@ -160,12 +468,15 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         'networkIP': _networkIP,
         'wifis': _wifis.map((w) => w.toJson()).toList(),
         'deliveryEnabled': _deliveryEnabled,
-        'deliveryAllowance': num.tryParse(_deliveryAllowanceCtrl.text.trim()) ?? 0,
+        'deliveryAllowance':
+            num.tryParse(_deliveryAllowanceCtrl.text.trim()) ?? 0,
         'giaoHangEnabled': _giaoHangEnabled,
-        'giaoHangAllowance': num.tryParse(_giaoHangAllowanceCtrl.text.trim()) ?? 0,
-        'latitude': _lat,
-        'longitude': _lng,
-        'radiusMeters': _radius.round(),
+        'giaoHangAllowance':
+            num.tryParse(_giaoHangAllowanceCtrl.text.trim()) ?? 0,
+        'locations': _locations.map((l) => l.toJson()).toList(),
+        'latitude': primaryLoc?.latitude ?? _lat,
+        'longitude': primaryLoc?.longitude ?? _lng,
+        'radiusMeters': primaryLoc?.radiusMeters ?? _radius.round(),
         'departments': _departments.map((d) => d.toJson()).toList(),
         'departmentSelectionEnabled': _deptSelectionEnabled,
       });
@@ -184,35 +495,52 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Thêm bộ phận', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
+        title: const Text('Thêm bộ phận',
+            style: TextStyle(
+                fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _deptNameCtrl,
-              decoration: const InputDecoration(labelText: 'Tên bộ phận *', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Tên bộ phận *', border: OutlineInputBorder()),
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _deptShortCtrl,
-              decoration: const InputDecoration(labelText: 'Tên viết tắt (VD: KD, KT)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Tên viết tắt (VD: KD, KT)',
+                  border: OutlineInputBorder()),
               textCapitalization: TextCapitalization.characters,
               maxLength: 5,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white),
             onPressed: () {
               final name = _deptNameCtrl.text.trim();
               if (name.isEmpty) return;
               final shortName = _deptShortCtrl.text.trim().toUpperCase();
-              final id = name.toLowerCase().replaceAll(' ', '_') + '_' + DateTime.now().millisecondsSinceEpoch.toString();
+              final id = name.toLowerCase().replaceAll(' ', '_') +
+                  '_' +
+                  DateTime.now().millisecondsSinceEpoch.toString();
               setState(() {
-                _departments.add(DepartmentDefinition(id: id, name: name, shortName: shortName.isEmpty ? name.substring(0, name.length > 3 ? 3 : name.length).toUpperCase() : shortName));
+                _departments.add(DepartmentDefinition(
+                    id: id,
+                    name: name,
+                    shortName: shortName.isEmpty
+                        ? name
+                            .substring(0, name.length > 3 ? 3 : name.length)
+                            .toUpperCase()
+                        : shortName));
               });
               Navigator.pop(ctx);
             },
@@ -227,8 +555,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Tạo mã mới',
             style: TextStyle(
                 fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
@@ -247,8 +574,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
             style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             child: const Text('Tạo mã mới',
                 style: TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    fontWeight: FontWeight.w600)),
+                    fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -280,16 +606,31 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('IP: ${wifi.ip}',
-                style: const TextStyle(
-                    fontFamily: 'BeVietnamPro',
-                    color: AppColors.textSecondary,
-                    fontSize: 12)),
+            if (wifi.ssid.isNotEmpty)
+              Text('SSID: ${wifi.ssid}',
+                  style: const TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      color: AppColors.textSecondary,
+                      fontSize: 12)),
+            Text(
+              wifi.hasValidBssid
+                  ? 'BSSID: ${wifi.bssid}'
+                  : (wifi.ip != null && wifi.ip!.isNotEmpty
+                      ? 'IP Cũ: ${wifi.ip} (Cần cấu hình lại)'
+                      : 'Chưa có BSSID'),
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                color: wifi.hasValidBssid
+                    ? AppColors.textSecondary
+                    : Colors.amber.shade900,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: ctrl,
               decoration: const InputDecoration(
-                labelText: 'Tên WiFi',
+                labelText: 'Tên nhận diện WiFi',
                 hintText: 'Nhập tên nhận diện...',
                 border: OutlineInputBorder(),
               ),
@@ -307,11 +648,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
               final newName = ctrl.text.trim();
               if (newName.isNotEmpty) {
                 setState(() {
-                  _wifis[index] = StoreWifi(
-                    name: newName,
-                    ip: wifi.ip,
-                    createdAt: wifi.createdAt,
-                  );
+                  _wifis[index] = wifi.copyWith(name: newName);
                 });
                 _showSuccess('Đã đổi tên WiFi');
               }
@@ -332,7 +669,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: const [
-            Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 28),
+            Icon(Icons.warning_amber_rounded,
+                color: AppColors.danger, size: 28),
             SizedBox(width: 8),
             Text(
               'Xóa cửa hàng',
@@ -351,18 +689,21 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy', style: TextStyle(fontFamily: 'BeVietnamPro')),
+            child:
+                const Text('Hủy', style: TextStyle(fontFamily: 'BeVietnamPro')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text(
               'Tiếp tục',
-              style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
+              style: TextStyle(
+                  fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -382,7 +723,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
               text.toUpperCase() == 'XÓA' ||
               text.toUpperCase() == 'XOA';
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Text(
               'Xác nhận lần cuối',
               style: TextStyle(
@@ -397,7 +739,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
               children: [
                 Text(
                   'Vui lòng nhập chính xác tên cửa hàng "${store.name}" hoặc gõ "XÓA" để xác nhận:',
-                  style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 13),
+                  style:
+                      const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 13),
                 ),
                 const SizedBox(height: 14),
                 TextField(
@@ -417,7 +760,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Hủy', style: TextStyle(fontFamily: 'BeVietnamPro')),
+                child: const Text('Hủy',
+                    style: TextStyle(fontFamily: 'BeVietnamPro')),
               ),
               ElevatedButton(
                 onPressed: isMatch ? () => Navigator.pop(ctx, true) : null,
@@ -425,11 +769,13 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   backgroundColor: AppColors.danger,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: AppColors.danger.withOpacity(0.3),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text(
                   'Xóa vĩnh viễn',
-                  style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -498,7 +844,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
             body: Center(child: Text('Không tìm thấy cửa hàng')),
           );
         }
-        final isOwner = store.ownerId == currentUserId || currentMember?.isOwner == true;
+        final isOwner =
+            store.ownerId == currentUserId || currentMember?.isOwner == true;
         _initFromStore(store);
         return Scaffold(
           backgroundColor: AppColors.surface,
@@ -538,11 +885,11 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                     maxLines: 2,
                   ),
                   const SizedBox(height: 14),
-                  const _Label('Địa chỉ IP Mạng'),
+                  const _Label('Cấu hình WiFi chấm công (BSSID Access Point)'),
                   const SizedBox(height: 6),
                   OutlinedButton.icon(
-                    onPressed: _isFetchingIP ? null : _fetchNetworkIP,
-                    icon: _isFetchingIP
+                    onPressed: _isFetchingWifi ? null : _fetchCurrentWifi,
+                    icon: _isFetchingWifi
                         ? const SizedBox(
                             width: 16,
                             height: 16,
@@ -553,7 +900,9 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                           )
                         : const Icon(Icons.wifi_rounded),
                     label: Text(
-                      _isFetchingIP ? 'Đang lấy thông tin...' : 'Lấy WiFi mạng hiện tại',
+                      _isFetchingWifi
+                          ? 'Đang nhận diện WiFi...'
+                          : 'Lấy WiFi hiện tại',
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
@@ -569,7 +918,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       ),
                     ),
                   ),
-                  if (_networkIP != null) ...[
+                  if (_detectedBssid != null) ...[
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -577,14 +926,12 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _detectedSsid != null
-                              ? AppColors.success.withOpacity(0.5)
-                              : Colors.orange.withOpacity(0.5),
+                          color: AppColors.success.withValues(alpha: 0.5),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -595,13 +942,9 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                _detectedSsid != null
-                                    ? Icons.wifi_rounded
-                                    : Icons.wifi_find_rounded,
-                                color: _detectedSsid != null
-                                    ? AppColors.success
-                                    : Colors.orange,
+                              const Icon(
+                                Icons.wifi_rounded,
+                                color: AppColors.success,
                                 size: 22,
                               ),
                               const SizedBox(width: 8),
@@ -609,24 +952,24 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                                 child: Text(
                                   _detectedSsid != null
                                       ? 'Đã nhận diện: $_detectedSsid'
-                                      : 'Chưa đọc được SSID tự động (có thể tự đặt tên)',
-                                  style: TextStyle(
+                                      : 'Đã nhận diện BSSID Access Point',
+                                  style: const TextStyle(
                                     fontFamily: 'BeVietnamPro',
                                     fontSize: 13,
-                                    color: _detectedSsid != null
-                                        ? AppColors.success
-                                        : Colors.orange.shade800,
+                                    color: AppColors.success,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close, color: AppColors.danger, size: 20),
+                                icon: const Icon(Icons.close,
+                                    color: AppColors.danger, size: 20),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onPressed: () => setState(() {
-                                  _networkIP = null;
+                                  _detectedBssid = null;
                                   _detectedSsid = null;
+                                  _detectedLocalIp = null;
                                   _wifiNameCtrl.clear();
                                 }),
                               ),
@@ -638,7 +981,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                             decoration: InputDecoration(
                               labelText: 'Tên nhận diện WiFi',
                               hintText: 'VD: WiFi Tầng 1 / Quầy Thu Ngân',
-                              prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                              prefixIcon:
+                                  const Icon(Icons.edit_note_rounded, size: 20),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -660,20 +1004,47 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                               color: AppColors.surface,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.router_rounded,
-                                    size: 16, color: AppColors.textSecondary),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'IP Router (WAN): $_networkIP',
-                                  style: const TextStyle(
-                                    fontFamily: 'BeVietnamPro',
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.fingerprint_rounded,
+                                        size: 16,
+                                        color: AppColors.textSecondary),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'BSSID (MAC): $_detectedBssid',
+                                        style: const TextStyle(
+                                          fontFamily: 'BeVietnamPro',
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                                if (_detectedLocalIp != null) ...[
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.router_rounded,
+                                          size: 16,
+                                          color: AppColors.textSecondary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'IP nội bộ: $_detectedLocalIp',
+                                        style: const TextStyle(
+                                          fontFamily: 'BeVietnamPro',
+                                          fontSize: 11,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -683,34 +1054,46 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 if (_wifis.length >= 10) {
-                                  _showError('Đã đạt tối đa 10 địa chỉ WiFi cho phép.');
+                                  _showError(
+                                      'Đã đạt tối đa 10 điểm WiFi cho phép.');
                                   return;
                                 }
-                                if (_wifis.any((w) => w.ip.trim() == _networkIP!.trim())) {
-                                  _showError('Địa chỉ IP này đã tồn tại trong danh sách.');
+                                final normNew = LocationUtils.normalizeBssid(
+                                    _detectedBssid!);
+                                if (_wifis.any((w) =>
+                                    LocationUtils.normalizeBssid(w.bssid) ==
+                                    normNew)) {
+                                  _showError('WiFi này đã được thêm.');
                                   return;
                                 }
-                                final nameToSave = _wifiNameCtrl.text.trim().isNotEmpty
-                                    ? _wifiNameCtrl.text.trim()
-                                    : (_detectedSsid ?? 'WiFi ${_wifis.length + 1}');
+                                final nameToSave =
+                                    _wifiNameCtrl.text.trim().isNotEmpty
+                                        ? _wifiNameCtrl.text.trim()
+                                        : (_detectedSsid ??
+                                            'WiFi ${_wifis.length + 1}');
                                 setState(() {
                                   _wifis.add(StoreWifi(
                                     name: nameToSave,
-                                    ip: _networkIP!,
+                                    ssid: _detectedSsid ?? '',
+                                    bssid: _detectedBssid!,
                                     createdAt: DateTime.now(),
                                   ));
-                                  _networkIP = null;
+                                  _detectedBssid = null;
                                   _detectedSsid = null;
+                                  _detectedLocalIp = null;
                                   _wifiNameCtrl.clear();
                                 });
-                                _showSuccess('Đã thêm "$nameToSave" vào danh sách');
+                                _showSuccess(
+                                    'Đã thêm "$nameToSave" vào danh sách');
                               },
                               icon: const Icon(Icons.add_rounded, size: 18),
-                              label: const Text('Thêm vào danh sách cho phép (Tối đa 10)'),
+                              label: const Text(
+                                  'Thêm vào danh sách cho phép (Tối đa 10)'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 11),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 11),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -749,7 +1132,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       ),
                       child: Column(
                         children: const [
-                          Icon(Icons.wifi_off_rounded, color: AppColors.textSecondary, size: 32),
+                          Icon(Icons.wifi_off_rounded,
+                              color: AppColors.textSecondary, size: 32),
                           SizedBox(height: 8),
                           Text(
                             'Chưa cấu hình WiFi nào.\nKết nối mạng tại điểm làm việc và nhấn "Lấy WiFi mạng hiện tại" để thêm.',
@@ -769,7 +1153,199 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       final wifi = entry.value;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${idx + 1}',
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          wifi.name,
+                                          style: const TextStyle(
+                                            fontFamily: 'BeVietnamPro',
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      if (!wifi.hasValidBssid)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Cần cập nhật BSSID',
+                                            style: TextStyle(
+                                              fontFamily: 'BeVietnamPro',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.amber.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  if (wifi.ssid.isNotEmpty)
+                                    Text(
+                                      'SSID: ${wifi.ssid}',
+                                      style: const TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  Text(
+                                    wifi.hasValidBssid
+                                        ? 'BSSID: ${wifi.bssid}'
+                                        : (wifi.ip != null &&
+                                                wifi.ip!.isNotEmpty
+                                            ? 'IP Cũ: ${wifi.ip} (Không còn dùng)'
+                                            : 'Chưa có BSSID'),
+                                    style: TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      color: wifi.hasValidBssid
+                                          ? AppColors.textSecondary
+                                          : Colors.red.shade700,
+                                      fontSize: 12,
+                                      fontWeight: wifi.hasValidBssid
+                                          ? FontWeight.normal
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined,
+                                  color: AppColors.primary, size: 20),
+                              tooltip: 'Đổi tên WiFi',
+                              onPressed: () => _showEditWifiDialog(idx, wifi),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: AppColors.danger, size: 20),
+                              tooltip: 'Xoá WiFi này',
+                              onPressed: () {
+                                setState(() => _wifis.removeAt(idx));
+                                _showSuccess('Đã xoá WiFi');
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  const SizedBox(height: 20),
+
+                  const _SectionHeader(title: 'Vị trí GPS (Tối đa 5 vị trí)'),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _Label(
+                          'Danh sách Vị trí GPS cho phép (${_locations.length}/5)'),
+                      if (_locations.isNotEmpty)
+                        Text(
+                          '${5 - _locations.length} vị trí còn lại',
+                          style: const TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  if (_locations.length < 5)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: OutlinedButton.icon(
+                        onPressed: _isFetchingLocation ? null : _fetchLocation,
+                        icon: _isFetchingLocation
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.primary))
+                            : const Icon(Icons.add_location_alt_rounded),
+                        label: Text(_isFetchingLocation
+                            ? 'Đang lấy vị trí GPS...'
+                            : '+ Thêm vị trí GPS hiện tại'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  if (_locations.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        children: const [
+                          Icon(Icons.location_off_rounded,
+                              color: AppColors.textSecondary, size: 32),
+                          SizedBox(height: 8),
+                          Text(
+                            'Chưa cấu hình vị trí GPS nào.\nĐứng tại điểm làm việc và nhấn "+ Thêm vị trí GPS hiện tại" để thiết lập.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._locations.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final loc = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -801,7 +1377,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    wifi.name,
+                                    loc.name,
                                     style: const TextStyle(
                                       fontFamily: 'BeVietnamPro',
                                       fontWeight: FontWeight.w700,
@@ -810,7 +1386,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'IP: ${wifi.ip}',
+                                    '${loc.latitude.toStringAsFixed(5)}, ${loc.longitude.toStringAsFixed(5)} • Bán kính: ${loc.radiusMeters}m',
                                     style: const TextStyle(
                                       fontFamily: 'BeVietnamPro',
                                       color: AppColors.textSecondary,
@@ -821,79 +1397,36 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
-                              tooltip: 'Đổi tên WiFi',
-                              onPressed: () => _showEditWifiDialog(idx, wifi),
+                              icon: const Icon(Icons.edit_outlined,
+                                  color: AppColors.primary, size: 20),
+                              tooltip: 'Sửa tên & bán kính vị trí',
+                              onPressed: () =>
+                                  _showEditLocationDialog(idx, loc),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 20),
-                              tooltip: 'Xoá WiFi này',
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: AppColors.danger, size: 20),
+                              tooltip: 'Xoá vị trí này',
                               onPressed: () {
-                                setState(() => _wifis.removeAt(idx));
-                                _showSuccess('Đã xoá WiFi');
+                                setState(() {
+                                  _locations.removeAt(idx);
+                                  if (_locations.isNotEmpty) {
+                                    _lat = _locations.first.latitude;
+                                    _lng = _locations.first.longitude;
+                                    _radius = _locations.first.radiusMeters
+                                        .toDouble();
+                                  } else {
+                                    _lat = null;
+                                    _lng = null;
+                                  }
+                                });
+                                _showSuccess('Đã xoá vị trí');
                               },
                             ),
                           ],
                         ),
                       );
                     }),
-                  const SizedBox(height: 20),
-
-                  const _SectionHeader(title: 'Vị trí GPS'),
-                  const SizedBox(height: 12),
-                  if (_lat != null && _lng != null)
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppColors.success, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_lat!.toStringAsFixed(5)}, ${_lng!.toStringAsFixed(5)}',
-                            style: const TextStyle(
-                                fontFamily: 'BeVietnamPro',
-                                fontSize: 12,
-                                color: AppColors.success),
-                          ),
-                        ],
-                      ),
-                    ),
-                  OutlinedButton.icon(
-                    onPressed: _isFetchingLocation ? null : _fetchLocation,
-                    icon: _isFetchingLocation
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.primary))
-                        : const Icon(Icons.my_location_rounded),
-                    label: Text(_isFetchingLocation
-                        ? 'Đang lấy...'
-                        : 'Cập nhật vị trí GPS'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _Label('Bán kính: ${_radius.round()}m'),
-                  Slider(
-                    value: _radius,
-                    min: 50,
-                    max: 500,
-                    divisions: 45,
-                    activeColor: AppColors.primary,
-                    inactiveColor: AppColors.border,
-                    onChanged: (v) => setState(() => _radius = v),
-                  ),
                   const SizedBox(height: 20),
 
                   const _SectionHeader(title: 'Mã cửa hàng'),
@@ -993,8 +1526,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: () =>
-                                context.push(AppRoutes.qrDisplay),
+                            onPressed: () => context.push(AppRoutes.qrDisplay),
                             icon: const Icon(Icons.open_in_full_rounded),
                             label: const Text('Xem mã QR toàn màn hình'),
                             style: ElevatedButton.styleFrom(
@@ -1098,7 +1630,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                                         fontWeight: FontWeight.w600,
                                         color: AppColors.neutral)),
                                 SizedBox(height: 2),
-                                Text('Sắp xếp thứ tự và quản lý đầu việc checklist',
+                                Text(
+                                    'Sắp xếp thứ tự và quản lý đầu việc checklist',
                                     style: TextStyle(
                                         fontFamily: 'BeVietnamPro',
                                         fontSize: 12,
@@ -1119,12 +1652,16 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Định nghĩa các bộ phận để NV/QL chọn khi đăng ký ca làm.',
-                    style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(
+                        fontFamily: 'BeVietnamPro',
+                        fontSize: 12,
+                        color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 12),
                   // Toggle bật/tắt chọn bộ phận
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -1132,14 +1669,22 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                     ),
                     child: SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Cho phép NV/QL chọn bộ phận', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
+                      title: const Text('Cho phép NV/QL chọn bộ phận',
+                          style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14)),
                       subtitle: Text(
-                        _deptSelectionEnabled ? 'Đang bật – NV/QL thấy danh sách bộ phận khi đăng ký ca' : 'Đang tắt – NV/QL không thấy tùy chọn bộ phận',
-                        style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12),
+                        _deptSelectionEnabled
+                            ? 'Đang bật – NV/QL thấy danh sách bộ phận khi đăng ký ca'
+                            : 'Đang tắt – NV/QL không thấy tùy chọn bộ phận',
+                        style: const TextStyle(
+                            fontFamily: 'BeVietnamPro', fontSize: 12),
                       ),
                       value: _deptSelectionEnabled,
                       activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _deptSelectionEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _deptSelectionEnabled = val),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1152,7 +1697,10 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: const Center(
-                        child: Text('Chưa có bộ phận nào. Bấm + để thêm.', style: TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary)),
+                        child: Text('Chưa có bộ phận nào. Bấm + để thêm.',
+                            style: TextStyle(
+                                fontFamily: 'BeVietnamPro',
+                                color: AppColors.textSecondary)),
                       ),
                     )
                   else
@@ -1160,7 +1708,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       final dept = _departments[i];
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -1169,18 +1718,31 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                         child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Text(dept.shortName, style: const TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.primary)),
+                              child: Text(dept.shortName,
+                                  style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: AppColors.primary)),
                             ),
                             const SizedBox(width: 12),
-                            Expanded(child: Text(dept.name, style: const TextStyle(fontFamily: 'BeVietnamPro', fontSize: 14, fontWeight: FontWeight.w600))),
+                            Expanded(
+                                child: Text(dept.name,
+                                    style: const TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600))),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
-                              onPressed: () => setState(() => _departments.removeAt(i)),
+                              icon: const Icon(Icons.delete_outline,
+                                  color: AppColors.danger, size: 20),
+                              onPressed: () =>
+                                  setState(() => _departments.removeAt(i)),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
@@ -1192,11 +1754,13 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   OutlinedButton.icon(
                     onPressed: _showAddDepartmentDialog,
                     icon: const Icon(Icons.add),
-                    label: const Text('Thêm bộ phận', style: TextStyle(fontFamily: 'BeVietnamPro')),
+                    label: const Text('Thêm bộ phận',
+                        style: TextStyle(fontFamily: 'BeVietnamPro')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: const BorderSide(color: AppColors.primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -1205,7 +1769,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   const _SectionHeader(title: 'Cài đặt Phụ cấp'),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -1213,11 +1778,19 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                     ),
                     child: SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Cho phép đăng ký Chở hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text('Tích vào lịch để tính phụ cấp chở hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12)),
+                      title: const Text('Cho phép đăng ký Chở hàng',
+                          style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14)),
+                      subtitle: const Text(
+                          'Tích vào lịch để tính phụ cấp chở hàng',
+                          style: TextStyle(
+                              fontFamily: 'BeVietnamPro', fontSize: 12)),
                       value: _deliveryEnabled,
                       activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _deliveryEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _deliveryEnabled = val),
                     ),
                   ),
                   if (_deliveryEnabled) ...[
@@ -1233,7 +1806,8 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                   ],
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -1241,11 +1815,19 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                     ),
                     child: SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Cho phép đăng ký Giao hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text('Tích vào lịch để tính phụ cấp giao hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12)),
+                      title: const Text('Cho phép đăng ký Giao hàng',
+                          style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14)),
+                      subtitle: const Text(
+                          'Tích vào lịch để tính phụ cấp giao hàng',
+                          style: TextStyle(
+                              fontFamily: 'BeVietnamPro', fontSize: 12)),
                       value: _giaoHangEnabled,
                       activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _giaoHangEnabled = val),
+                      onChanged: (val) =>
+                          setState(() => _giaoHangEnabled = val),
                     ),
                   ),
                   if (_giaoHangEnabled) ...[
@@ -1303,14 +1885,16 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.danger.withOpacity(0.04),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
+                        border: Border.all(
+                            color: AppColors.danger.withOpacity(0.3)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: const [
-                              Icon(Icons.delete_forever_rounded, color: AppColors.danger, size: 22),
+                              Icon(Icons.delete_forever_rounded,
+                                  color: AppColors.danger, size: 22),
                               SizedBox(width: 8),
                               Text(
                                 'Xóa cửa hàng',
@@ -1336,7 +1920,9 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton.icon(
-                              onPressed: _isDeleting ? null : () => _deleteStore(store),
+                              onPressed: _isDeleting
+                                  ? null
+                                  : () => _deleteStore(store),
                               icon: _isDeleting
                                   ? const SizedBox(
                                       width: 16,
@@ -1346,12 +1932,16 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                                         color: AppColors.danger,
                                       ),
                                     )
-                                  : const Icon(Icons.delete_outline_rounded, size: 18),
-                              label: Text(_isDeleting ? 'Đang xóa...' : 'Xóa cửa hàng này'),
+                                  : const Icon(Icons.delete_outline_rounded,
+                                      size: 18),
+                              label: Text(_isDeleting
+                                  ? 'Đang xóa...'
+                                  : 'Xóa cửa hàng này'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.danger,
                                 side: const BorderSide(color: AppColors.danger),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -1451,8 +2041,7 @@ class _Field extends StatelessWidget {
             borderSide: const BorderSide(color: AppColors.border)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5)),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.primary)),

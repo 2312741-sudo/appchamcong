@@ -21,13 +21,13 @@ import '../../schedule/providers/schedule_provider.dart';
 // File-local provider (private) to avoid name collision with the global
 // todayAttendanceProvider in attendance_provider.dart (which has a different signature).
 // Uses watchActiveAttendance to handle cross-midnight shifts correctly.
-final _localTodayAttendanceProvider = StreamProvider.family<AttendanceModel?, String>((ref, userId) {
+final _localTodayAttendanceProvider =
+    StreamProvider.family<AttendanceModel?, String>((ref, userId) {
   final storeId = ref.watch(currentStoreIdProvider);
   if (storeId == null || storeId.isEmpty) return Stream.value(null);
   final repo = ref.watch(attendanceRepositoryProvider);
   return repo.watchActiveAttendance(storeId, userId);
 });
-
 
 class CheckInScreen extends ConsumerStatefulWidget {
   const CheckInScreen({super.key});
@@ -36,7 +36,8 @@ class CheckInScreen extends ConsumerStatefulWidget {
   ConsumerState<CheckInScreen> createState() => _CheckInScreenState();
 }
 
-class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTickerProviderStateMixin {
+class _CheckInScreenState extends ConsumerState<CheckInScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
   late Timer _timer;
   DateTime _currentTime = DateTime.now();
@@ -54,7 +55,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(
+    _pulseAnimation =
+        Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(
       parent: _pulseController,
       curve: Curves.easeInOut,
     ));
@@ -70,36 +72,40 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
   Future<void> _validateMethod(StoreModel store, bool isCheckedIn) async {
     final actionText = isCheckedIn ? 'chấm ra' : 'chấm công';
     if (_selectedMethod == CheckInMethod.wifi) {
-      final allowedIPs = <String>[];
-      if (store.networkIP != null && store.networkIP!.trim().isNotEmpty) {
-        allowedIPs.add(store.networkIP!.trim());
+      final validWifis = store.wifis.where((w) => w.hasValidBssid).toList();
+      if (validWifis.isEmpty) {
+        throw Exception('Cửa hàng chưa cấu hình WiFi chấm công.');
       }
-      for (final wifi in store.wifis) {
-        if (wifi.ip.trim().isNotEmpty && !allowedIPs.contains(wifi.ip.trim())) {
-          allowedIPs.add(wifi.ip.trim());
-        }
-      }
-
-      if (allowedIPs.isEmpty) {
-        if (!store.hasWifi) {
-          throw Exception('Cửa hàng chưa cấu hình WiFi chấm công.');
-        }
-      } else {
-        final isWifiCorrect = await LocationUtils.isOnStoreNetwork(allowedIPs);
-        if (!isWifiCorrect) {
-          throw Exception(
-              'Bạn chưa kết nối đúng mạng WiFi của cửa hàng (hoặc đang dùng 4G/5G). Vui lòng kết nối WiFi tại nơi làm việc để $actionText.');
-        }
+      final isWifiCorrect = await LocationUtils.isOnStoreWifi(validWifis);
+      if (!isWifiCorrect) {
+        throw Exception(
+            'Bạn chưa kết nối đúng mạng WiFi của cửa hàng (hoặc ứng dụng không đọc được thông tin WiFi). Vui lòng kết nối WiFi tại nơi làm việc để $actionText.');
       }
     } else if (_selectedMethod == CheckInMethod.gps) {
-      if (store.latitude == null || store.longitude == null) {
+      if (!store.hasLocation) {
         throw Exception('Cửa hàng chưa cấu hình Vị trí.');
       }
-      final canProceed = await LocationUtils.isInStoreRange(
-          store.latitude!, store.longitude!, store.radiusMeters.toDouble());
-      if (!canProceed) {
-        throw Exception(
-            'Bạn không ở trong phạm vi cửa hàng. Vui lòng đến cửa hàng để $actionText.');
+      if (store.locations.isNotEmpty) {
+        final result = await LocationUtils.checkLocationsRange(store.locations);
+        if (!result.inRange) {
+          if (result.nearestLocation != null && result.minDistance != null) {
+            final nearest = result.nearestLocation!;
+            final distStr = result.minDistance! >= 1000
+                ? '${(result.minDistance! / 1000).toStringAsFixed(1)}km'
+                : '${result.minDistance!.round()}m';
+            throw Exception(
+                'Bạn không ở trong phạm vi cửa hàng. Vị trí gần nhất: "${nearest.name}" (cách $distStr, bán kính ${nearest.radiusMeters}m). Vui lòng đến cửa hàng để $actionText.');
+          }
+          throw Exception(
+              'Bạn không ở trong phạm vi các vị trí của cửa hàng. Vui lòng đến cửa hàng để $actionText.');
+        }
+      } else {
+        final canProceed = await LocationUtils.isInStoreRange(
+            store.latitude!, store.longitude!, store.radiusMeters.toDouble());
+        if (!canProceed) {
+          throw Exception(
+              'Bạn không ở trong phạm vi cửa hàng. Vui lòng đến cửa hàng để $actionText.');
+        }
       }
     }
   }
@@ -113,7 +119,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(attendanceRepositoryProvider);
-      
+
       // 1. Validate WiFi or GPS based on the selected method
       await _validateMethod(store, isCheckedIn);
 
@@ -149,8 +155,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
         final workdayDateStr =
             '${checkInVN.year}-${checkInVN.month.toString().padLeft(2, '0')}-${checkInVN.day.toString().padLeft(2, '0')}';
         final productionRepo = ref.read(productionRepositoryProvider);
-        final hasAlreadyReported =
-            await productionRepo.hasReportToday(store.id, userId, workdayDateStr);
+        final hasAlreadyReported = await productionRepo.hasReportToday(
+            store.id, userId, workdayDateStr);
 
         // 4. Evaluate checklist requirement strictly anchored on checkInTime
         final eval = ProductionChecklistUtils.evaluateChecklistRequirement(
@@ -184,7 +190,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
           setState(() => _isLoading = true);
         }
 
-        await repo.checkOut(store.id, userId, isProductionShift: eval.hasProductionShiftOnWorkday);
+        await repo.checkOut(store.id, userId,
+            isProductionShift: eval.hasProductionShiftOnWorkday);
         _showSuccess('Chấm ra thành công!');
         return;
       }
@@ -224,40 +231,53 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
   }
 
   void _showSuccess(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   @override
   Widget build(BuildContext context) {
     final userId = ref.watch(currentUserIdProvider);
     final storeAsync = ref.watch(currentStoreProvider);
-    if (userId == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (userId == null)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     return storeAsync.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, s) => Scaffold(body: Center(child: Text('Lỗi: $e'))),
       data: (store) {
-        if (store == null) return const Scaffold(body: Center(child: Text('Không tìm thấy cửa hàng')));
+        if (store == null)
+          return const Scaffold(
+              body: Center(child: Text('Không tìm thấy cửa hàng')));
         final attAsync = ref.watch(_localTodayAttendanceProvider(userId));
 
         return attAsync.when(
-          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (e, s) => Scaffold(body: Center(child: Text('Lỗi điểm danh: $e'))),
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (e, s) =>
+              Scaffold(body: Center(child: Text('Lỗi điểm danh: $e'))),
           data: (attendance) {
             final isCheckedIn = attendance?.isActive ?? false;
 
             return Scaffold(
               backgroundColor: const Color(0xFFF5F6FA),
               appBar: AppBar(
-                title: const Text('Chấm Công', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87)),
+                title: const Text('Chấm Công',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, color: Colors.black87)),
                 centerTitle: true,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87), onPressed: () => context.pop()),
+                leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.black87),
+                    onPressed: () => context.pop()),
               ),
               body: SafeArea(
                 child: SingleChildScrollView(
@@ -271,25 +291,54 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                           width: double.infinity,
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFFC8102E), Color(0xFFE52040)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFFC8102E), Color(0xFFE52040)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight),
                             borderRadius: BorderRadius.circular(24),
-                            boxShadow: [BoxShadow(color: const Color(0xFFC8102E).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                            boxShadow: [
+                              BoxShadow(
+                                  color:
+                                      const Color(0xFFC8102E).withOpacity(0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8))
+                            ],
                           ),
                           child: Column(
                             children: [
-                              Text(DateFormat('EEEE, dd/MM/yyyy', 'vi').format(_currentTime), style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 16, fontWeight: FontWeight.w500)),
+                              Text(
+                                  DateFormat('EEEE, dd/MM/yyyy', 'vi')
+                                      .format(_currentTime),
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500)),
                               const SizedBox(height: 8),
-                              Text(DateFormat('HH:mm:ss').format(_currentTime), style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                              Text(DateFormat('HH:mm:ss').format(_currentTime),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 48,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 2)),
                               const SizedBox(height: 16),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20)),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.storefront_rounded, color: Colors.white.withOpacity(0.9), size: 18),
+                                    Icon(Icons.storefront_rounded,
+                                        color: Colors.white.withOpacity(0.9),
+                                        size: 18),
                                     const SizedBox(width: 8),
-                                    Text(store.name, style: TextStyle(color: Colors.white.withOpacity(0.9), fontWeight: FontWeight.w600)),
+                                    Text(store.name,
+                                        style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.9),
+                                            fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -304,22 +353,40 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4))
+                              ],
                             ),
                             child: Row(
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
-                                  child: const Icon(Icons.login_rounded, color: Colors.green, size: 28),
+                                  decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      shape: BoxShape.circle),
+                                  child: const Icon(Icons.login_rounded,
+                                      color: Colors.green, size: 28),
                                 ),
                                 const SizedBox(width: 16),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Giờ vào ca', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500)),
+                                    const Text('Giờ vào ca',
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.w500)),
                                     const SizedBox(height: 4),
-                                    Text(DateFormat('HH:mm').format(attendance!.checkIn.toLocal()), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.black87)),
+                                    Text(
+                                        DateFormat('HH:mm').format(
+                                            attendance!.checkIn.toLocal()),
+                                        style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black87)),
                                   ],
                                 ),
                               ],
@@ -331,16 +398,23 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            isCheckedIn ? 'Phương thức ra ca' : 'Phương thức chấm công',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
+                            isCheckedIn
+                                ? 'Phương thức ra ca'
+                                : 'Phương thức chấm công',
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87),
                           ),
                         ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            _buildMethodCard(CheckInMethod.wifi, Icons.wifi, 'WiFi', store.hasWifi),
+                            _buildMethodCard(CheckInMethod.wifi, Icons.wifi,
+                                'WiFi', store.hasWifi),
                             const SizedBox(width: 16),
-                            _buildMethodCard(CheckInMethod.gps, Icons.location_on, 'Vị trí', store.latitude != null),
+                            _buildMethodCard(CheckInMethod.gps,
+                                Icons.location_on, 'Vị trí', store.hasLocation),
                           ],
                         ),
                         const SizedBox(height: 32),
@@ -366,15 +440,24 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     gradient: LinearGradient(
-                                      colors: isCheckedIn 
-                                          ? [const Color(0xFF888780), const Color(0xFF666560)]
-                                          : [const Color(0xFF1A6B5A), const Color(0xFF124D41)],
+                                      colors: isCheckedIn
+                                          ? [
+                                              const Color(0xFF888780),
+                                              const Color(0xFF666560)
+                                            ]
+                                          : [
+                                              const Color(0xFF1A6B5A),
+                                              const Color(0xFF124D41)
+                                            ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: (isCheckedIn ? const Color(0xFF888780) : const Color(0xFF1A6B5A)).withOpacity(0.4),
+                                        color: (isCheckedIn
+                                                ? const Color(0xFF888780)
+                                                : const Color(0xFF1A6B5A))
+                                            .withOpacity(0.4),
                                         blurRadius: 30,
                                         spreadRadius: 10,
                                       )
@@ -382,13 +465,30 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                                   ),
                                   child: Center(
                                     child: _isLoading
-                                        ? const CircularProgressIndicator(color: Colors.white)
+                                        ? const CircularProgressIndicator(
+                                            color: Colors.white)
                                         : Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
-                                              Icon(isCheckedIn ? Icons.logout_rounded : Icons.fingerprint_rounded, color: Colors.white, size: 64),
+                                              Icon(
+                                                  isCheckedIn
+                                                      ? Icons.logout_rounded
+                                                      : Icons
+                                                          .fingerprint_rounded,
+                                                  color: Colors.white,
+                                                  size: 64),
                                               const SizedBox(height: 12),
-                                              Text(isCheckedIn ? 'RA CA' : 'VÀO CA', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                                              Text(
+                                                  isCheckedIn
+                                                      ? 'RA CA'
+                                                      : 'VÀO CA',
+                                                  style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 24,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      letterSpacing: 2)),
                                             ],
                                           ),
                                   ),
@@ -398,7 +498,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
                           },
                         ),
                         const SizedBox(height: 24),
-                        Text(isCheckedIn ? 'Bạn đang trong ca làm việc' : 'Nhấn để bắt đầu ca làm việc', style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+                        Text(
+                            isCheckedIn
+                                ? 'Bạn đang trong ca làm việc'
+                                : 'Nhấn để bắt đầu ca làm việc',
+                            style: TextStyle(
+                                color: Colors.grey.shade600, fontSize: 14)),
                       ],
                     ),
                   ),
@@ -411,25 +516,46 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> with SingleTicker
     );
   }
 
-  Widget _buildMethodCard(CheckInMethod method, IconData icon, String label, bool isAvailable) {
+  Widget _buildMethodCard(
+      CheckInMethod method, IconData icon, String label, bool isAvailable) {
     final isSelected = _selectedMethod == method;
     return Expanded(
       child: GestureDetector(
-        onTap: isAvailable ? () => setState(() => _selectedMethod = method) : null,
+        onTap:
+            isAvailable ? () => setState(() => _selectedMethod = method) : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 20),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF1C4E6B) : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isSelected ? const Color(0xFF1C4E6B) : Colors.grey.shade300, width: 2),
-            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF1C4E6B).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : [],
+            border: Border.all(
+                color:
+                    isSelected ? const Color(0xFF1C4E6B) : Colors.grey.shade300,
+                width: 2),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                        color: const Color(0xFF1C4E6B).withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4))
+                  ]
+                : [],
           ),
           child: Column(
             children: [
-              Icon(icon, color: isAvailable ? (isSelected ? Colors.white : Colors.grey.shade600) : Colors.grey.shade300, size: 32),
+              Icon(icon,
+                  color: isAvailable
+                      ? (isSelected ? Colors.white : Colors.grey.shade600)
+                      : Colors.grey.shade300,
+                  size: 32),
               const SizedBox(height: 12),
-              Text(label, style: TextStyle(color: isAvailable ? (isSelected ? Colors.white : Colors.black87) : Colors.grey.shade400, fontWeight: FontWeight.w600)),
+              Text(label,
+                  style: TextStyle(
+                      color: isAvailable
+                          ? (isSelected ? Colors.white : Colors.black87)
+                          : Colors.grey.shade400,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -458,10 +584,12 @@ class _ProductionChecklistDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_ProductionChecklistDialog> createState() => _ProductionChecklistDialogState();
+  ConsumerState<_ProductionChecklistDialog> createState() =>
+      _ProductionChecklistDialogState();
 }
 
-class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklistDialog> {
+class _ProductionChecklistDialogState
+    extends ConsumerState<_ProductionChecklistDialog> {
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, bool> _selected = {};
   bool _isSubmitting = false;
@@ -484,9 +612,11 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
   }
 
   Future<void> _submit() async {
-    final selectedTasks = widget.tasks.where((t) => _selected[t.id] == true).toList();
+    final selectedTasks =
+        widget.tasks.where((t) => _selected[t.id] == true).toList();
     if (selectedTasks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn ít nhất 1 công việc đã hoàn thành')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Vui lòng chọn ít nhất 1 công việc đã hoàn thành')));
       return;
     }
 
@@ -498,7 +628,8 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
         final valStr = (_controllers[t.id]?.text ?? '0').replaceAll(',', '.');
         val = double.tryParse(valStr) ?? 0.0;
         if (val <= 0) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Vui lòng nhập số lượng hợp lệ cho ${t.name}')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Vui lòng nhập số lượng hợp lệ cho ${t.name}')));
           return;
         }
       }
@@ -514,7 +645,8 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
     setState(() => _isSubmitting = true);
     try {
       final members = ref.read(storeMembersProvider).valueOrNull ?? [];
-      final member = members.where((m) => m.userId == widget.userId).firstOrNull;
+      final member =
+          members.where((m) => m.userId == widget.userId).firstOrNull;
       final memberName = member?.name ?? 'Nhân viên';
 
       final report = ProductionReport(
@@ -529,12 +661,15 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
         tasks: entries,
       );
 
-      await ref.read(productionRepositoryProvider).submitReport(widget.storeId, report);
+      await ref
+          .read(productionRepositoryProvider)
+          .submitReport(widget.storeId, report);
       if (mounted) {
         widget.onSubmitted(); // Tell parent to continue checkout
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -543,7 +678,11 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 24, left: 24, right: 24),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          top: 24,
+          left: 24,
+          right: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -555,14 +694,20 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Báo cáo sản xuất', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              const Text('Báo cáo sản xuất',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context)),
             ],
           ),
-          const Text('Vui lòng đánh dấu các công việc đã làm trong ca và nhập số lượng để hệ thống ghi nhận.', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          const Text(
+              'Vui lòng đánh dấu các công việc đã làm trong ca và nhập số lượng để hệ thống ghi nhận.',
+              style: TextStyle(color: Colors.grey, fontSize: 14)),
           const SizedBox(height: 20),
           ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.4),
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: widget.tasks.length,
@@ -572,44 +717,70 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFC8102E).withOpacity(0.05) : Colors.white,
-                    border: Border.all(color: isSelected ? const Color(0xFFC8102E) : Colors.grey.shade300),
+                    color: isSelected
+                        ? const Color(0xFFC8102E).withOpacity(0.05)
+                        : Colors.white,
+                    border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFC8102E)
+                            : Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: CheckboxListTile(
                     value: isSelected,
                     activeColor: const Color(0xFFC8102E),
-                    title: Text(t.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: isSelected ? Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: t.unitLabel.trim().isNotEmpty ? Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _controllers[t.id],
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
-                              ],
-                              decoration: InputDecoration(
-                                isDense: true,
-                                hintText: 'Nhập số lượng (${t.unitLabel})...',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(t.unitLabel, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey)),
-                        ],
-                      ) : const Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Color(0xFF1A6B5A), size: 16),
-                          SizedBox(width: 6),
-                          Text('Đã hoàn thành', style: TextStyle(color: Color(0xFF1A6B5A), fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ) : null,
+                    title: Text(t.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: isSelected
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: t.unitLabel.trim().isNotEmpty
+                                ? Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _controllers[t.id],
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(decimal: true),
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.allow(
+                                                RegExp(r'[\d.,]')),
+                                          ],
+                                          decoration: InputDecoration(
+                                            isDense: true,
+                                            hintText:
+                                                'Nhập số lượng (${t.unitLabel})...',
+                                            border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(t.unitLabel,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey)),
+                                    ],
+                                  )
+                                : const Row(
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          color: Color(0xFF1A6B5A), size: 16),
+                                      SizedBox(width: 6),
+                                      Text('Đã hoàn thành',
+                                          style: TextStyle(
+                                              color: Color(0xFF1A6B5A),
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                          )
+                        : null,
                     onChanged: (val) {
                       setState(() => _selected[t.id] = val ?? false);
                     },
@@ -626,11 +797,18 @@ class _ProductionChecklistDialogState extends ConsumerState<_ProductionChecklist
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFC8102E),
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: _isSubmitting 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('HOÀN TẤT & RA CA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Text('HOÀN TẤT & RA CA',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),
           const SizedBox(height: 24),

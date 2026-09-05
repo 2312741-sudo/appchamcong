@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import '../../store/providers/store_provider.dart';
 import '../../../core/utils/location_utils.dart';
+import '../../../models/store_model.dart';
 
 // ---------- Location permission ----------
 
@@ -67,16 +68,10 @@ final canCheckInProvider = FutureProvider<CheckInStatus>((ref) async {
   bool isWifi = false;
   if (store.hasWifi) {
     try {
-      final allowedIPs = <String>[];
-      if (store.networkIP != null && store.networkIP!.trim().isNotEmpty) {
-        allowedIPs.add(store.networkIP!.trim());
+      final validWifis = store.wifis.where((w) => w.hasValidBssid).toList();
+      if (validWifis.isNotEmpty) {
+        isWifi = await LocationUtils.isOnStoreWifi(validWifis);
       }
-      for (final w in store.wifis) {
-        if (w.ip.trim().isNotEmpty && !allowedIPs.contains(w.ip.trim())) {
-          allowedIPs.add(w.ip.trim());
-        }
-      }
-      isWifi = await LocationUtils.isOnStoreNetwork(allowedIPs);
     } catch (_) {
       isWifi = false;
     }
@@ -88,13 +83,25 @@ final canCheckInProvider = FutureProvider<CheckInStatus>((ref) async {
     try {
       final position = await ref.watch(currentPositionProvider.future);
       if (position != null) {
-        final distanceMeters = Geolocator.distanceBetween(
-          position.latitude,
-          position.longitude,
-          store.latitude!,
-          store.longitude!,
-        );
-        isGps = distanceMeters <= store.radiusMeters;
+        if (store.locations.isNotEmpty) {
+          isGps = store.locations.any((loc) {
+            final distanceMeters = Geolocator.distanceBetween(
+              position.latitude,
+              position.longitude,
+              loc.latitude,
+              loc.longitude,
+            );
+            return distanceMeters <= loc.radiusMeters;
+          });
+        } else if (store.latitude != null && store.longitude != null) {
+          final distanceMeters = Geolocator.distanceBetween(
+            position.latitude,
+            position.longitude,
+            store.latitude!,
+            store.longitude!,
+          );
+          isGps = distanceMeters <= store.radiusMeters;
+        }
       }
     } catch (_) {
       isGps = false;
@@ -115,12 +122,64 @@ final distanceToStoreProvider = FutureProvider<double?>((ref) async {
     final position = await ref.watch(currentPositionProvider.future);
     if (position == null) return null;
 
-    return Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      store.latitude!,
-      store.longitude!,
-    );
+    if (store.locations.isNotEmpty) {
+      double? minDistance;
+      for (final loc in store.locations) {
+        final dist = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          loc.latitude,
+          loc.longitude,
+        );
+        if (minDistance == null || dist < minDistance) {
+          minDistance = dist;
+        }
+      }
+      return minDistance;
+    }
+
+    if (store.latitude != null && store.longitude != null) {
+      return Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        store.latitude!,
+        store.longitude!,
+      );
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+});
+
+// ---------- Nearest Store Location ----------
+
+final nearestStoreLocationProvider =
+    FutureProvider<StoreLocation?>((ref) async {
+  try {
+    final store = ref.watch(currentStoreProvider).whenOrNull(data: (s) => s);
+    if (store == null || !store.hasLocation || store.locations.isEmpty)
+      return null;
+
+    final position = await ref.watch(currentPositionProvider.future);
+    if (position == null) return null;
+
+    StoreLocation? nearest;
+    double? minDistance;
+    for (final loc in store.locations) {
+      final dist = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        loc.latitude,
+        loc.longitude,
+      );
+      if (minDistance == null || dist < minDistance) {
+        minDistance = dist;
+        nearest = loc;
+      }
+    }
+    return nearest;
   } catch (_) {
     return null;
   }

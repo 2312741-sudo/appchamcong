@@ -20,10 +20,12 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
   final _nameCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _wifiNameCtrl = TextEditingController();
+  final _locationNameCtrl = TextEditingController();
 
-  String? _networkIP;
+  String? _detectedBssid;
   String? _detectedSsid;
-  bool _isFetchingIP = false;
+  String? _detectedLocalIp;
+  bool _isFetchingWifi = false;
 
   double _radius = 100;
   double? _lat;
@@ -37,34 +39,37 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
     _nameCtrl.dispose();
     _addressCtrl.dispose();
     _wifiNameCtrl.dispose();
+    _locationNameCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchNetworkIP() async {
-    setState(() => _isFetchingIP = true);
+  Future<void> _fetchCurrentWifi() async {
+    setState(() => _isFetchingWifi = true);
     try {
       final details = await LocationUtils.getCurrentWifiDetails();
-      if (details.ip == null || details.ip!.isEmpty) {
-        throw Exception('Không lấy được IP mạng. Vui lòng đảm bảo kết nối internet.');
+      if (details.bssid == null || !LocationUtils.isValidBssid(details.bssid)) {
+        throw Exception(
+          'Không thể đọc BSSID của WiFi hiện tại. Hãy kiểm tra quyền Vị trí/WiFi và đảm bảo thiết bị đang kết nối WiFi.',
+        );
       }
-      
+
       setState(() {
-        _networkIP = details.ip;
+        _detectedBssid = details.bssid;
+        _detectedSsid = details.ssid;
+        _detectedLocalIp = details.localIp;
         if (details.ssid != null && details.ssid!.isNotEmpty) {
-          _detectedSsid = details.ssid;
           _wifiNameCtrl.text = details.ssid!;
         } else {
-          _detectedSsid = null;
           _wifiNameCtrl.text = 'WiFi Chính';
         }
       });
       _showSuccess(_detectedSsid != null
-          ? 'Đã lấy WiFi: $_detectedSsid'
-          : 'Đã lấy IP mạng thành công');
+          ? 'Đã nhận diện WiFi: $_detectedSsid'
+          : 'Đã nhận diện BSSID: $_detectedBssid');
     } catch (e) {
-      _showError('Không thể lấy IP mạng: $e');
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _isFetchingIP = false);
+      if (mounted) setState(() => _isFetchingWifi = false);
     }
   }
 
@@ -134,17 +139,22 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
       final store = await repo.createStore(
         _nameCtrl.text.trim(),
         _addressCtrl.text.trim(),
-        _networkIP ?? '',
+        '',
         _lat,
         _lng,
         _radius.round(),
         wifiName: _wifiNameCtrl.text.trim().isNotEmpty
             ? _wifiNameCtrl.text.trim()
-            : 'WiFi Chính',
+            : (_detectedSsid ?? 'WiFi Chính'),
+        wifiSsid: _detectedSsid,
+        wifiBssid: _detectedBssid,
+        locationName: _locationNameCtrl.text.trim().isNotEmpty
+            ? _locationNameCtrl.text.trim()
+            : 'Cơ sở chính',
       );
 
       await userRepo.updateCurrentStoreId(user.id, store.id);
-      
+
       ref.invalidate(userStoresProvider);
 
       if (mounted) context.go(AppRoutes.splash);
@@ -263,8 +273,8 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                 ),
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
-                  onPressed: _isFetchingIP ? null : _fetchNetworkIP,
-                  icon: _isFetchingIP
+                  onPressed: _isFetchingWifi ? null : _fetchCurrentWifi,
+                  icon: _isFetchingWifi
                       ? const SizedBox(
                           width: 16,
                           height: 16,
@@ -275,7 +285,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                         )
                       : const Icon(Icons.wifi_rounded),
                   label: Text(
-                    _isFetchingIP ? 'Đang lấy IP...' : 'Lấy IP mạng hiện tại',
+                    _isFetchingWifi ? 'Đang nhận diện...' : 'Lấy WiFi hiện tại',
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
@@ -291,7 +301,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                     ),
                   ),
                 ),
-                if (_networkIP != null) ...[
+                if (_detectedBssid != null) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -299,9 +309,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: _detectedSsid != null
-                            ? AppColors.success.withOpacity(0.5)
-                            : Colors.orange.withOpacity(0.5),
+                        color: AppColors.success.withValues(alpha: 0.5),
                       ),
                     ),
                     child: Column(
@@ -309,13 +317,9 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(
-                              _detectedSsid != null
-                                  ? Icons.wifi_rounded
-                                  : Icons.wifi_find_rounded,
-                              color: _detectedSsid != null
-                                  ? AppColors.success
-                                  : Colors.orange,
+                            const Icon(
+                              Icons.wifi_rounded,
+                              color: AppColors.success,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
@@ -323,16 +327,26 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                               child: Text(
                                 _detectedSsid != null
                                     ? 'Đã nhận diện: $_detectedSsid'
-                                    : 'Chưa đọc được SSID tự động (có thể tự đặt tên)',
-                                style: TextStyle(
+                                    : 'Đã nhận diện BSSID Access Point',
+                                style: const TextStyle(
                                   fontFamily: 'BeVietnamPro',
                                   fontSize: 13,
-                                  color: _detectedSsid != null
-                                      ? AppColors.success
-                                      : Colors.orange.shade800,
+                                  color: AppColors.success,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close,
+                                  color: AppColors.danger, size: 18),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => setState(() {
+                                _detectedBssid = null;
+                                _detectedSsid = null;
+                                _detectedLocalIp = null;
+                                _wifiNameCtrl.clear();
+                              }),
                             ),
                           ],
                         ),
@@ -342,7 +356,8 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                           decoration: InputDecoration(
                             labelText: 'Tên nhận diện WiFi',
                             hintText: 'VD: WiFi Chính / Cửa hàng',
-                            prefixIcon: const Icon(Icons.edit_note_rounded, size: 20),
+                            prefixIcon:
+                                const Icon(Icons.edit_note_rounded, size: 20),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -357,14 +372,23 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          'IP Router (WAN): $_networkIP',
-                          style: const TextStyle(
-                            fontFamily: 'BeVietnamPro',
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.fingerprint_rounded,
+                                size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'BSSID: $_detectedBssid',
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -418,8 +442,8 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                 if (_locationLabel != null) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppColors.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -441,12 +465,25 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _locationNameCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Tên vị trí này (tùy chọn)',
+                      hintText: 'VD: Cơ sở chính, Điểm bán 1...',
+                      prefixIcon: const Icon(Icons.label_outline_rounded,
+                          color: AppColors.primary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                  ),
                 ],
                 const SizedBox(height: 20),
 
                 // Radius slider
-                _SectionLabel(
-                    label: 'Bán kính cho phép: ${_radius.round()}m'),
+                _SectionLabel(label: 'Bán kính cho phép: ${_radius.round()}m'),
                 Slider(
                   value: _radius,
                   min: 50,
@@ -483,7 +520,8 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                      disabledBackgroundColor:
+                          AppColors.primary.withOpacity(0.6),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),

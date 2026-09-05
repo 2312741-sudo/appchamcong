@@ -46,7 +46,11 @@ class StoreRepository {
     double? lng,
     int radiusMeters, {
     String? wifiName,
+    String? wifiSsid,
+    String? wifiBssid,
     List<StoreWifi> wifis = const [],
+    String? locationName,
+    List<StoreLocation> locations = const [],
   }) async {
     try {
       final uid = _getUid();
@@ -54,14 +58,35 @@ class StoreRepository {
       final now = DateTime.now().toUtc();
 
       final resolvedWifis = List<StoreWifi>.from(wifis);
-      if (resolvedWifis.isEmpty && networkIP.trim().isNotEmpty) {
+      if (resolvedWifis.isEmpty &&
+          (wifiBssid?.trim().isNotEmpty == true ||
+              networkIP.trim().isNotEmpty)) {
         resolvedWifis.add(
           StoreWifi(
             name: wifiName?.trim().isNotEmpty == true
                 ? wifiName!.trim()
-                : 'WiFi Chính',
-            ip: networkIP.trim(),
+                : (wifiSsid?.trim().isNotEmpty == true
+                    ? wifiSsid!.trim()
+                    : 'WiFi Chính'),
+            ssid: wifiSsid?.trim() ?? '',
+            bssid: wifiBssid?.trim() ?? '',
+            ip: networkIP.trim().isEmpty ? null : networkIP.trim(),
             createdAt: now,
+          ),
+        );
+      }
+
+      final resolvedLocations = List<StoreLocation>.from(locations);
+      if (resolvedLocations.isEmpty && lat != null && lng != null) {
+        resolvedLocations.add(
+          StoreLocation(
+            id: 'loc_${DateTime.now().millisecondsSinceEpoch}',
+            name: locationName?.trim().isNotEmpty == true
+                ? locationName!.trim()
+                : 'Cơ sở chính',
+            latitude: lat,
+            longitude: lng,
+            radiusMeters: radiusMeters,
           ),
         );
       }
@@ -74,9 +99,16 @@ class StoreRepository {
         'address': address.trim().isEmpty ? null : address.trim(),
         'networkIP': networkIP.trim().isEmpty ? null : networkIP.trim(),
         'wifis': resolvedWifis.map((w) => w.toJson()).toList(),
-        'latitude': lat,
-        'longitude': lng,
-        'radiusMeters': radiusMeters,
+        'locations': resolvedLocations.map((l) => l.toJson()).toList(),
+        'latitude': resolvedLocations.isNotEmpty
+            ? resolvedLocations.first.latitude
+            : lat,
+        'longitude': resolvedLocations.isNotEmpty
+            ? resolvedLocations.first.longitude
+            : lng,
+        'radiusMeters': resolvedLocations.isNotEmpty
+            ? resolvedLocations.first.radiusMeters
+            : radiusMeters,
         'createdAt': Timestamp.fromDate(now),
       };
 
@@ -114,9 +146,16 @@ class StoreRepository {
         ownerId: uid,
         address: address.trim().isEmpty ? null : address.trim(),
         networkIP: networkIP.trim().isEmpty ? null : networkIP.trim(),
-        latitude: lat,
-        longitude: lng,
-        radiusMeters: radiusMeters,
+        latitude: resolvedLocations.isNotEmpty
+            ? resolvedLocations.first.latitude
+            : lat,
+        longitude: resolvedLocations.isNotEmpty
+            ? resolvedLocations.first.longitude
+            : lng,
+        radiusMeters: resolvedLocations.isNotEmpty
+            ? resolvedLocations.first.radiusMeters
+            : radiusMeters,
+        locations: resolvedLocations,
         createdAt: now,
       );
     } catch (e) {
@@ -219,7 +258,8 @@ class StoreRepository {
 
       // Also mark storeIds that were not found in Firestore as invalid
       for (final id in storeIds) {
-        if (!validStores.any((s) => s.id == id) && !invalidStoreIds.contains(id)) {
+        if (!validStores.any((s) => s.id == id) &&
+            !invalidStoreIds.contains(id)) {
           invalidStoreIds.add(id);
         }
       }
@@ -228,9 +268,10 @@ class StoreRepository {
       final validIds = validStores.map((s) => s.id).toList();
       if (validIds.isNotEmpty || invalidStoreIds.isNotEmpty) {
         try {
-          final String? resolvedCurrentStoreId = (currentStoreId != null && validIds.contains(currentStoreId))
-              ? currentStoreId
-              : (validIds.isNotEmpty ? validIds.first : null);
+          final String? resolvedCurrentStoreId =
+              (currentStoreId != null && validIds.contains(currentStoreId))
+                  ? currentStoreId
+                  : (validIds.isNotEmpty ? validIds.first : null);
 
           await _firestore.collection('users').doc(userId).set({
             'storeIds': validIds,
@@ -288,11 +329,17 @@ class StoreRepository {
 
       // Create notification for Owner & Manager 1
       try {
-        final applicantName = user?.displayName ?? user?.email ?? 'Nhân viên mới';
-        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+        final applicantName =
+            user?.displayName ?? user?.email ?? 'Nhân viên mới';
+        await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('notifications')
+            .add({
           'storeId': storeId,
           'title': 'Yêu cầu gia nhập mới',
-          'body': '$applicantName vừa gửi yêu cầu tham gia cửa hàng. Nhấn để duyệt.',
+          'body':
+              '$applicantName vừa gửi yêu cầu tham gia cửa hàng. Nhấn để duyệt.',
           'type': 'join_request',
           'createdAt': Timestamp.fromDate(now),
           'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
@@ -319,9 +366,11 @@ class StoreRepository {
       if (!callerDoc.exists) {
         throw Exception('403 Forbidden: Bạn không thuộc cửa hàng này');
       }
-      final callerRole = UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
+      final callerRole =
+          UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
       if (!AppPermissions.canApproveMembers(callerRole)) {
-        throw Exception('403 Forbidden: Bạn không có quyền duyệt thành viên mới (Chỉ Chủ và Quản lý 1 có quyền này)');
+        throw Exception(
+            '403 Forbidden: Bạn không có quyền duyệt thành viên mới (Chỉ Chủ và Quản lý 1 có quyền này)');
       }
 
       final now = DateTime.now().toUtc();
@@ -335,9 +384,15 @@ class StoreRepository {
 
       // Create notification for Member
       try {
-        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+        await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('notifications')
+            .add({
           'storeId': storeId,
-          'title': approve ? 'Yêu cầu gia nhập đã được duyệt!' : 'Yêu cầu gia nhập bị từ chối',
+          'title': approve
+              ? 'Yêu cầu gia nhập đã được duyệt!'
+              : 'Yêu cầu gia nhập bị từ chối',
           'body': approve
               ? 'Chúc mừng bạn đã trở thành thành viên của cửa hàng. Bạn có thể bắt đầu chấm công và đăng ký ca làm.'
               : 'Yêu cầu tham gia cửa hàng của bạn đã bị từ chối.',
@@ -365,9 +420,11 @@ class StoreRepository {
       if (!callerDoc.exists) {
         throw Exception('403 Forbidden: Bạn không thuộc cửa hàng này');
       }
-      final callerRole = UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
+      final callerRole =
+          UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
       if (!AppPermissions.canApproveMembers(callerRole)) {
-        throw Exception('403 Forbidden: Bạn không có quyền xóa thành viên (Chỉ Chủ và Quản lý 1 có quyền này)');
+        throw Exception(
+            '403 Forbidden: Bạn không có quyền xóa thành viên (Chỉ Chủ và Quản lý 1 có quyền này)');
       }
 
       final batch = _firestore.batch();
@@ -390,8 +447,10 @@ class StoreRepository {
         final currentStoreId = userData['currentStoreId'] as String?;
         final remainingStoreIds = List<String>.from(userData['storeIds'] ?? []);
 
-        if (currentStoreId == storeId || !remainingStoreIds.contains(currentStoreId)) {
-          final newCurrentStoreId = remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
+        if (currentStoreId == storeId ||
+            !remainingStoreIds.contains(currentStoreId)) {
+          final newCurrentStoreId =
+              remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
           await userRef.update({'currentStoreId': newCurrentStoreId});
         }
       } catch (_) {}
@@ -402,7 +461,11 @@ class StoreRepository {
         final storeDoc = await _stores.doc(storeId).get();
         final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
 
-        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+        await _firestore
+            .collection('stores')
+            .doc(storeId)
+            .collection('notifications')
+            .add({
           'storeId': storeId,
           'title': 'Bạn đã bị xóa khỏi cửa hàng',
           'body': 'Bạn đã bị xóa khỏi cửa hàng "$storeName".',
@@ -429,9 +492,11 @@ class StoreRepository {
       if (!callerDoc.exists) {
         throw Exception('403 Forbidden: Bạn không thuộc cửa hàng này');
       }
-      final callerRole = UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
+      final callerRole =
+          UserRoleExtension.fromString(callerDoc.data()?['role'] as String?);
       if (!AppPermissions.canAssignRoles(callerRole)) {
-        throw Exception('403 Forbidden: Chỉ Chủ cửa hàng mới có quyền phân vai trò');
+        throw Exception(
+            '403 Forbidden: Chỉ Chủ cửa hàng mới có quyền phân vai trò');
       }
 
       await _members(storeId).doc(userId).update({'role': newRole.value});
@@ -487,7 +552,8 @@ class StoreRepository {
       final storeName = storeData['name'] as String? ?? 'Cửa hàng';
 
       if (ownerId != caller.uid) {
-        throw Exception('403 Forbidden: Chỉ Chủ cửa hàng mới có quyền xóa cửa hàng');
+        throw Exception(
+            '403 Forbidden: Chỉ Chủ cửa hàng mới có quyền xóa cửa hàng');
       }
 
       final now = DateTime.now().toUtc();
@@ -535,8 +601,13 @@ class StoreRepository {
       // 4. Send notification to all members
       try {
         for (final uid in affectedUserIds) {
-          if (uid == caller.uid) continue; // Don't notify the owner who deleted it
-          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+          if (uid == caller.uid)
+            continue; // Don't notify the owner who deleted it
+          await _firestore
+              .collection('stores')
+              .doc(storeId)
+              .collection('notifications')
+              .add({
             'storeId': storeId,
             'title': 'Cửa hàng đã bị xóa',
             'body': 'Cửa hàng "$storeName" đã bị xóa bởi Chủ cửa hàng.',
@@ -577,7 +648,8 @@ class StoreRepository {
     }
   }
 
-  Future<void> updateMemberOrder(String storeId, List<String> memberOrder) async {
+  Future<void> updateMemberOrder(
+      String storeId, List<String> memberOrder) async {
     try {
       await _stores.doc(storeId).update({'memberOrder': memberOrder});
     } catch (e) {
@@ -585,7 +657,8 @@ class StoreRepository {
     }
   }
 
-  Future<void> toggleHideMemberSchedule(String storeId, String userId, bool hide) async {
+  Future<void> toggleHideMemberSchedule(
+      String storeId, String userId, bool hide) async {
     try {
       if (hide) {
         await _stores.doc(storeId).update({
@@ -661,14 +734,21 @@ class StoreRepository {
 
       // Create notification for Store Owner & Managers
       try {
-        final memberDoc = await _members(request.storeId).doc(request.userId).get();
+        final memberDoc =
+            await _members(request.storeId).doc(request.userId).get();
         final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
-        final formattedAmount = '${request.amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
+        final formattedAmount =
+            '${request.amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
 
-        await _firestore.collection('stores').doc(request.storeId).collection('notifications').add({
+        await _firestore
+            .collection('stores')
+            .doc(request.storeId)
+            .collection('notifications')
+            .add({
           'storeId': request.storeId,
           'title': 'Yêu cầu ứng lương mới',
-          'body': '$memberName vừa gửi yêu cầu tạm ứng $formattedAmount. Nhấn để duyệt.',
+          'body':
+              '$memberName vừa gửi yêu cầu tạm ứng $formattedAmount. Nhấn để duyệt.',
           'type': 'advance_request',
           'createdAt': Timestamp.now(),
           'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
@@ -700,16 +780,27 @@ class StoreRepository {
 
       // Create notification for Employee
       try {
-        final advanceDoc = await _stores.doc(storeId).collection('advances').doc(advanceId).get();
+        final advanceDoc = await _stores
+            .doc(storeId)
+            .collection('advances')
+            .doc(advanceId)
+            .get();
         final userId = advanceDoc.data()?['userId'] as String?;
         final amount = advanceDoc.data()?['amount'] as num? ?? 0;
-        final formattedAmount = '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
+        final formattedAmount =
+            '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
 
         if (userId != null && userId.isNotEmpty) {
           final isApproved = status == AdvanceStatus.approved;
-          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+          await _firestore
+              .collection('stores')
+              .doc(storeId)
+              .collection('notifications')
+              .add({
             'storeId': storeId,
-            'title': isApproved ? 'Yêu cầu ứng lương đã được duyệt' : 'Yêu cầu ứng lương bị từ chối',
+            'title': isApproved
+                ? 'Yêu cầu ứng lương đã được duyệt'
+                : 'Yêu cầu ứng lương bị từ chối',
             'body': isApproved
                 ? 'Chủ quán đã duyệt yêu cầu tạm ứng $formattedAmount của bạn.'
                 : 'Yêu cầu tạm ứng $formattedAmount của bạn đã bị từ chối.',
