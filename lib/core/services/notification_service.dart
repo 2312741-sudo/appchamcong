@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -149,7 +150,21 @@ class NotificationService {
 
   Future<void> _register(String uid, String token, int session) async {
     if (session != _session || FirebaseAuth.instance.currentUser?.uid != uid) return;
-    await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token});
+    try {
+      await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token});
+    } catch (e) {
+      debugPrint('Cloud Function registerNotificationDevice fallback: $e');
+      final tokenDigest = sha256.convert(utf8.encode(token)).toString();
+      await FirebaseFirestore.instance.collection('notificationDevices').doc(tokenDigest).set({
+        'uid': uid,
+        'token': token,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)).catchError((_) {});
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'fcmToken': token,
+        'fcmTokens': FieldValue.arrayUnion([token]),
+      }, SetOptions(merge: true)).catchError((_) {});
+    }
   }
   Future<void> saveTokenForUser(String uid) async {
     if (_tokenUserId != uid) { _session++; _tokenUserId = uid; }
@@ -178,7 +193,15 @@ class NotificationService {
     try {
       final token = await _fcm?.getToken();
       if (token != null && FirebaseAuth.instance.currentUser?.uid == uid) {
-        await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token, 'remove': true});
+        try {
+          await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token, 'remove': true});
+        } catch (e) {
+          final tokenDigest = sha256.convert(utf8.encode(token)).toString();
+          await FirebaseFirestore.instance.collection('notificationDevices').doc(tokenDigest).delete().catchError((_) {});
+          await FirebaseFirestore.instance.collection('users').doc(uid).update({
+            'fcmTokens': FieldValue.arrayRemove([token]),
+          }).catchError((_) {});
+        }
       }
     } catch (error) { debugPrint('Token unregister failed: $error'); }
     if (logoutSession != _session || (FirebaseAuth.instance.currentUser != null && FirebaseAuth.instance.currentUser?.uid != uid)) return;

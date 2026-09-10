@@ -90,23 +90,30 @@ class StoreDrawer extends ConsumerWidget {
                           ? const Icon(Icons.check_circle, color: AppColors.primary, size: 20)
                           : null,
                       onTap: () async {
-                        try {
-                          final navContext = rootNavigatorKey.currentContext ?? context;
-                          Navigator.of(context).pop(); // Close drawer first
+                        if (isSelected) {
+                          Navigator.of(context).pop();
+                          return;
+                        }
 
+                        // Capture router, container, and currentPath before drawer widget can be disposed
+                        final router = GoRouter.of(context);
+                        final container = ProviderScope.containerOf(context);
+                        final currentPath = router.routeInformationProvider.value.uri.toString();
+                        final userRepo = ref.read(userRepositoryProvider);
+
+                        Navigator.of(context).pop(); // Close drawer
+
+                        try {
                           if (user == null) return;
 
-                          if (!isSelected) {
-                            final userRepo = ref.read(userRepositoryProvider);
-                            await userRepo.updateCurrentStoreId(user.id, store.id);
+                          await userRepo.updateCurrentStoreId(user.id, store.id);
 
-                            // Invalidate session providers to prevent any permission/member caching from old store
-                            ref.invalidate(currentStoreProvider);
-                            ref.invalidate(currentMemberStreamProvider);
-                            ref.invalidate(currentMemberProvider);
-                            ref.invalidate(storeMembersProvider);
-                            ref.invalidate(activeMembersProvider);
-                          }
+                          // Invalidate session providers via container to prevent any permission/member caching from old store
+                          container.invalidate(currentStoreProvider);
+                          container.invalidate(currentMemberStreamProvider);
+                          container.invalidate(currentMemberProvider);
+                          container.invalidate(storeMembersProvider);
+                          container.invalidate(activeMembersProvider);
 
                           // Fetch role in target store
                           UserRole targetRole = UserRole.employee;
@@ -135,21 +142,21 @@ class StoreDrawer extends ConsumerWidget {
                             targetPath = AppRoutes.managerDashboard;
                           }
 
-                          final currentPath = GoRouterState.of(navContext).uri.toString();
                           if (currentPath == targetPath) {
-                            if (!isSelected) {
-                              ScaffoldMessenger.of(navContext).showSnackBar(
+                            final rootContext = rootNavigatorKey.currentContext;
+                            if (rootContext != null && rootContext.mounted) {
+                              ScaffoldMessenger.of(rootContext).showSnackBar(
                                 SnackBar(content: Text('Đã chuyển sang: ${store.name}'), backgroundColor: AppColors.success),
                               );
                             }
                           } else {
-                            navContext.go(targetPath);
+                            router.go(targetPath);
                           }
                         } catch (e) {
                           debugPrint('Lỗi chuyển cửa hàng: $e');
-                          final navContext = rootNavigatorKey.currentContext ?? context;
-                          if (navContext.mounted) {
-                            ScaffoldMessenger.of(navContext).showSnackBar(
+                          final rootContext = rootNavigatorKey.currentContext;
+                          if (rootContext != null && rootContext.mounted) {
+                            ScaffoldMessenger.of(rootContext).showSnackBar(
                               SnackBar(content: Text('Lỗi chuyển cửa hàng: $e'), backgroundColor: AppColors.primary),
                             );
                           }
