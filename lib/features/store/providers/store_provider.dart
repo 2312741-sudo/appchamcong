@@ -101,8 +101,21 @@ final activeMembersProvider = Provider<List<MemberModel>>((ref) {
   return list;
 });
 
+/// Background ghost-member cleanup provider.
+/// Chạy tự động mỗi khi storeId thay đổi (= mỗi khi mở cửa hàng khác
+/// hoặc mở màn hình nhân viên lần đầu).
+/// Phát hiện và kick bất kỳ member nào có status='active' nhưng
+/// /users/{uid} đã bị xóa (bị xóa từ Firebase Console hoặc tự xóa TK cũ).
+/// Widget chỉ cần `ref.watch(ghostMemberCleanupProvider)` — không cần xử lý kết quả.
+final ghostMemberCleanupProvider = FutureProvider.autoDispose<int>((ref) async {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return 0;
+  final repo = ref.read(storeRepositoryProvider);
+  // Chạy background, không block UI — lỗi đã được swallow bên trong hàm
+  return repo.cleanupGhostMembers(storeId);
+});
 
-/// Dedicated direct realtime stream for the current user's membership in active store
+
 final currentMemberStreamProvider = StreamProvider<MemberModel?>((ref) {
   final uid = ref.watch(currentUserIdProvider);
   final storeId = ref.watch(currentStoreIdProvider);

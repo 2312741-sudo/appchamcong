@@ -938,6 +938,14 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     bool isDeleting = false;
     String? localError;
 
+    // Detect login provider to show correct re-auth UI
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final providerIds =
+        currentUser?.providerData.map((p) => p.providerId).toList() ?? [];
+    final isGoogleUser = providerIds.contains('google.com');
+    final isAppleUser = providerIds.contains('apple.com');
+    final isEmailUser = !isGoogleUser && !isAppleUser;
+
     await showDialog(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
@@ -952,22 +960,29 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tất cả dữ liệu tài khoản sẽ bị xóa hoàn toàn. Nhập mật khẩu để xác nhận:',
+                isGoogleUser
+                    ? 'Tất cả dữ liệu sẽ bị xóa hoàn toàn.\nBạn sẽ được yêu cầu đăng nhập lại Google để xác nhận.'
+                    : isAppleUser
+                        ? 'Tất cả dữ liệu sẽ bị xóa hoàn toàn.\nBạn sẽ được yêu cầu xác nhận qua Apple ID.'
+                        : 'Tất cả dữ liệu tài khoản sẽ bị xóa hoàn toàn. Nhập mật khẩu để xác nhận:',
                 style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.neutral),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Mật khẩu',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  suffixIcon: IconButton(
-                    icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+              // Chỉ hiển thị password field cho email/password users
+              if (isEmailUser) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Mật khẩu',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    suffixIcon: IconButton(
+                      icon: Icon(obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                    ),
                   ),
                 ),
-              ),
+              ],
               if (localError != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -987,7 +1002,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               onPressed: isDeleting
                   ? null
                   : () async {
-                      if (passwordController.text.trim().isEmpty) {
+                      // Email users phải nhập password
+                      if (isEmailUser && passwordController.text.trim().isEmpty) {
                         setDialogState(() => localError = 'Vui lòng nhập mật khẩu');
                         return;
                       }
@@ -999,7 +1015,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
                       final success = await ref
                           .read(authNotifierProvider.notifier)
-                          .deleteAccount(password: passwordController.text.trim());
+                          .deleteAccount(
+                            password: isEmailUser
+                                ? passwordController.text.trim()
+                                : null,
+                          );
 
                       if (!dialogCtx.mounted) return;
 
@@ -1028,7 +1048,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Xóa vĩnh viễn'),
+                  : Text(
+                      isGoogleUser
+                          ? 'Tiếp tục với Google'
+                          : isAppleUser
+                              ? 'Tiếp tục với Apple'
+                              : 'Xóa vĩnh viễn',
+                    ),
             ),
           ],
         ),
@@ -1036,6 +1062,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     );
   }
 }
+
 
 class _DeptTile extends StatelessWidget {
   final String label;

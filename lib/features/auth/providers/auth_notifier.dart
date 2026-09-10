@@ -359,7 +359,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // ── Delete Account ──────────────────────────────────────────────────────
 
-  Future<bool> deleteAccount({required String password}) async {
+  Future<bool> deleteAccount({String? password}) async {
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
       await _repository.deleteAccount(password: password);

@@ -447,7 +447,14 @@ class StoreRepository {
         });
       }
 
+      // 3. Clean userId from store's memberOrder and hiddenScheduleUserIds
+      batch.update(_stores.doc(storeId), {
+        'memberOrder': FieldValue.arrayRemove([userId]),
+        'hiddenScheduleUserIds': FieldValue.arrayRemove([userId]),
+      });
+
       await batch.commit();
+
 
       // 3. Fix currentStoreId if it was pointing to the kicked store (only if user exists)
       if (userDocExists) {
@@ -650,6 +657,58 @@ class StoreRepository {
         .snapshots()
         .map((snap) =>
             snap.docs.map((d) => MemberModel.fromFirestore(d)).toList());
+  }
+
+  /// Phát hiện và dọn dẹp "ghost members" — nhân viên bị xóa khỏi Firebase
+  /// Console (hoặc tự xóa tài khoản trước đây mà chưa cleanup) nhưng vẫn còn
+  /// document trong /stores/{storeId}/members với status = 'active'.
+  ///
+  /// Cách hoạt động:
+  /// 1. Lấy toàn bộ active members
+  /// 2. Kiểm tra từng member: /users/{uid} có tồn tại không
+  /// 3. Nếu không tồn tại → mark status = 'kicked', kickedReason = 'account_deleted'
+  ///
+  /// Hàm này chạy BACKGROUND (không throw, tự swallow lỗi).
+  /// Trả về số lượng ghost members được dọn dẹp.
+  Future<int> cleanupGhostMembers(String storeId) async {
+    int cleanedCount = 0;
+    try {
+      // Chỉ lấy active members (pending không cần check — chưa được duyệt)
+      final activeSnap = await _members(storeId)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      if (activeSnap.docs.isEmpty) return 0;
+
+      for (final memberDoc in activeSnap.docs) {
+        final userId = memberDoc.id;
+        try {
+          // Kiểm tra /users/{userId} có tồn tại không
+          final userDoc =
+              await _firestore.collection('users').doc(userId).get();
+          if (!userDoc.exists) {
+            // Ghost member — xóa tài khoản Firebase mà không cleanup
+            await _members(storeId).doc(userId).update({
+              'status': 'kicked',
+              'kickedAt': FieldValue.serverTimestamp(),
+              'kickedReason': 'account_deleted',
+            });
+            // Dọn dẹp cả khỏi memberOrder và hiddenScheduleUserIds của store
+            await _stores.doc(storeId).update({
+              'memberOrder': FieldValue.arrayRemove([userId]),
+              'hiddenScheduleUserIds': FieldValue.arrayRemove([userId]),
+            });
+            cleanedCount++;
+          }
+
+        } catch (_) {
+          // Bỏ qua lỗi từng member, tiếp tục check các member còn lại
+        }
+      }
+    } catch (_) {
+      // Hàm này không được phép crash UI
+    }
+    return cleanedCount;
   }
 
   Future<void> updateStoreSettings(

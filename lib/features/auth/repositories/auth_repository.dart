@@ -226,7 +226,22 @@ class AuthRepository {
           storeIds.addAll(userDoc.storeIds);
         }
 
+        // Fallback discovery: tìm thêm stores qua collectionGroup
+        try {
+          final mDocs = await _firestore
+              .collectionGroup('members')
+              .where('userId', isEqualTo: uid)
+              .get();
+          for (final doc in mDocs.docs) {
+            final storeRef = doc.reference.parent.parent;
+            if (storeRef != null && storeRef.id.isNotEmpty) {
+              storeIds.add(storeRef.id);
+            }
+          }
+        } catch (_) {}
+
         for (final sId in storeIds) {
+
           final memberRef = _firestore.collection('stores').doc(sId).collection('members').doc(uid);
           final mDoc = await memberRef.get();
           if (mDoc.exists) {
@@ -280,6 +295,20 @@ class AuthRepository {
         }
         storeIds.addAll(userDoc.storeIds);
       }
+
+      // Fallback discovery: tìm thêm stores qua collectionGroup
+      try {
+        final mDocs = await _firestore
+            .collectionGroup('members')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in mDocs.docs) {
+          final storeRef = doc.reference.parent.parent;
+          if (storeRef != null && storeRef.id.isNotEmpty) {
+            storeIds.add(storeRef.id);
+          }
+        }
+      } catch (_) {}
 
       for (final sId in storeIds) {
         final memberRef = _firestore.collection('stores').doc(sId).collection('members').doc(uid);
@@ -352,19 +381,144 @@ class AuthRepository {
 
   // ── Delete Account ────────────────────────────────────────────────────────
 
-  Future<void> deleteAccount({required String password}) async {
+  /// Xóa tài khoản hoàn toàn. Thứ tự thực hiện:
+  /// 1. Re-authenticate (email/Google/Apple)
+  /// 2. Mark tất cả member docs là 'kicked' trong mọi cửa hàng
+  ///    → tránh ghost members còn hiện trong danh sách Chủ
+  /// 3. Xóa document /users/{uid}
+  /// 4. Xóa Firebase Auth account
+  Future<void> deleteAccount({String? password}) async {
     final user = _auth.currentUser;
-    if (user == null || user.email == null) {
+    if (user == null) {
       throw Exception('Không có người dùng đang đăng nhập');
     }
 
-    final credential = EmailAuthProvider.credential(
-      email: user.email!,
-      password: password,
-    );
+    // ── Step 1: Re-authenticate theo provider ───────────────────────────────
+    final providerIds = user.providerData.map((p) => p.providerId).toList();
 
-    await user.reauthenticateWithCredential(credential);
-    await _firestore.collection('users').doc(user.uid).delete();
+    if (providerIds.contains('google.com')) {
+      // Google re-auth — không cần password
+      try {
+        final googleSignIn = GoogleSignIn();
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          throw Exception('Đăng nhập Google bị hủy');
+        }
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await user.reauthenticateWithCredential(credential);
+      } catch (e) {
+        if (e.toString().contains('Đăng nhập Google bị hủy')) rethrow;
+        throw Exception('Không thể xác thực lại Google: $e');
+      }
+    } else if (providerIds.contains('apple.com')) {
+      // Apple re-auth — sử dụng provider flow
+      try {
+        final appleProvider = AppleAuthProvider();
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
+        await user.reauthenticateWithProvider(appleProvider);
+      } catch (e) {
+        throw Exception('Không thể xác thực lại Apple: $e');
+      }
+    } else {
+      // Email/password re-auth
+      if (user.email == null) {
+        throw Exception('Không thể xác định phương thức đăng nhập');
+      }
+      if (password == null || password.isEmpty) {
+        throw Exception('Vui lòng nhập mật khẩu để xóa tài khoản');
+      }
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+    }
+
+    // ── Step 2: Mark member docs là 'kicked' trong TẤT CẢ cửa hàng ────────
+    // Đảm bảo nhân viên tự động biến mất khỏi danh sách của Chủ,
+    // không để lại ghost members, và dọn dẹp memberOrder / hiddenSchedule.
+    try {
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      final storeIds = <String>{};
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() ?? {};
+        final rawStoreIds = List<String>.from(userData['storeIds'] ?? []);
+        storeIds.addAll(rawStoreIds.where((id) => id.isNotEmpty));
+
+        final currentStoreId = userData['currentStoreId'] as String?;
+        if (currentStoreId != null && currentStoreId.isNotEmpty) {
+          storeIds.add(currentStoreId);
+        }
+      }
+
+      // Fallback discovery: tìm các cửa hàng user sở hữu hoặc có member doc
+      try {
+        final ownedSnap = await _firestore
+            .collection('stores')
+            .where('ownerId', isEqualTo: user.uid)
+            .get();
+        for (final doc in ownedSnap.docs) {
+          storeIds.add(doc.id);
+        }
+      } catch (_) {}
+
+      try {
+        final memberSnap = await _firestore
+            .collectionGroup('members')
+            .where('userId', isEqualTo: user.uid)
+            .get();
+        for (final doc in memberSnap.docs) {
+          final storeRef = doc.reference.parent.parent;
+          if (storeRef != null && storeRef.id.isNotEmpty) {
+            storeIds.add(storeRef.id);
+          }
+        }
+      } catch (_) {}
+
+      for (final storeId in storeIds) {
+        try {
+          final memberRef = _firestore
+              .collection('stores')
+              .doc(storeId)
+              .collection('members')
+              .doc(user.uid);
+          final memberDoc = await memberRef.get();
+          if (memberDoc.exists) {
+            final currentStatus = memberDoc.data()?['status'] as String?;
+            if (currentStatus != 'kicked') {
+              await memberRef.update({
+                'status': 'kicked',
+                'kickedAt': FieldValue.serverTimestamp(),
+                'kickedReason': 'account_deleted',
+              });
+            }
+          }
+
+          // Dọn dẹp userId khỏi memberOrder và hiddenScheduleUserIds của store
+          await _firestore.collection('stores').doc(storeId).update({
+            'memberOrder': FieldValue.arrayRemove([user.uid]),
+            'hiddenScheduleUserIds': FieldValue.arrayRemove([user.uid]),
+          });
+        } catch (_) {
+          // Bỏ qua lỗi từng store, không chặn quá trình xóa TK
+        }
+      }
+    } catch (_) {
+      // Bỏ qua lỗi bước cleanup, tiếp tục xóa tài khoản
+    }
+
+    // ── Step 3: Xóa document /users/{uid} ──────────────────────────────────
+    try {
+      await _firestore.collection('users').doc(user.uid).delete();
+    } catch (_) {}
+
+    // ── Step 4: Xóa Firebase Auth account ──────────────────────────────────
     await user.delete();
   }
 

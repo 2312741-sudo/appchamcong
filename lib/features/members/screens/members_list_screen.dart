@@ -17,6 +17,11 @@ class MembersListScreen extends ConsumerWidget {
     final currentMember = ref.watch(currentMemberStreamProvider).valueOrNull;
     final isOwner = currentMember?.isOwner ?? false;
 
+    // Chạy ghost-member cleanup background mỗi khi màn hình này được mở.
+    // Phát hiện nhân viên bị xóa tài khoản nhưng vẫn còn trong store,
+    // và tự động kick họ khỏi danh sách. Không block UI.
+    ref.watch(ghostMemberCleanupProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

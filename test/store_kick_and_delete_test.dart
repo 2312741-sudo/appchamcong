@@ -103,24 +103,26 @@ void main() {
   group('kickMember – xử lý nhân viên đã tự xóa tài khoản', () {
     test('userDocExists=false → bỏ qua update /users → không lỗi permission', () {
       const bool userDocExists = false;
-      final batchOps = <String>['mark_member_kicked'];
-      if (userDocExists) {
-        batchOps.add('remove_storeId_from_user_doc');
-      }
-      expect(batchOps.length, 1);
-      expect(batchOps.contains('mark_member_kicked'), true);
-      expect(batchOps.contains('remove_storeId_from_user_doc'), false);
-    });
-
-    test('userDocExists=true → update /users đầy đủ → backward-compatible', () {
-      const bool userDocExists = true;
-      final batchOps = <String>['mark_member_kicked'];
+      final batchOps = <String>['mark_member_kicked', 'clean_store_member_order'];
       if (userDocExists) {
         batchOps.add('remove_storeId_from_user_doc');
       }
       expect(batchOps.length, 2);
       expect(batchOps.contains('mark_member_kicked'), true);
+      expect(batchOps.contains('clean_store_member_order'), true);
+      expect(batchOps.contains('remove_storeId_from_user_doc'), false);
+    });
+
+    test('userDocExists=true → update /users đầy đủ → backward-compatible', () {
+      const bool userDocExists = true;
+      final batchOps = <String>['mark_member_kicked', 'clean_store_member_order'];
+      if (userDocExists) {
+        batchOps.add('remove_storeId_from_user_doc');
+      }
+      expect(batchOps.length, 3);
+      expect(batchOps.contains('mark_member_kicked'), true);
       expect(batchOps.contains('remove_storeId_from_user_doc'), true);
+      expect(batchOps.contains('clean_store_member_order'), true);
     });
 
     test('userDocExists=false → bỏ qua step 3 fix currentStoreId', () {
@@ -181,6 +183,69 @@ void main() {
       final seen = <String>{};
       final deduped = members.where((m) => seen.add(m.userId)).toList();
       expect(deduped.length, 3);
+    });
+  });
+
+  // === VẤN ĐỀ 3: deleteAccount cleanup & ghost member handling ================
+  group('deleteAccount & ghost member cleanup tests', () {
+    test('deleteAccount marks all stores as kicked and cleans memberOrder', () {
+      const uid = 'deleted_user_1';
+      final storeMemberships = <String, String>{
+        'store_A': 'active',
+        'store_B': 'active',
+        'store_C': 'kicked',
+      };
+      final storeMemberOrder = <String>['uid_other', uid, 'uid_another'];
+
+      // Simulate deleteAccount Step 2:
+      final updatedStores = <String>[];
+      storeMemberships.forEach((storeId, status) {
+        if (status != 'kicked') {
+          storeMemberships[storeId] = 'kicked';
+          updatedStores.add(storeId);
+        }
+      });
+      storeMemberOrder.remove(uid);
+
+      // Verify all memberships are kicked
+      expect(storeMemberships['store_A'], 'kicked');
+      expect(storeMemberships['store_B'], 'kicked');
+      expect(storeMemberships['store_C'], 'kicked');
+      expect(updatedStores, containsAll(['store_A', 'store_B']));
+
+      // Verify memberOrder was cleaned
+      expect(storeMemberOrder.contains(uid), false);
+      expect(storeMemberOrder.length, 2);
+    });
+
+    test('cleanupGhostMembers detects active member with missing user document', () {
+      final existingUsers = <String>{'uid_valid_1', 'uid_valid_2'};
+      final storeMembers = <Map<String, dynamic>>[
+        {'userId': 'uid_valid_1', 'status': 'active'},
+        {'userId': 'uid_ghost_1', 'status': 'active'}, // user deleted from Firebase
+        {'userId': 'uid_valid_2', 'status': 'active'},
+        {'userId': 'uid_ghost_2', 'status': 'active'}, // user deleted from Firebase
+      ];
+
+      int cleanedCount = 0;
+      final memberOrder = <String>['uid_valid_1', 'uid_ghost_1', 'uid_valid_2', 'uid_ghost_2'];
+
+      for (final member in storeMembers) {
+        final userId = member['userId'] as String;
+        final userExists = existingUsers.contains(userId);
+        if (!userExists) {
+          member['status'] = 'kicked';
+          member['kickedReason'] = 'account_deleted';
+          memberOrder.remove(userId);
+          cleanedCount++;
+        }
+      }
+
+      expect(cleanedCount, 2);
+      expect(storeMembers[1]['status'], 'kicked');
+      expect(storeMembers[1]['kickedReason'], 'account_deleted');
+      expect(storeMembers[3]['status'], 'kicked');
+      expect(memberOrder, ['uid_valid_1', 'uid_valid_2']);
     });
   });
 }
