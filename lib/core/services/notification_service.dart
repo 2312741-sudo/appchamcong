@@ -22,6 +22,7 @@ class NotificationService {
   Future<void>? _initializing;
   bool _initialized = false;
   int _session = 0;
+  String? _tokenUserId;
   StreamSubscription<RemoteMessage>? _onMessageSubscription;
   StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
   StreamSubscription<String>? _onTokenRefreshSubscription;
@@ -62,7 +63,7 @@ class NotificationService {
       var destination = data['routePath'] as String?;
       final details = Map<String, dynamic>.from(data['routeExtra'] as Map? ?? {});
       final permitted = <String>{AppRoutes.notifications, AppRoutes.scheduleRegister, AppRoutes.checkIn,
-        AppRoutes.salary, '/production/report', AppRoutes.splash,
+        AppRoutes.salary, AppRoutes.splash,
         if (AppPermissions.canManageSchedule(role)) AppRoutes.scheduleManager,
         if (AppPermissions.canApproveMembers(role)) AppRoutes.pendingMembers,
         if (AppPermissions.canViewAllAttendance(role)) AppRoutes.attendanceTable,
@@ -135,6 +136,7 @@ class NotificationService {
     await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token});
   }
   Future<void> saveTokenForUser(String uid) async {
+    if (_tokenUserId != uid) { _session++; _tokenUserId = uid; }
     final session = _session;
     try {
       await initialize();
@@ -154,7 +156,8 @@ class NotificationService {
     } catch (error) { debugPrint('Đăng ký thiết bị thông báo thất bại: $error'); }
   }
   Future<void> clearTokenForUser(String uid) async {
-    _session++;
+    final logoutSession = ++_session;
+    _tokenUserId = null;
     await _onTokenRefreshSubscription?.cancel();
     try {
       final token = await _fcm?.getToken();
@@ -162,8 +165,9 @@ class NotificationService {
         await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token, 'remove': true});
       }
     } catch (error) { debugPrint('Token unregister failed: $error'); }
+    if (logoutSession != _session || (FirebaseAuth.instance.currentUser != null && FirebaseAuth.instance.currentUser?.uid != uid)) return;
     try { await _fcm?.deleteToken(); }
-    finally { await dispose(); }
+    finally { if (logoutSession == _session) await dispose(); }
   }
   Future<void> updateToken() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;

@@ -1,4 +1,4 @@
-# 🍎 APPLE APP STORE CONNECT — BỘ THÔNG TIN PHÁT HÀNH ĐẦY ĐỦ (v1.0.7)
+# 🍎 APPLE APP STORE CONNECT — BỘ THÔNG TIN PHÁT HÀNH ĐẦY ĐỦ (v1.0.8)
 
 ---
 
@@ -12,8 +12,8 @@
 | **Secondary Category** (Thể loại phụ) | **Productivity** (Năng suất) | |
 | **Bundle ID** | `com.chamcong.chamCongTram` | |
 | **SKU** | `chamcong_tram_ios` | |
-| **Version** (Phiên bản) | `1.0.7` | |
-| **Build Number** | `9` | |
+| **Version** (Phiên bản) | `1.0.8` | |
+| **Build Number** | `10` | |
 | **Age Rating** (Xếp hạng độ tuổi) | **4+** (Không có nội dung nhạy cảm / không giới hạn) | |
 | **Copyright** (Bản quyền) | `© 2026 Trạm Chanh. All rights reserved.` | |
 
@@ -80,26 +80,28 @@ cham cong,tinh luong,quan ly ca,lich lam viec,nhan su,f&b,diem danh,bang cong,tr
 
 ---
 
-## 🚀 PHẦN 4: WHAT'S NEW IN THIS VERSION (PHIÊN BẢN 1.0.7)
+## 🚀 PHẦN 4: WHAT'S NEW IN THIS VERSION (PHIÊN BẢN 1.0.8)
 
 ### 🇻🇳 Tiếng Việt:
 ```text
-Phiên bản 1.0.7 mang đến nâng cấp lớn về độ ổn định chấm công và khả năng cấu hình vị trí linh hoạt:
+Phiên bản 1.0.8 mang đến nâng cấp lớn về bảo mật tài khoản, quản trị cửa hàng và trải nghiệm người dùng:
 
-1. [NÂNG CẤP ĐỘT PHÁ] Xác thực Wi-Fi qua BSSID: Chuyển đổi toàn diện cơ chế chấm công Wi-Fi sang nhận diện phần cứng Access Point (BSSID). Hoàn toàn không còn phụ thuộc vào IP Public của mạng, giúp nhân viên chấm công mượt mà ngay cả khi modem đổi IP động hoặc khởi động lại. Hỗ trợ nhiều điểm phát Wi-Fi (Dual-band 2.4GHz / 5GHz & mạng Mesh).
-2. [MỚI] Thiết lập đa vị trí GPS cho cửa hàng: Hỗ trợ cấu hình lên tới 5 vị trí GPS cho mỗi cửa hàng (cổng chính, bãi xe, kho hàng, chi nhánh phụ) kèm tính năng đặt tên riêng biệt và tùy chỉnh bán kính cho từng điểm.
-3. [TỐI ƯU] Cấu hình một chạm: Tự động phát hiện và điền thông tin Wi-Fi hiện tại (SSID & BSSID) và tọa độ GPS trong phần Cài đặt cửa hàng chỉ với 1 chạm.
-4. [TỐI ƯU] Cải thiện hiệu năng, độ ổn định kết nối và tương thích tối đa với iOS mới nhất.
+1. [MỚI] Tự động chuyển giao quyền sở hữu cửa hàng: Khi Chủ cửa hàng rời quán hoặc xóa tài khoản, quyền Chủ được tự động chuyển giao một cách nguyên tử cho Quản lý 1 thâm niên nhất (hoặc Quản lý 2 / nhân viên kế tiếp), đảm bảo cửa hàng hoạt động liên tục không gián đoạn.
+2. [MỚI] Chức năng Rời cửa hàng: Bổ sung tính năng rời cửa hàng linh hoạt cho tất cả các thành viên (Nhân viên, Quản lý, Chủ cửa hàng) ngay trong Cài đặt cá nhân.
+3. [NÂNG CẤP] Cơ chế phân quyền thời gian thực: Triệt tiêu hoàn toàn lỗi lưu/rò rỉ quyền cũ khi chuyển đổi giữa các cửa hàng, luôn đồng bộ theo chuẩn cao nhất từ hệ thống.
+4. [TỐI ƯU] Đặt lại mật khẩu hoàn thiện: Nâng cấp luồng Quên mật khẩu với xác thực thông minh, xử lý lỗi chi tiết và hướng dẫn kiểm tra thư rác (Spam) trên cả ứng dụng di động và web quản lý.
+5. [TỐI ƯU] Hệ thống thông báo bảo mật: Nâng cấp kiến trúc hộp thư thông báo riêng tư cho từng người dùng, tự động gửi lại thông báo khi mất mạng và điều hướng thông minh.
 ```
 
 ### 🇬🇧 English:
 ```text
-Version 1.0.7 introduces major upgrades to attendance reliability and multi-location flexibility:
+Version 1.0.8 brings major upgrades to account security, store governance, and user experience:
 
-1. [MAJOR UPGRADE] Wi-Fi BSSID Attendance Verification: Upgraded Wi-Fi attendance to identify Access Point hardware BSSID (MAC Address). Completely removes dependency on dynamic public IPs, ensuring uninterrupted check-in even during router IP renewals or restarts. Supports multi-access points (Dual-band 2.4GHz/5GHz & Mesh networks).
-2. [NEW] Multi-Location GPS Configuration: Added support for up to 5 custom GPS locations per store with individual location naming and customizable check-in radiuses (e.g. main entrance, warehouse, parking area).
-3. [IMPROVEMENT] One-Tap Store Setup: Easily detect and populate current Wi-Fi details (SSID & BSSID) and GPS coordinates with a single tap in Store Settings.
-4. [IMPROVEMENT] Performance enhancements, connection resilience, and optimized compatibility with the latest iOS versions.
+1. [NEW] Automatic Store Ownership Transfer: When a Store Owner leaves the store or deletes their account, ownership is atomically transferred to the most senior Manager 1 (or successor), ensuring seamless business continuity.
+2. [NEW] Leave Store Feature: Added a dedicated "Leave Store" option for all members (Employees, Managers, Owners) directly in Profile Settings.
+3. [ENHANCEMENT] Real-Time Role & Permission Truth Reconciliation: Eliminates stale role caching when switching stores, ensuring strict role enforcement based on the single source of truth.
+4. [IMPROVEMENT] Overhauled Forgot Password Flow: Streamlined password recovery with smart email validation, comprehensive Vietnamese error handling, and spam folder guidance across mobile and web.
+5. [IMPROVEMENT] Secure Notification Inbox Architecture: Complete overhaul of notifications into private user inboxes with automatic offline retries and verified destination routing.
 ```
 
 ---
@@ -113,12 +115,13 @@ Dear Apple App Review Team,
 
 We would like to express our sincere gratitude for your continued diligence, guidance, and assistance in reviewing our application.
 
-Our application is a dedicated shift scheduling, attendance, and operational management tool for retail and F&B staff in Vietnam. In Version 1.0.7 (Build 9), we have implemented significant architectural enhancements to ensure reliable check-in and flexible multi-location operations for our store teams:
+Our application is a dedicated shift scheduling, attendance, and operational management tool for retail and F&B staff in Vietnam. In Version 1.0.8 (Build 10), we have introduced important governance, security, and account management enhancements:
 
-1. Wi-Fi Attendance via Hardware BSSID: Migrated Wi-Fi attendance verification from dynamic Public IP to Access Point hardware BSSID (MAC Address). This resolves common check-in failures caused by ISP dynamic IP renewals and router reboots in retail environments, while adding full support for multi-AP mesh networks and dual-band (2.4GHz/5GHz) routers.
-2. Multi-Location GPS Attendance: Enabled store managers to configure up to 5 named GPS locations per store with independent radiuses (e.g. Front Gate, Warehouse, Staff Entrance) to accommodate large store grounds and multi-door facilities.
-3. One-Tap Setup in Store Settings: Added instant Wi-Fi details detection and GPS capture for store administrators.
-4. Performance & Compatibility: General performance improvements and optimizations for the latest iOS release.
+1. Automatic Store Ownership Handover: When a store owner decides to leave a store or delete their account, store ownership is seamlessly and atomically handed over to the primary manager (Manager 1) or next eligible successor, preventing orphaned stores and maintaining business operations.
+2. Member Leave Store Option: Any member (employee, manager, or owner) can cleanly depart a store from Profile Settings, automatically updating affiliations and cleaning store order registries.
+3. Strict Permission Synchronization: Reconciles all role permissions against the authoritative store record, preventing any stale or cached permissions across multiple stores.
+4. Enhanced Password Recovery: Upgraded the password reset flow with client-side format checks, clear status feedback, and delivery guidance across mobile and web.
+5. Secure Notification Inbox Architecture: Modernized notifications into isolated, privacy-compliant user inboxes with offline retry capabilities.
 
 Demo Account Credentials for App Review Testing:
 - Email: nguyenthanhlinh677@gmail.com
@@ -131,6 +134,7 @@ Once again, thank you very much for your time, patience, and support. Please fee
 
 Warm regards!
 ```
+
 
 ---
 

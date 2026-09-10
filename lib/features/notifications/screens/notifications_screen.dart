@@ -16,9 +16,9 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationsAsync = ref.watch(notificationsStreamProvider);
+    final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
     final storeId = ref.watch(currentStoreIdProvider) ?? '';
     final userId = ref.watch(currentUserIdProvider) ?? '';
-    final member = ref.watch(currentMemberProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
@@ -47,7 +47,6 @@ class NotificationsScreen extends ConsumerWidget {
         actions: [
           notificationsAsync.maybeWhen(
             data: (list) {
-              final unreadCount = list.where((n) => !n.isReadByUser(userId)).length;
               if (unreadCount == 0) return const SizedBox();
               return TextButton.icon(
                 onPressed: () async {
@@ -55,7 +54,7 @@ class NotificationsScreen extends ConsumerWidget {
                   await ref.read(notificationRepositoryProvider).markAllAsRead(
                         storeId,
                         userId,
-                        member?.role,
+                        ref.read(notificationRoleProvider),
                         notifyShiftInOut: ref.read(currentUserProvider).valueOrNull?.notifyShiftInOut ?? true,
                       );
                   if (context.mounted) {
@@ -92,7 +91,7 @@ class NotificationsScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Text(
-              'Lỗi tải thông báo: $e',
+              'Không thể tải thông báo. Vui lòng quay lại và thử lại.',
               textAlign: TextAlign.center,
               style: GoogleFonts.beVietnamPro(color: AppColors.danger),
             ),
