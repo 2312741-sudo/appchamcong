@@ -56,6 +56,8 @@ final notificationPageLimitProvider = StateProvider.autoDispose<int>((ref) => 50
 final notificationRoleProvider = Provider<UserRole?>((ref) {
   final store = ref.watch(currentStoreProvider).valueOrNull;
   final member = ref.watch(currentMemberProvider);
-  if (store == null || store.isDeleted || store.id != ref.watch(currentStoreIdProvider) || member?.status != MemberStatus.active) return null;
+  if (store == null || store.isDeleted || store.id != ref.watch(currentStoreIdProvider)) return null;
+  if (member != null && member.status == MemberStatus.kicked) return null;
+  if (member != null && member.status == MemberStatus.pending) return null;
   return member?.role;
 });

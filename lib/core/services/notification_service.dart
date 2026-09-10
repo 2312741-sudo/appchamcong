@@ -49,12 +49,28 @@ class NotificationService {
       final account = extra?['scope'] == 'account';
       final path = account ? 'notificationInboxes/$uid/accountItems/$id'
           : 'notificationInboxes/$uid/stores/$storeId/items/$id';
-      final notification = await db.doc(path).get(const GetOptions(source: Source.server));
-      if (!notification.exists) return;
+      DocumentSnapshot<Map<String, dynamic>>? notification;
+      try {
+        final doc = await db.doc(path).get(const GetOptions(source: Source.server));
+        if (doc.exists) notification = doc;
+      } catch (_) {}
+
+      if (notification == null) {
+        try {
+          final doc = await db.doc('stores/$storeId/notifications/$id').get(const GetOptions(source: Source.server));
+          if (doc.exists) notification = doc;
+        } catch (_) {}
+      }
+
+      if (notification == null || !notification.exists) {
+        if (context.mounted) context.push(routePath ?? AppRoutes.notifications);
+        return;
+      }
       final data = notification.data()!;
       final member = await db.doc('stores/$storeId/members/$uid').get(const GetOptions(source: Source.server));
       final store = await db.doc('stores/$storeId').get(const GetOptions(source: Source.server));
-      final active = member.data()?['status'] == 'active' && store.exists && store.data()?['status'] != 'deleted';
+      final memStatus = member.data()?['status'];
+      final active = (memStatus == 'active' || memStatus == null) && store.exists && store.data()?['status'] != 'deleted';
       if (!active) {
         if (account && context.mounted) context.push(AppRoutes.notifications);
         return;

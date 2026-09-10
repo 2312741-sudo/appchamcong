@@ -44,24 +44,95 @@ class ScheduleRepository {
 
   // ---------- Writes ----------
 
-  /// Backend authenticates the actor and commits business data before notifications.
-  Future<void> saveUserSchedule(String storeId, String userId,
-      String weekStart, DaySchedule schedule) async {
-    await FirebaseFunctions.instance.httpsCallable('saveNotificationSchedule').call({
-      'storeId': storeId,
-      'weekStart': weekStart,
-      'shifts': {userId: schedule.toJson()},
-      'selfRegistration': _auth.currentUser?.uid == userId,
-    });
+  /// Upserts a single user's DaySchedule for the given week.
+  Future<void> saveUserSchedule(
+    String storeId,
+    String userId,
+    String weekStart,
+    DaySchedule schedule,
+  ) async {
+    try {
+      final ref = _schedules(storeId).doc(weekStart);
+      final now = Timestamp.now();
+      await ref.set({
+        'storeId': storeId,
+        'weekStart': weekStart,
+        'shifts': {userId: schedule.toJson()},
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      // Trigger notification
+      try {
+        final caller = _auth.currentUser;
+        final isSelf = caller?.uid == userId;
+
+        if (isSelf) {
+          final memberDoc = await _firestore.collection('stores').doc(storeId).collection('members').doc(userId).get();
+          final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
+
+          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+            'storeId': storeId,
+            'title': 'Đăng ký lịch làm mới',
+            'body': '$memberName vừa đăng ký lịch làm việc tuần ($weekStart).',
+            'type': 'schedule_changed',
+            'createdAt': now,
+            'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
+            'readBy': caller?.uid != null ? [caller!.uid] : [],
+            'routePath': '/schedule-manager',
+            'routeExtra': {'storeId': storeId, 'weekStart': weekStart, 'userId': userId},
+          });
+        } else {
+          await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+            'storeId': storeId,
+            'title': 'Lịch làm việc đã cập nhật',
+            'body': 'Lịch làm việc tuần ($weekStart) của bạn đã được cập nhật. Nhấn để xem chi tiết.',
+            'type': 'schedule_changed',
+            'createdAt': now,
+            'targetUserId': userId,
+            'readBy': caller?.uid != null ? [caller!.uid] : [],
+            'routePath': '/schedule',
+            'routeExtra': {'storeId': storeId, 'weekStart': weekStart},
+          });
+        }
+      } catch (_) {}
+    } catch (e) {
+      throw Exception('Lưu lịch cá nhân thất bại: $e');
+    }
   }
 
-  Future<void> setFullSchedule(String storeId, String weekStart,
-      Map<String, DaySchedule> allShifts) async {
-    await FirebaseFunctions.instance.httpsCallable('saveNotificationSchedule').call({
-      'storeId': storeId,
-      'weekStart': weekStart,
-      'shifts': allShifts.map((key, value) => MapEntry(key, value.toJson())),
-    });
+  Future<void> setFullSchedule(
+    String storeId,
+    String weekStart,
+    Map<String, DaySchedule> allShifts,
+  ) async {
+    try {
+      final caller = _auth.currentUser;
+      final shiftsJson = allShifts.map((k, v) => MapEntry(k, v.toJson()));
+      final now = Timestamp.now();
+      await _schedules(storeId).doc(weekStart).set({
+        'storeId': storeId,
+        'weekStart': weekStart,
+        'shifts': shiftsJson,
+        'updatedAt': now,
+        'updatedBy': caller?.uid,
+      }, SetOptions(merge: true));
+
+      try {
+        await _firestore.collection('stores').doc(storeId).collection('notifications').add({
+          'storeId': storeId,
+          'title': 'Lịch làm việc đã cập nhật',
+          'body': 'Lịch làm việc tuần ($weekStart) đã được cập nhật. Nhấn để xem chi tiết ca của bạn.',
+          'type': 'schedule_changed',
+          'createdAt': now,
+          'targetRoles': ['employee', 'manager_1', 'manager_2', 'manager', 'legacyManager'],
+          'readBy': caller?.uid != null ? [caller!.uid] : [],
+          'routePath': '/schedule',
+          'routeExtra': {'storeId': storeId, 'weekStart': weekStart},
+        });
+      } catch (_) {}
+    } catch (e) {
+      throw Exception('Lưu lịch toàn bộ thất bại: $e');
+    }
   }
 
   // ---------- Date utilities ----------

@@ -133,8 +133,9 @@ extension MemberStatusExtension on MemberStatus {
       case 'kicked':
         return MemberStatus.kicked;
       case 'pending':
-      default:
         return MemberStatus.pending;
+      default:
+        return value == null ? MemberStatus.active : MemberStatus.pending;
     }
   }
 }

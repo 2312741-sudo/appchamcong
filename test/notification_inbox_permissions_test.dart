@@ -26,4 +26,20 @@ void main() {
     expect(item.isRelevantFor(null, UserRole.employee), isFalse);
     expect(item.isRelevantFor('user', null), isFalse);
   });
+
+  test('legacy member with null status resolves to active', () {
+    expect(MemberStatusExtension.fromString(null), MemberStatus.active);
+    expect(MemberStatusExtension.fromString('active'), MemberStatus.active);
+    expect(MemberStatusExtension.fromString('kicked'), MemberStatus.kicked);
+    expect(MemberStatusExtension.fromString('pending'), MemberStatus.pending);
+  });
+
+  test('watchNotifications with empty or null userId returns empty stream without error', () async {
+    final repo = NotificationRepository();
+    final streamNull = repo.watchNotifications('store_1', null, UserRole.employee);
+    expect(await streamNull.first, isEmpty);
+
+    final streamEmpty = repo.watchNotifications('store_1', '', UserRole.employee);
+    expect(await streamEmpty.first, isEmpty);
+  });
 }

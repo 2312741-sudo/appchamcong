@@ -87,16 +87,41 @@ class NotificationsScreen extends ConsumerWidget {
       ),
       body: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Không thể tải thông báo. Vui lòng quay lại và thử lại.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.beVietnamPro(color: AppColors.danger),
+        error: (e, stack) {
+          debugPrint('Lỗi tải thông báo: $e\n$stack');
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline_rounded, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Không thể tải thông báo',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Vui lòng kiểm tra kết nối mạng và thử lại.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.beVietnamPro(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => ref.refresh(notificationsStreamProvider),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Thử lại'),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
         data: (notifications) {
           if (notifications.isEmpty) {
             return Center(

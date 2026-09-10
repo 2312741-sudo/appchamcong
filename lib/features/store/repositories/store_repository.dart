@@ -897,6 +897,31 @@ class StoreRepository {
           .collection('advances')
           .add(request.toMap());
 
+      // Create notification for Store Owner & Managers
+      try {
+        final memberDoc =
+            await _members(request.storeId).doc(request.userId).get();
+        final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
+        final formattedAmount =
+            '${request.amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
+
+        await _firestore
+            .collection('stores')
+            .doc(request.storeId)
+            .collection('notifications')
+            .add({
+          'storeId': request.storeId,
+          'title': 'Yêu cầu ứng lương mới',
+          'body':
+              '$memberName vừa gửi yêu cầu tạm ứng $formattedAmount. Nhấn để duyệt.',
+          'type': 'advance_request',
+          'createdAt': Timestamp.now(),
+          'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
+          'readBy': [],
+          'routePath': '/manage-advances',
+          'routeExtra': {'storeId': request.storeId, 'advanceId': request.id},
+        });
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to create advance request: $e');
     }
@@ -918,6 +943,41 @@ class StoreRepository {
           .doc(advanceId)
           .update(updateData);
 
+      // Create notification for Employee
+      try {
+        final advanceDoc = await _stores
+            .doc(storeId)
+            .collection('advances')
+            .doc(advanceId)
+            .get();
+        final userId = advanceDoc.data()?['userId'] as String?;
+        final amount = advanceDoc.data()?['amount'] as num? ?? 0;
+        final formattedAmount =
+            '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
+
+        if (userId != null && userId.isNotEmpty) {
+          final isApproved = status == AdvanceStatus.approved;
+          await _firestore
+              .collection('stores')
+              .doc(storeId)
+              .collection('notifications')
+              .add({
+            'storeId': storeId,
+            'title': isApproved
+                ? 'Yêu cầu ứng lương đã được duyệt'
+                : 'Yêu cầu ứng lương bị từ chối',
+            'body': isApproved
+                ? 'Chủ quán đã duyệt yêu cầu tạm ứng $formattedAmount của bạn.'
+                : 'Yêu cầu tạm ứng $formattedAmount của bạn đã bị từ chối.',
+            'type': isApproved ? 'advance_approved' : 'advance_rejected',
+            'createdAt': Timestamp.now(),
+            'targetUserId': userId,
+            'readBy': [],
+            'routePath': '/salary',
+            'routeExtra': {'storeId': storeId, 'advanceId': advanceId},
+          });
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to update advance request: $e');
     }
