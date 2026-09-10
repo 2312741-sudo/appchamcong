@@ -427,35 +427,47 @@ class StoreRepository {
             '403 Forbidden: Bạn không có quyền xóa thành viên (Chỉ Chủ và Quản lý 1 có quyền này)');
       }
 
+      // Check if the target user's /users document still exists.
+      // If the member has self-deleted their account, this document is gone.
+      // We must NOT call batch.update() on a non-existent doc — that causes
+      // [cloud_firestore/permission-denied] even when the caller is the store owner.
+      final userRef = _firestore.collection('users').doc(userId);
+      final userDocSnapshot = await userRef.get();
+      final userDocExists = userDocSnapshot.exists;
+
       final batch = _firestore.batch();
 
       // 1. Mark member as kicked
       batch.update(_members(storeId).doc(userId), {'status': 'kicked'});
 
-      // 2. Remove storeId from user's storeIds & fix currentStoreId
-      final userRef = _firestore.collection('users').doc(userId);
-      batch.update(userRef, {
-        'storeIds': FieldValue.arrayRemove([storeId]),
-      });
+      // 2. Remove storeId from user's storeIds (only if user document exists)
+      if (userDocExists) {
+        batch.update(userRef, {
+          'storeIds': FieldValue.arrayRemove([storeId]),
+        });
+      }
 
       await batch.commit();
 
-      // 3. Fix currentStoreId if it was pointing to the kicked store
-      try {
-        final userDoc = await userRef.get();
-        final userData = userDoc.data() ?? {};
-        final currentStoreId = userData['currentStoreId'] as String?;
-        final remainingStoreIds = List<String>.from(userData['storeIds'] ?? []);
+      // 3. Fix currentStoreId if it was pointing to the kicked store (only if user exists)
+      if (userDocExists) {
+        try {
+          final userDoc = await userRef.get();
+          final userData = userDoc.data() ?? {};
+          final currentStoreId = userData['currentStoreId'] as String?;
+          final remainingStoreIds =
+              List<String>.from(userData['storeIds'] ?? []);
 
-        if (currentStoreId == storeId ||
-            !remainingStoreIds.contains(currentStoreId)) {
-          final newCurrentStoreId =
-              remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
-          await userRef.update({'currentStoreId': newCurrentStoreId});
-        }
-      } catch (_) {}
+          if (currentStoreId == storeId ||
+              !remainingStoreIds.contains(currentStoreId)) {
+            final newCurrentStoreId =
+                remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
+            await userRef.update({'currentStoreId': newCurrentStoreId});
+          }
+        } catch (_) {}
+      }
 
-      // 4. Send notification to kicked user
+      // 4. Send notification to kicked user (no-op if user deleted their account)
       try {
         final now = DateTime.now().toUtc();
         final storeDoc = await _stores.doc(storeId).get();
@@ -479,6 +491,7 @@ class StoreRepository {
       throw Exception('Xóa thành viên thất bại: $e');
     }
   }
+
 
   Future<void> updateMemberRole(
       String storeId, String userId, UserRole newRole) async {

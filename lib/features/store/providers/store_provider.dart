@@ -78,11 +78,16 @@ final pendingMembersProvider = StreamProvider<List<MemberModel>>((ref) {
 final activeMembersProvider = Provider<List<MemberModel>>((ref) {
   final membersAsync = ref.watch(storeMembersProvider);
   final store = ref.watch(currentStoreProvider).valueOrNull;
-  final list = membersAsync.whenOrNull(
+  final rawList = membersAsync.whenOrNull(
         data: (members) =>
             members.where((m) => m.status == MemberStatus.active).toList(),
       ) ??
       [];
+
+  // Deduplicate by userId (guard against stream race conditions or corrupt memberOrder)
+  final seen = <String>{};
+  final list = rawList.where((m) => seen.add(m.userId)).toList();
+
   if (store != null && store.memberOrder.isNotEmpty) {
     list.sort((a, b) {
       final idxA = store.memberOrder.indexOf(a.userId);
@@ -95,6 +100,7 @@ final activeMembersProvider = Provider<List<MemberModel>>((ref) {
   }
   return list;
 });
+
 
 /// Dedicated direct realtime stream for the current user's membership in active store
 final currentMemberStreamProvider = StreamProvider<MemberModel?>((ref) {
