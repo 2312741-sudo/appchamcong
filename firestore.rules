@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Hàm kiểm tra user đã đăng nhập
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 2. Cấu hình ứng dụng toàn hệ thống (kiểm tra cập nhật phiên bản app)
+    match /app_config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // 3. Bảo mật bảng users:
+    // - Cho phép đọc thông tin người dùng (tên, avatar, sinh nhật) khi đã đăng nhập
+    // - Chỉ chính chủ tài khoản mới được cập nhật thông tin cá nhân của mình
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 4. Hộp thư thông báo cá nhân (notificationInboxes)
+    match /notificationInboxes/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      match /{document=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // 5. Thiết bị nhận thông báo đẩy FCM (notificationDevices)
+    match /notificationDevices/{deviceId} {
+      allow read, write: if isSignedIn();
+    }
+    match /notificationEvents/{id} { allow read, write: if false; }
+    match /notificationDeliveries/{id} { allow read, write: if false; }
+
+    // 6. Bảo mật bảng stores (Cửa hàng) và mọi dữ liệu bên trong (Chấm công, Lịch làm, Tạm ứng, Thông báo...)
+    match /stores/{storeId} {
+      // Bất kỳ user nào đã đăng nhập đều có thể tạo cửa hàng mới
+      allow create: if isSignedIn();
+      
+      // Người dùng đã đăng nhập có thể đọc thông tin cửa hàng (cần thiết cho App khi join store)
+      allow read, update, delete: if isSignedIn();
+      
+      // Cấp quyền cho các tập con bên trong cửa hàng (attendances, schedules, production_tasks, notifications, v.v...)
+      match /{document=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+    
+    // 7. BẮT BUỘC: Quy tắc dành riêng cho truy vấn quét (collectionGroup)
+    // Để Web App và Mobile App có thể quét tất cả cửa hàng mà tài khoản này tham gia để hiển thị
+    match /{path=**}/members/{memberId} {
+      // Cho phép user tìm kiếm danh sách thành viên nếu userId đó chính là họ
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // 8. KHUYẾN MÃI TRẠM: Khách hàng, lịch sử tích điểm và cửa hàng
+    match /kmt_customers/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    match /kmt_point_history/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    match /kmt_stores/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 9. ĐO HIỆU NĂNG TRẠM: Phiên đo, lần đo và báo cáo hiệu năng
+    match /performance_sessions/{sessionId} {
+      allow read, write: if isSignedIn();
+
+      match /measurements/{measurementId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    match /performance_reports/{reportId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
