@@ -327,27 +327,6 @@ class StoreRepository {
 
       await batch.commit();
 
-      // Create notification for Owner & Manager 1
-      try {
-        final applicantName =
-            user?.displayName ?? user?.email ?? 'Nhân viên mới';
-        await _firestore
-            .collection('stores')
-            .doc(storeId)
-            .collection('notifications')
-            .add({
-          'storeId': storeId,
-          'title': 'Yêu cầu gia nhập mới',
-          'body':
-              '$applicantName vừa gửi yêu cầu tham gia cửa hàng. Nhấn để duyệt.',
-          'type': 'join_request',
-          'createdAt': Timestamp.fromDate(now),
-          'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
-          'readBy': [],
-          'routePath': '/pending-members',
-          'routeExtra': {'storeId': storeId},
-        });
-      } catch (_) {}
     } catch (e) {
       throw Exception('Tham gia cửa hàng thất bại: $e');
     }
@@ -382,28 +361,6 @@ class StoreRepository {
         'approvedAt': Timestamp.fromDate(now),
       });
 
-      // Create notification for Member
-      try {
-        await _firestore
-            .collection('stores')
-            .doc(storeId)
-            .collection('notifications')
-            .add({
-          'storeId': storeId,
-          'title': approve
-              ? 'Yêu cầu gia nhập đã được duyệt!'
-              : 'Yêu cầu gia nhập bị từ chối',
-          'body': approve
-              ? 'Chúc mừng bạn đã trở thành thành viên của cửa hàng. Bạn có thể bắt đầu chấm công và đăng ký ca làm.'
-              : 'Yêu cầu tham gia cửa hàng của bạn đã bị từ chối.',
-          'type': approve ? 'join_approved' : 'join_rejected',
-          'createdAt': Timestamp.fromDate(now),
-          'targetUserId': userId,
-          'readBy': [],
-          'routePath': approve ? '/splash' : '/welcome',
-          'routeExtra': {'storeId': storeId},
-        });
-      } catch (_) {}
     } catch (e) {
       throw Exception('Cập nhật trạng thái thành viên thất bại: $e');
     }
@@ -474,31 +431,234 @@ class StoreRepository {
         } catch (_) {}
       }
 
-      // 4. Send notification to kicked user (no-op if user deleted their account)
-      try {
-        final now = DateTime.now().toUtc();
-        final storeDoc = await _stores.doc(storeId).get();
-        final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
-
-        await _firestore
-            .collection('stores')
-            .doc(storeId)
-            .collection('notifications')
-            .add({
-          'storeId': storeId,
-          'title': 'Bạn đã bị xóa khỏi cửa hàng',
-          'body': 'Bạn đã bị xóa khỏi cửa hàng "$storeName".',
-          'type': 'member_kicked',
-          'createdAt': Timestamp.fromDate(now),
-          'targetUserId': userId,
-          'readBy': [],
-        });
-      } catch (_) {}
     } catch (e) {
       throw Exception('Xóa thành viên thất bại: $e');
     }
   }
 
+
+  /// Tìm người kế nhiệm chức vụ Chủ cửa hàng:
+  /// Ưu tiên 1: Quản lý 1 (manager1 / manager_1 / legacyManager) có joinedAt sớm nhất
+  /// Ưu tiên 2 (Fallback): Quản lý 2 (manager2 / manager_2) có joinedAt sớm nhất
+  /// Ưu tiên 3 (Fallback): Nhân viên (employee) có joinedAt sớm nhất
+  /// Trả về null nếu cửa hàng không còn thành viên active nào khác.
+  Future<String?> findNextOwnerId(String storeId, String currentOwnerId) async {
+    try {
+      final membersSnap = await _members(storeId)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      final candidates = membersSnap.docs
+          .map((d) => MemberModel.fromFirestore(d))
+          .where((m) => m.userId != currentOwnerId)
+          .toList();
+
+      if (candidates.isEmpty) return null;
+
+      // 1. Ưu tiên Quản lý 1
+      final ql1List = candidates.where((m) => m.isManager1).toList();
+      if (ql1List.isNotEmpty) {
+        ql1List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+        return ql1List.first.userId;
+      }
+
+      // 2. Fallback: Quản lý 2
+      final ql2List = candidates.where((m) => m.isManager2).toList();
+      if (ql2List.isNotEmpty) {
+        ql2List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+        return ql2List.first.userId;
+      }
+
+      // 3. Fallback: Nhân viên thâm niên nhất
+      candidates.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+      return candidates.first.userId;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Chuyển giao quyền Chủ cửa hàng một cách nguyên tử (Atomic):
+  /// - Cập nhật /stores/{storeId}: ownerId = newOwnerId
+  /// - Cập nhật /stores/{storeId}/members/{newOwnerId}: role = 'owner'
+  /// - Cập nhật cựu chủ (nếu có): role = oldOwnerNewRole (mặc định manager1)
+  /// - Gửi thông báo đến người nhận quyền và toàn thể cửa hàng
+  Future<void> transferStoreOwnership(
+    String storeId,
+    String newOwnerId, {
+    String? oldOwnerId,
+    UserRole? oldOwnerNewRole,
+  }) async {
+    try {
+      final storeDoc = await _stores.doc(storeId).get();
+      if (!storeDoc.exists) throw Exception('Cửa hàng không tồn tại');
+      final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
+      final actualOldOwnerId = oldOwnerId ?? storeDoc.data()?['ownerId'] as String?;
+
+      final batch = _firestore.batch();
+
+      // 1. Cập nhật ownerId trên store document
+      batch.update(_stores.doc(storeId), {
+        'ownerId': newOwnerId,
+      });
+
+      // 2. Thăng cấp newOwner thành 'owner'
+      batch.update(_members(storeId).doc(newOwnerId), {
+        'role': 'owner',
+      });
+
+      // 3. Nếu cựu chủ vẫn còn trong cửa hàng, chuyển vai trò thành oldOwnerNewRole hoặc manager1
+      if (actualOldOwnerId != null && actualOldOwnerId != newOwnerId) {
+        final oldOwnerDoc = await _members(storeId).doc(actualOldOwnerId).get();
+        if (oldOwnerDoc.exists) {
+          final targetRole = oldOwnerNewRole ?? UserRole.manager1;
+          batch.update(_members(storeId).doc(actualOldOwnerId), {
+            'role': targetRole.value,
+          });
+        }
+      }
+
+      await batch.commit();
+
+      // 4. Gửi thông báo
+      try {
+        final now = DateTime.now().toUtc();
+        final notifCol =
+            _firestore.collection('stores').doc(storeId).collection('notifications');
+
+        // Thông báo riêng cho chủ mới
+        await notifCol.add({
+          'storeId': storeId,
+          'title': 'Bạn đã trở thành Chủ cửa hàng!',
+          'body': 'Bạn vừa được chuyển giao quyền Chủ cửa hàng "$storeName".',
+          'type': 'ownership_transferred',
+          'createdAt': Timestamp.fromDate(now),
+          'targetUserId': newOwnerId,
+          'readBy': [],
+          'routePath': '/owner-dashboard',
+        });
+
+        // Thông báo cho toàn thể thành viên
+        final newOwnerMemberDoc = await _members(storeId).doc(newOwnerId).get();
+        final newOwnerName =
+            newOwnerMemberDoc.data()?['name'] as String? ?? 'Quản lý';
+        await notifCol.add({
+          'storeId': storeId,
+          'title': 'Cửa hàng có Chủ mới',
+          'body':
+              '$newOwnerName đã trở thành Chủ cửa hàng mới của "$storeName".',
+          'type': 'new_owner_assigned',
+          'createdAt': Timestamp.fromDate(now),
+          'readBy': [],
+        });
+      } catch (_) {}
+    } catch (e) {
+      throw Exception('Chuyển quyền Chủ cửa hàng thất bại: $e');
+    }
+  }
+
+  /// Rời cửa hàng cho mọi thành viên (Nhân viên, Quản lý, Chủ):
+  /// - Nếu là Chủ: Tự động chuyển quyền cho QL1 (hoặc người kế nhiệm phù hợp nhất).
+  ///   Nếu cửa hàng không còn ai khác -> soft-delete cửa hàng.
+  /// - Nếu là Nhân viên / Quản lý: Đánh dấu status = 'kicked' (kickedReason: 'member_left').
+  /// - Dọn dẹp storeIds của user và cập nhật currentStoreId sang cửa hàng khác nếu có.
+  Future<void> leaveStore(String storeId) async {
+    try {
+      final caller = _auth.currentUser;
+      if (caller == null) {
+        throw Exception('401 Unauthorized: Chưa đăng nhập');
+      }
+
+      final storeDoc = await _stores.doc(storeId).get();
+      if (!storeDoc.exists) {
+        throw Exception('Cửa hàng không tồn tại');
+      }
+
+      final storeData = storeDoc.data() ?? {};
+      final storeName = storeData['name'] as String? ?? 'Cửa hàng';
+      final isOwner = storeData['ownerId'] == caller.uid;
+      final now = DateTime.now().toUtc();
+
+      if (isOwner) {
+        // CHỦ RỜI CỬA HÀNG: Tự động chuyển giao quyền trước
+        final nextOwnerId = await findNextOwnerId(storeId, caller.uid);
+        if (nextOwnerId != null) {
+          // Có người kế vị -> Chuyển quyền cho người đó
+          await transferStoreOwnership(storeId, nextOwnerId, oldOwnerId: caller.uid);
+        } else {
+          // Không còn ai khác trong cửa hàng -> Soft-delete cửa hàng
+          await _stores.doc(storeId).update({
+            'status': 'deleted',
+            'deletedAt': Timestamp.fromDate(now),
+            'deletedBy': caller.uid,
+          });
+        }
+      }
+
+      // Đánh dấu caller là kicked (rời cửa hàng)
+      final batch = _firestore.batch();
+      batch.update(_members(storeId).doc(caller.uid), {
+        'status': 'kicked',
+        'kickedAt': Timestamp.fromDate(now),
+        'kickedReason': isOwner ? 'owner_left' : 'member_left',
+      });
+
+      // Dọn dẹp memberOrder và hiddenScheduleUserIds
+      batch.update(_stores.doc(storeId), {
+        'memberOrder': FieldValue.arrayRemove([caller.uid]),
+        'hiddenScheduleUserIds': FieldValue.arrayRemove([caller.uid]),
+      });
+
+      // Gỡ storeId khỏi users/{caller.uid}.storeIds
+      final userRef = _firestore.collection('users').doc(caller.uid);
+      batch.update(userRef, {
+        'storeIds': FieldValue.arrayRemove([storeId]),
+      });
+
+      await batch.commit();
+
+      // Cập nhật currentStoreId nếu đang trỏ tới store vừa rời
+      try {
+        final userDoc = await userRef.get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() ?? {};
+          final currentStoreId = userData['currentStoreId'] as String?;
+          final remainingStoreIds =
+              List<String>.from(userData['storeIds'] ?? []);
+
+          if (currentStoreId == storeId ||
+              !remainingStoreIds.contains(currentStoreId)) {
+            final newCurrentStoreId =
+                remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
+            await userRef.update({'currentStoreId': newCurrentStoreId});
+          }
+        }
+      } catch (_) {}
+
+      // Gửi thông báo cho Chủ và Quản lý cửa hàng (nếu caller không phải là chủ duy nhất)
+      if (!isOwner) {
+        try {
+          final callerDoc = await _members(storeId).doc(caller.uid).get();
+          final callerName =
+              callerDoc.data()?['name'] as String? ?? 'Một thành viên';
+          await _firestore
+              .collection('stores')
+              .doc(storeId)
+              .collection('notifications')
+              .add({
+            'storeId': storeId,
+            'title': 'Thành viên đã rời cửa hàng',
+            'body': '$callerName đã rời khỏi cửa hàng "$storeName".',
+            'type': 'member_left',
+            'createdAt': Timestamp.fromDate(now),
+            'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
+            'readBy': [],
+          });
+        } catch (_) {}
+      }
+    } catch (e) {
+      throw Exception('Rời cửa hàng thất bại: $e');
+    }
+  }
 
   Future<void> updateMemberRole(
       String storeId, String userId, UserRole newRole) async {
@@ -519,11 +679,23 @@ class StoreRepository {
             '403 Forbidden: Chỉ Chủ cửa hàng mới có quyền phân vai trò');
       }
 
+      if (newRole == UserRole.owner) {
+        // Chuyển giao quyền chủ sở hữu cửa hàng cho thành viên này một cách nguyên tử
+        await transferStoreOwnership(
+          storeId,
+          userId,
+          oldOwnerId: caller.uid,
+          oldOwnerNewRole: UserRole.manager1,
+        );
+        return;
+      }
+
       await _members(storeId).doc(userId).update({'role': newRole.value});
     } catch (e) {
       throw Exception('Cập nhật vai trò thất bại: $e');
     }
   }
+
 
   Future<void> updateMemberSalary(
     String storeId,
@@ -569,7 +741,6 @@ class StoreRepository {
 
       final storeData = storeDoc.data() ?? {};
       final ownerId = storeData['ownerId'] as String?;
-      final storeName = storeData['name'] as String? ?? 'Cửa hàng';
 
       if (ownerId != caller.uid) {
         throw Exception(
@@ -618,26 +789,6 @@ class StoreRepository {
         } catch (_) {}
       }
 
-      // 4. Send notification to all members
-      try {
-        for (final uid in affectedUserIds) {
-          if (uid == caller.uid)
-            continue; // Don't notify the owner who deleted it
-          await _firestore
-              .collection('stores')
-              .doc(storeId)
-              .collection('notifications')
-              .add({
-            'storeId': storeId,
-            'title': 'Cửa hàng đã bị xóa',
-            'body': 'Cửa hàng "$storeName" đã bị xóa bởi Chủ cửa hàng.',
-            'type': 'store_deleted',
-            'createdAt': Timestamp.fromDate(now),
-            'targetUserId': uid,
-            'readBy': [],
-          });
-        }
-      } catch (_) {}
     } catch (e) {
       throw Exception('Xóa cửa hàng thất bại: $e');
     }
@@ -804,31 +955,6 @@ class StoreRepository {
           .collection('advances')
           .add(request.toMap());
 
-      // Create notification for Store Owner & Managers
-      try {
-        final memberDoc =
-            await _members(request.storeId).doc(request.userId).get();
-        final memberName = memberDoc.data()?['name'] as String? ?? 'Nhân viên';
-        final formattedAmount =
-            '${request.amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
-
-        await _firestore
-            .collection('stores')
-            .doc(request.storeId)
-            .collection('notifications')
-            .add({
-          'storeId': request.storeId,
-          'title': 'Yêu cầu ứng lương mới',
-          'body':
-              '$memberName vừa gửi yêu cầu tạm ứng $formattedAmount. Nhấn để duyệt.',
-          'type': 'advance_request',
-          'createdAt': Timestamp.now(),
-          'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
-          'readBy': [],
-          'routePath': '/manage-advances',
-          'routeExtra': {'storeId': request.storeId, 'advanceId': request.id},
-        });
-      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to create advance request: $e');
     }
@@ -850,41 +976,6 @@ class StoreRepository {
           .doc(advanceId)
           .update(updateData);
 
-      // Create notification for Employee
-      try {
-        final advanceDoc = await _stores
-            .doc(storeId)
-            .collection('advances')
-            .doc(advanceId)
-            .get();
-        final userId = advanceDoc.data()?['userId'] as String?;
-        final amount = advanceDoc.data()?['amount'] as num? ?? 0;
-        final formattedAmount =
-            '${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}đ';
-
-        if (userId != null && userId.isNotEmpty) {
-          final isApproved = status == AdvanceStatus.approved;
-          await _firestore
-              .collection('stores')
-              .doc(storeId)
-              .collection('notifications')
-              .add({
-            'storeId': storeId,
-            'title': isApproved
-                ? 'Yêu cầu ứng lương đã được duyệt'
-                : 'Yêu cầu ứng lương bị từ chối',
-            'body': isApproved
-                ? 'Chủ quán đã duyệt yêu cầu tạm ứng $formattedAmount của bạn.'
-                : 'Yêu cầu tạm ứng $formattedAmount của bạn đã bị từ chối.',
-            'type': isApproved ? 'advance_approved' : 'advance_rejected',
-            'createdAt': Timestamp.now(),
-            'targetUserId': userId,
-            'readBy': [],
-            'routePath': '/salary',
-            'routeExtra': {'storeId': storeId, 'advanceId': advanceId},
-          });
-        }
-      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to update advance request: $e');
     }

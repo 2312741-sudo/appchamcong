@@ -11,8 +11,9 @@ import '../repositories/schedule_repository.dart';
 import '../../../models/member_model.dart';
 
 class ScheduleRegisterScreen extends ConsumerStatefulWidget {
+  final String? initialWeekStart;
   final bool showAppBar;
-  const ScheduleRegisterScreen({super.key, this.showAppBar = true});
+  const ScheduleRegisterScreen({super.key, this.showAppBar = true, this.initialWeekStart});
 
   @override
   ConsumerState<ScheduleRegisterScreen> createState() =>
@@ -44,6 +45,11 @@ class _ScheduleRegisterScreenState
     final currentWeekStr = repo.getWeekStart(DateTime.now());
     final currentIdx = _weeks.indexOf(currentWeekStr);
     _selectedWeekIndex = currentIdx >= 0 ? currentIdx : 4;
+    final target = widget.initialWeekStart;
+    if (target != null && DateTime.tryParse(target) != null) {
+      if (!_weeks.contains(target)) { _weeks.add(target); _weeks.sort(); }
+      _selectedWeekIndex = _weeks.indexOf(target);
+    }
   }
 
   int get _thisWeekIndex {

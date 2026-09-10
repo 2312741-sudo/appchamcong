@@ -97,6 +97,13 @@ class StoreDrawer extends ConsumerWidget {
                             
                             if (!context.mounted) return;
                             
+                            // Invalidate session providers to prevent any permission/member caching from old store
+                            ref.invalidate(currentStoreProvider);
+                            ref.invalidate(currentMemberStreamProvider);
+                            ref.invalidate(currentMemberProvider);
+                            ref.invalidate(storeMembersProvider);
+                            ref.invalidate(activeMembersProvider);
+
                             // Fetch role in new store
                             final memberDoc = await FirebaseFirestore.instance
                                 .collection('stores')
@@ -113,6 +120,7 @@ class StoreDrawer extends ConsumerWidget {
                                 final role = isOwner
                                     ? UserRole.owner
                                     : UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
+
                                 final currentPath = GoRouterState.of(context).uri.toString();
                                 String targetPath = AppRoutes.employeeDashboard;
                                 if (role.isOwner) {

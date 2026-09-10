@@ -204,24 +204,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             route == AppRoutes.employeeDashboard)) {
       NotificationService.pendingRoute = null;
       NotificationService.pendingRouteExtra = null;
-      Future.delayed(const Duration(milliseconds: 350), () async {
-        final targetStoreId = extra?['storeId'] as String? ?? extra?['store_id'] as String?;
-        final user = FirebaseAuth.instance.currentUser;
-        if (targetStoreId != null && targetStoreId.isNotEmpty && user != null) {
-          try {
-            await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-              'currentStoreId': targetStoreId,
-            });
-          } catch (_) {}
-        }
-        final navContext = rootNavigatorKey.currentContext;
-        if (navContext != null && navContext.mounted) {
-          if (extra != null) {
-            navContext.push(pending, extra: extra);
-          } else {
-            navContext.push(pending);
-          }
-        }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        NotificationService.handleNotificationTap(extra: extra);
       });
     }
   }

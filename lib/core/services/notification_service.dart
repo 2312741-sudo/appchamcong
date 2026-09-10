@@ -1,337 +1,199 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
+import '../auth/app_permissions.dart';
+import '../../models/member_model.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
-
-  // Navigation pending state for cold start
   static String? pendingRoute;
   static Map<String, dynamic>? pendingRouteExtra;
-
-  // Lazy-initialize these - do NOT access FirebaseMessaging.instance at field level
   FirebaseMessaging? _fcm;
   FlutterLocalNotificationsPlugin? _localNotifications;
-
+  Future<void>? _initializing;
   bool _initialized = false;
-
-  // Keep track of subscriptions so we can cancel them on dispose
+  int _session = 0;
   StreamSubscription<RemoteMessage>? _onMessageSubscription;
   StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
   StreamSubscription<String>? _onTokenRefreshSubscription;
+  final Set<String> _displayed = {};
 
-  /// Handle navigating to the destination when user taps a notification
+  /// Resolve trusted inbox content on every tap; never navigate to a payload-supplied route.
   static Future<void> handleNotificationTap({String? routePath, Map<String, dynamic>? extra}) async {
-    final targetRoute = (routePath != null && routePath.isNotEmpty) ? routePath : AppRoutes.notifications;
-    final targetStoreId = extra?['storeId'] as String? ?? extra?['store_id'] as String?;
-
-    // Auto-switch store if targetStoreId is present in payload
-    if (targetStoreId != null && targetStoreId.isNotEmpty) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        try {
-          final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-          if (userDoc.exists) {
-            final userData = userDoc.data();
-            final currentStoreId = userData?['currentStoreId'] as String?;
-            final storeIds = List<String>.from(userData?['storeIds'] ?? []);
-
-            // Check if user has access to targetStoreId
-            final isMember = storeIds.contains(targetStoreId);
-            if (isMember && currentStoreId != targetStoreId) {
-              await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-                'currentStoreId': targetStoreId,
-              });
-              debugPrint('Auto-switched current store to: $targetStoreId from notification payload');
-            }
-          }
-        } catch (e) {
-          debugPrint('Error auto-switching store from notification: $e');
-        }
-      }
-    }
-
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     final context = rootNavigatorKey.currentContext;
-    debugPrint('Notification tapped -> routing to: $targetRoute');
-
-    if (context != null && context.mounted) {
-      try {
-        if (extra != null) {
-          context.push(targetRoute, extra: extra);
-        } else {
-          context.push(targetRoute);
-        }
-        pendingRoute = null;
-        pendingRouteExtra = null;
-        return;
-      } catch (e) {
-        debugPrint('Direct notification navigation failed: $e, queuing for splash');
-      }
+    if (uid == null || context == null || !context.mounted) {
+      pendingRoute = AppRoutes.notifications;
+      pendingRouteExtra = extra;
+      return;
     }
-
-    // If navigator context is not ready yet, save as pending route
-    pendingRoute = targetRoute;
-    pendingRouteExtra = extra;
+    final storeId = extra?['storeId'] as String?;
+    final id = extra?['notificationId'] as String?;
+    if (extra?['targetUserId'] != null && extra!['targetUserId'] != uid) return;
+    if (storeId == null || id == null || storeId.contains('/') || id.contains('/')) {
+      context.push(AppRoutes.notifications);
+      return;
+    }
+    try {
+      final db = FirebaseFirestore.instance;
+      final account = extra?['scope'] == 'account';
+      final path = account ? 'notificationInboxes/$uid/accountItems/$id'
+          : 'notificationInboxes/$uid/stores/$storeId/items/$id';
+      final notification = await db.doc(path).get(const GetOptions(source: Source.server));
+      if (!notification.exists) return;
+      final data = notification.data()!;
+      final member = await db.doc('stores/$storeId/members/$uid').get(const GetOptions(source: Source.server));
+      final store = await db.doc('stores/$storeId').get(const GetOptions(source: Source.server));
+      final active = member.data()?['status'] == 'active' && store.exists && store.data()?['status'] != 'deleted';
+      if (!active) {
+        if (account && context.mounted) context.push(AppRoutes.notifications);
+        return;
+      }
+      final role = UserRoleExtension.fromString(member.data()?['role'] as String?);
+      var destination = data['routePath'] as String?;
+      final details = Map<String, dynamic>.from(data['routeExtra'] as Map? ?? {});
+      final permitted = <String>{AppRoutes.notifications, AppRoutes.scheduleRegister, AppRoutes.checkIn,
+        AppRoutes.salary, '/production/report', AppRoutes.splash,
+        if (AppPermissions.canManageSchedule(role)) AppRoutes.scheduleManager,
+        if (AppPermissions.canApproveMembers(role)) AppRoutes.pendingMembers,
+        if (AppPermissions.canViewAllAttendance(role)) AppRoutes.attendanceTable,
+        if (role == UserRole.owner) AppRoutes.manageAdvances};
+      if (!permitted.contains(destination)) destination = AppRoutes.notifications;
+      String? sourcePath;
+      if (details['weekStart'] is String && data['type'] == 'schedule_changed') sourcePath = 'schedules/${details['weekStart']}';
+      if (details['advanceId'] is String) sourcePath = 'advances/${details['advanceId']}';
+      if (details['attendanceId'] is String) sourcePath = 'attendances/${details['attendanceId']}';
+      if (details['memberId'] is String && data['type'] == 'join_request') sourcePath = 'members/${details['memberId']}';
+      if (sourcePath != null && !(await db.doc('stores/$storeId/$sourcePath').get(const GetOptions(source: Source.server))).exists) destination = AppRoutes.notifications;
+      if (destination == AppRoutes.salary) details['userId'] = uid;
+      if (FirebaseAuth.instance.currentUser?.uid != uid) return;
+      final profile = await db.doc('users/$uid').get(const GetOptions(source: Source.server));
+      final previousStore = profile.data()?['currentStoreId'];
+      await db.doc('users/$uid').update({'currentStoreId': storeId});
+      // Route through splash when switching stores, so providers resolve the new membership first.
+      final wasStore = previousStore;
+      if (wasStore != storeId) {
+        pendingRoute = AppRoutes.notifications;
+        pendingRouteExtra = {...extra!, 'currentStoreId': storeId};
+        if (context.mounted) context.go(AppRoutes.splash);
+        return;
+      }
+      pendingRoute = null;
+      pendingRouteExtra = null;
+      if (context.mounted) context.push(destination ?? AppRoutes.notifications, extra: details);
+    } catch (error) {
+      debugPrint('Không thể mở thông báo: $error');
+      if (context.mounted) context.push(AppRoutes.notifications);
+    }
   }
 
-  Future<void> initialize() async {
+  Future<void> initialize() => _initializing ??= _initialize().whenComplete(() => _initializing = null);
+  Future<void> _initialize() async {
     if (_initialized) return;
-
-    try {
-      _fcm = FirebaseMessaging.instance;
-      _localNotifications = FlutterLocalNotificationsPlugin();
-
-      // Request permission
-      final settings = await _fcm!.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        debugPrint('User declined notification permission');
-        return;
-      }
-
-      // Enable foreground notification presentation on iOS
-      await _fcm!.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      // Initialize local notifications for foreground display
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const iosInit = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-      );
-      const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
-
-      await _localNotifications!.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          if (response.payload != null && response.payload!.isNotEmpty) {
-            try {
-              final data = jsonDecode(response.payload!) as Map<String, dynamic>;
-              final routePath = data['routePath'] as String?;
-              handleNotificationTap(routePath: routePath, extra: data);
-            } catch (_) {
-              handleNotificationTap(routePath: response.payload);
-            }
-          } else {
-            handleNotificationTap();
-          }
-        },
-      );
-
-      // Create Android Notification Channel
-      const androidChannel = AndroidNotificationChannel(
-        'cham_cong_notifications',
-        'Thông báo Chấm Công',
-        description: 'Thông báo lịch làm việc, chấm công, tạm ứng và duyệt đơn',
-        importance: Importance.max,
-        playSound: true,
-      );
-      await _localNotifications!
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(androidChannel);
-
-      // Handle foreground messages — store subscription to allow cancellation
-      _onMessageSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        if (message.notification != null) {
-          _showLocalNotification(message);
-        }
+    _fcm = FirebaseMessaging.instance;
+    _localNotifications = FlutterLocalNotificationsPlugin();
+    await _fcm!.requestPermission(alert: true, badge: true, sound: true);
+    // The local plugin is the single foreground presentation path on both platforms.
+    await _fcm!.setForegroundNotificationPresentationOptions(alert: false, badge: false, sound: false);
+    await _localNotifications!.initialize(const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(requestAlertPermission: false, requestBadgePermission: false, requestSoundPermission: false)),
+      onDidReceiveNotificationResponse: (response) {
+        if (response.payload == null) return;
+        try { unawaited(handleNotificationTap(extra: Map<String, dynamic>.from(jsonDecode(response.payload!)))); }
+        catch (error) { debugPrint('Invalid notification payload: $error'); }
       });
-
-      // Handle notification taps when app is in background
-      _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        final routePath = message.data['routePath'] as String?;
-        handleNotificationTap(routePath: routePath, extra: message.data);
-      });
-
-      // Check if app was opened from terminated state via notification click
-      final initialMessage = await _fcm!.getInitialMessage();
-      if (initialMessage != null) {
-        final routePath = initialMessage.data['routePath'] as String?;
-        handleNotificationTap(routePath: routePath, extra: initialMessage.data);
-      }
-
-      _initialized = true;
-      debugPrint('NotificationService initialized successfully');
-    } catch (e) {
-      debugPrint('Failed to initialize NotificationService: $e');
+    await _localNotifications!.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(
+      const AndroidNotificationChannel('cham_cong_notifications', 'Thông báo Chấm Công', importance: Importance.max));
+    await _onMessageSubscription?.cancel();
+    await _onMessageOpenedAppSubscription?.cancel();
+    _onMessageSubscription = FirebaseMessaging.onMessage.listen((message) {
+      unawaited(_showLocalNotification(message));
+    });
+    _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      unawaited(handleNotificationTap(extra: message.data));
+    });
+    final initial = await _fcm!.getInitialMessage();
+    if (initial != null) {
+      pendingRoute = AppRoutes.notifications;
+      pendingRouteExtra = initial.data;
     }
+    _initialized = true;
   }
 
-  /// Call this AFTER user logs in to save FCM token and remove stale associations
+  Future<void> _register(String uid, String token, int session) async {
+    if (session != _session || FirebaseAuth.instance.currentUser?.uid != uid) return;
+    await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token});
+  }
   Future<void> saveTokenForUser(String uid) async {
-    if (_fcm == null) return;
+    final session = _session;
     try {
-      // On iOS, APNS token may not be ready immediately.
-      // Wait up to 10 seconds for it to become available.
-      String? apnsToken = await _fcm!.getAPNSToken();
-      if (apnsToken == null) {
-        for (int i = 0; i < 10; i++) {
-          await Future.delayed(const Duration(seconds: 1));
-          apnsToken = await _fcm!.getAPNSToken();
-          if (apnsToken != null) break;
+      await initialize();
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        for (var i = 0; i < 10 && await _fcm!.getAPNSToken() == null; i++) {
+          await Future<void>.delayed(const Duration(seconds: 1));
+          if (session != _session) return;
         }
       }
-
       final token = await _fcm!.getToken();
-      if (token == null) return;
-
-      // 1. Deduplication: Clear this token from any OTHER user documents in Firestore
-      try {
-        final existingWithToken = await FirebaseFirestore.instance
-            .collection('users')
-            .where('fcmToken', isEqualTo: token)
-            .get();
-
-        if (existingWithToken.docs.isNotEmpty) {
-          final batch = FirebaseFirestore.instance.batch();
-          bool hasOtherUsers = false;
-          for (final doc in existingWithToken.docs) {
-            if (doc.id != uid) {
-              batch.update(doc.reference, {
-                'fcmToken': FieldValue.delete(),
-                'tokenClearedAt': FieldValue.serverTimestamp(),
-              });
-              hasOtherUsers = true;
-            }
-          }
-          if (hasOtherUsers) {
-            await batch.commit();
-            debugPrint('Deduplicated FCM token: cleared from previous accounts on this device');
-          }
-        }
-      } catch (e) {
-        debugPrint('Error deduplicating FCM tokens: $e');
-      }
-
-      // 2. Save token for the current active user
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'fcmToken': token,
-        'tokenUpdatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      // Cancel previous token refresh subscription before creating new one
+      if (token != null) await _register(uid, token, session);
       await _onTokenRefreshSubscription?.cancel();
-      _onTokenRefreshSubscription = _fcm!.onTokenRefresh.listen((newToken) async {
-        try {
-          // Deduplicate new token
-          final staleDocs = await FirebaseFirestore.instance
-              .collection('users')
-              .where('fcmToken', isEqualTo: newToken)
-              .get();
-
-          final refreshBatch = FirebaseFirestore.instance.batch();
-          for (final doc in staleDocs.docs) {
-            if (doc.id != uid) {
-              refreshBatch.update(doc.reference, {
-                'fcmToken': FieldValue.delete(),
-              });
-            }
-          }
-          refreshBatch.set(
-            FirebaseFirestore.instance.collection('users').doc(uid),
-            {
-              'fcmToken': newToken,
-              'tokenUpdatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
-          await refreshBatch.commit();
-        } catch (e) {
-          debugPrint('Failed to update refreshed FCM token: $e');
-        }
+      if (session != _session || FirebaseAuth.instance.currentUser?.uid != uid) return;
+      _onTokenRefreshSubscription = _fcm!.onTokenRefresh.listen((token) {
+        unawaited(_register(uid, token, session).catchError((Object error) => debugPrint('Token refresh failed: $error')));
       });
-    } catch (e) {
-      debugPrint('Failed to save FCM token: $e');
-    }
+    } catch (error) { debugPrint('Đăng ký thiết bị thông báo thất bại: $error'); }
   }
-
-  /// Call this when the user logs out: removes token from Firestore, deletes device token and disposes listeners
   Future<void> clearTokenForUser(String uid) async {
+    _session++;
+    await _onTokenRefreshSubscription?.cancel();
     try {
-      if (uid.isNotEmpty) {
-        await FirebaseFirestore.instance.collection('users').doc(uid).update({
-          'fcmToken': FieldValue.delete(),
-          'tokenClearedAt': FieldValue.serverTimestamp(),
-        }).catchError((e) {
-          debugPrint('Could not delete fcmToken on user doc: $e');
-        });
+      final token = await _fcm?.getToken();
+      if (token != null && FirebaseAuth.instance.currentUser?.uid == uid) {
+        await FirebaseFunctions.instance.httpsCallable('registerNotificationDevice').call({'token': token, 'remove': true});
       }
-      if (_fcm != null) {
-        await _fcm!.deleteToken().catchError((e) {
-          debugPrint('Could not delete FCM device token: $e');
-        });
-      }
-      await dispose();
-      debugPrint('FCM token successfully cleared for user $uid on logout');
-    } catch (e) {
-      debugPrint('Error clearing FCM token for user $uid: $e');
-    }
+    } catch (error) { debugPrint('Token unregister failed: $error'); }
+    try { await _fcm?.deleteToken(); }
+    finally { await dispose(); }
   }
-
   Future<void> updateToken() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null) {
-      await saveTokenForUser(uid);
-    }
+    if (uid != null) await saveTokenForUser(uid);
   }
-
-  /// Call this when the user logs out or app is being cleaned up
   Future<void> dispose() async {
+    _session++;
     await _onMessageSubscription?.cancel();
     await _onMessageOpenedAppSubscription?.cancel();
     await _onTokenRefreshSubscription?.cancel();
+    await _localNotifications?.cancelAll();
     _onMessageSubscription = null;
     _onMessageOpenedAppSubscription = null;
     _onTokenRefreshSubscription = null;
     _initialized = false;
-    _fcm = null;
-    _localNotifications = null;
+    _displayed.clear();
+    pendingRoute = null;
+    pendingRouteExtra = null;
   }
-
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    if (notification == null || _localNotifications == null) return;
-
-    const androidDetails = AndroidNotificationDetails(
-      'cham_cong_notifications',
-      'Thông báo Chấm Công',
-      channelDescription: 'Thông báo lịch làm việc, chấm công, tạm ứng và duyệt đơn',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-    );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-
-    final payloadStr = jsonEncode(message.data);
-
-    await _localNotifications!.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      details,
-      payload: payloadStr,
-    );
+    final id = message.data['notificationId'];
+    if (id == null || _displayed.contains(id) || message.data['targetUserId'] != FirebaseAuth.instance.currentUser?.uid) return;
+    _displayed.add(id);
+    if (_displayed.length > 500) _displayed.remove(_displayed.first);
+    await _localNotifications?.show(
+      int.tryParse(id.substring(0, id.length < 7 ? id.length : 7), radix: 16) ?? id.hashCode & 0x7fffffff,
+      message.notification?.title, message.notification?.body,
+      NotificationDetails(android: AndroidNotificationDetails('cham_cong_notifications', 'Thông báo Chấm Công',
+        tag: id, importance: Importance.max, priority: Priority.high),
+        iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: false, presentSound: true)),
+      payload: jsonEncode(message.data));
   }
 }

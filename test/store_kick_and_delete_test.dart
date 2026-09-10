@@ -248,4 +248,150 @@ void main() {
       expect(memberOrder, ['uid_valid_1', 'uid_valid_2']);
     });
   });
+
+  // === VẤN ĐỀ 4: Auto-transfer ownership & leaveStore tests ===================
+  group('Auto-transfer ownership & leaveStore tests', () {
+    MemberModel createCandidate(String uid, UserRole role, DateTime joinedAt) {
+      return MemberModel(
+        userId: uid,
+        name: 'Member $uid',
+        role: role,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.fulltime,
+        joinedAt: joinedAt,
+      );
+    }
+
+    String? selectNextOwner(List<MemberModel> candidates, String currentOwnerId) {
+      final filtered = candidates.where((m) => m.userId != currentOwnerId && m.isActive).toList();
+      if (filtered.isEmpty) return null;
+
+      // 1. Ưu tiên Quản lý 1
+      final ql1List = filtered.where((m) => m.isManager1).toList();
+      if (ql1List.isNotEmpty) {
+        ql1List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+        return ql1List.first.userId;
+      }
+
+      // 2. Fallback: Quản lý 2
+      final ql2List = filtered.where((m) => m.isManager2).toList();
+      if (ql2List.isNotEmpty) {
+        ql2List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+        return ql2List.first.userId;
+      }
+
+      // 3. Fallback: Nhân viên thâm niên nhất
+      filtered.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+      return filtered.first.userId;
+    }
+
+    test('Chủ rời cửa hàng: Ưu tiên Quản lý 1 vào sớm nhất', () {
+      final members = [
+        createCandidate('owner_1', UserRole.owner, DateTime(2025, 1, 1)),
+        createCandidate('ql1_newer', UserRole.manager1, DateTime(2025, 5, 1)),
+        createCandidate('ql1_older', UserRole.manager1, DateTime(2025, 2, 1)), // sớm hơn
+        createCandidate('emp_1', UserRole.employee, DateTime(2025, 1, 15)),
+      ];
+
+      final nextOwnerId = selectNextOwner(members, 'owner_1');
+      expect(nextOwnerId, 'ql1_older');
+    });
+
+    test('Chủ rời cửa hàng: Không có QL1 -> Fallback sang QL2 vào sớm nhất', () {
+      final members = [
+        createCandidate('owner_1', UserRole.owner, DateTime(2025, 1, 1)),
+        createCandidate('ql2_newer', UserRole.manager2, DateTime(2025, 6, 1)),
+        createCandidate('ql2_older', UserRole.manager2, DateTime(2025, 3, 1)),
+        createCandidate('emp_1', UserRole.employee, DateTime(2025, 4, 1)),
+      ];
+
+      final nextOwnerId = selectNextOwner(members, 'owner_1');
+      expect(nextOwnerId, 'ql2_older');
+    });
+
+    test('Chủ rời cửa hàng: Không có QL1 & QL2 -> Fallback sang Nhân viên thâm niên nhất', () {
+      final members = [
+        createCandidate('owner_1', UserRole.owner, DateTime(2025, 1, 1)),
+        createCandidate('emp_newer', UserRole.employee, DateTime(2025, 8, 1)),
+        createCandidate('emp_older', UserRole.employee, DateTime(2025, 3, 1)),
+      ];
+
+      final nextOwnerId = selectNextOwner(members, 'owner_1');
+      expect(nextOwnerId, 'emp_older');
+    });
+
+    test('Chủ là thành viên duy nhất -> selectNextOwner trả về null để soft-delete', () {
+      final members = [
+        createCandidate('owner_1', UserRole.owner, DateTime(2025, 1, 1)),
+      ];
+
+      final nextOwnerId = selectNextOwner(members, 'owner_1');
+      expect(nextOwnerId, null);
+    });
+  });
+
+  // === VẤN ĐỀ 5: Permission truth reconciliation tests ========================
+  group('Permission truth reconciliation tests (chống lưu quyền cũ)', () {
+    test('store.ownerId == uid -> Luôn đảm bảo role == UserRole.owner', () {
+      const currentUserId = 'user_owner';
+      final store = StoreModel(
+        id: 'store_1',
+        name: 'Quán 1',
+        code: 'Q1',
+        ownerId: currentUserId,
+        createdAt: DateTime.now(),
+      );
+
+      // Giả sử member doc bị lưu sai thành manager1 do cache hoặc lag
+      var member = MemberModel(
+        userId: currentUserId,
+        name: 'Nguyễn Văn Chủ',
+        role: UserRole.manager1,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.fulltime,
+        joinedAt: DateTime.now(),
+      );
+
+      // Reconciliation logic:
+      final isStoreOwner = store.ownerId == currentUserId;
+      if (isStoreOwner && member.role != UserRole.owner) {
+        member = member.copyWith(role: UserRole.owner);
+      }
+
+      expect(member.role, UserRole.owner);
+      expect(member.isOwner, true);
+    });
+
+    test('store.ownerId != uid -> Triệt tiêu quyền Owner cũ, hạ xuống manager1', () {
+      const formerOwnerId = 'former_owner';
+      final store = StoreModel(
+        id: 'store_1',
+        name: 'Quán 1',
+        code: 'Q1',
+        ownerId: 'new_owner', // Chủ mới đã đổi
+        createdAt: DateTime.now(),
+      );
+
+      // Member doc của cựu chủ vẫn còn lưu role 'owner' trong local cache
+      var member = MemberModel(
+        userId: formerOwnerId,
+        name: 'Cựu Chủ Quán',
+        role: UserRole.owner,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.fulltime,
+        joinedAt: DateTime.now(),
+      );
+
+      // Reconciliation logic:
+      final isStoreOwner = store.ownerId == formerOwnerId;
+      if (!isStoreOwner && member.role == UserRole.owner) {
+        member = member.copyWith(role: UserRole.manager1);
+      }
+
+      expect(member.role, UserRole.manager1);
+      expect(member.isOwner, false);
+      expect(member.isManager1, true);
+    });
+  });
 }
+

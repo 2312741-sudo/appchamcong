@@ -7,7 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/app_notification_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
-import '../../store/providers/user_repository.dart';
+import '../../../core/services/notification_service.dart';
 import '../providers/notification_provider.dart';
 
 class NotificationsScreen extends ConsumerWidget {
@@ -51,10 +51,12 @@ class NotificationsScreen extends ConsumerWidget {
               if (unreadCount == 0) return const SizedBox();
               return TextButton.icon(
                 onPressed: () async {
+                  try {
                   await ref.read(notificationRepositoryProvider).markAllAsRead(
                         storeId,
                         userId,
                         member?.role,
+                        notifyShiftInOut: ref.read(currentUserProvider).valueOrNull?.notifyShiftInOut ?? true,
                       );
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +66,9 @@ class NotificationsScreen extends ConsumerWidget {
                         duration: Duration(seconds: 2),
                       ),
                     );
+                  }
+                  } catch (_) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể cập nhật trạng thái đã đọc. Vui lòng thử lại.')));
                   }
                 },
                 icon: const Icon(Icons.done_all_rounded, size: 18, color: Color(0xFFC8102E)),
@@ -141,9 +146,15 @@ class NotificationsScreen extends ConsumerWidget {
 
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            itemCount: notifications.length,
+            itemCount: notifications.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
+              if (index == notifications.length) {
+                final pageLimit = ref.watch(notificationPageLimitProvider);
+                if (notifications.length < pageLimit) return const SizedBox.shrink();
+                return TextButton(onPressed: () => ref.read(notificationPageLimitProvider.notifier).state += 50,
+                  child: const Text('Xem thông báo cũ hơn'));
+              }
               final notif = notifications[index];
               final isRead = notif.isReadByUser(userId);
               final notifStoreId = notif.storeId.isNotEmpty ? notif.storeId : storeId;
@@ -152,26 +163,18 @@ class NotificationsScreen extends ConsumerWidget {
                 notification: notif,
                 isRead: isRead,
                 onTap: () async {
-                  if (!isRead) {
-                    await ref
-                        .read(notificationRepositoryProvider)
-                        .markAsRead(notifStoreId, notif.id, userId);
-                  }
-
-                  // Auto-switch store if notification belongs to a different store
-                  if (notifStoreId.isNotEmpty && notifStoreId != storeId && userId.isNotEmpty) {
-                    try {
-                      final userRepo = ref.read(userRepositoryProvider);
-                      await userRepo.updateCurrentStoreId(userId, notifStoreId);
-                    } catch (_) {}
-                  }
-
-                  if (notif.routePath != null && notif.routePath!.isNotEmpty && context.mounted) {
-                    if (notif.routeExtra != null) {
-                      context.push(notif.routePath!, extra: notif.routeExtra);
-                    } else {
-                      context.push(notif.routePath!);
+                  try {
+                    if (!isRead) {
+                      await ref.read(notificationRepositoryProvider).markAsRead(
+                        notifStoreId, notif.id, userId, account: notif.scope == 'account');
                     }
+                    await NotificationService.handleNotificationTap(extra: {
+                      'storeId': notifStoreId, 'notificationId': notif.id,
+                      'scope': notif.scope, 'targetUserId': userId,
+                    });
+                  } catch (_) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Không thể mở thông báo. Vui lòng thử lại.')));
                   }
                 },
               );

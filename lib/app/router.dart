@@ -259,7 +259,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.scheduleRegister,
         name: 'schedule',
-        builder: (context, state) => const ScheduleRegisterScreen(),
+        builder: (context, state) => ScheduleRegisterScreen(
+          initialWeekStart: (state.extra as Map<String, dynamic>?)?['weekStart'] as String?),
       ),
       GoRoute(
         path: AppRoutes.scheduleManager,

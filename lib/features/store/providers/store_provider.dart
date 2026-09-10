@@ -134,22 +134,65 @@ final currentMemberStreamProvider = StreamProvider<MemberModel?>((ref) {
   });
 });
 
+/// Provider cung cấp thông tin thành viên hiện tại của cửa hàng đang chọn.
+/// ÁP DỤNG TRUTH RECONCILIATION:
+/// - Đối chiếu trực tiếp với `store.ownerId` để chống lỗi lưu quyền cũ.
+/// - Nếu `store.ownerId == uid` -> luôn đảm bảo role = owner (kể cả khi subcollection chậm cập nhật).
+/// - Nếu `store.ownerId != uid` mà role trong cache còn là owner -> lập tức hạ xuống manager1,
+///   triệt tiêu hoàn toàn lỗ hổng giữ quyền Chủ cũ.
 final currentMemberProvider = Provider<MemberModel?>((ref) {
-  final directMember = ref.watch(currentMemberStreamProvider).valueOrNull;
-  if (directMember != null) return directMember;
-
   final uid = ref.watch(currentUserIdProvider);
-  if (uid == null) return null;
-  final members = ref.watch(storeMembersProvider).valueOrNull;
-  if (members != null) {
-    try {
-      return members.firstWhere((m) => m.userId == uid);
-    } catch (_) {
-      return null;
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (uid == null || storeId == null || storeId.isEmpty) return null;
+
+  final currentStore = ref.watch(currentStoreProvider).valueOrNull;
+
+  // Lấy member từ stream trực tiếp
+  final directMemberAsync = ref.watch(currentMemberStreamProvider);
+  MemberModel? member = directMemberAsync.valueOrNull;
+
+  // Fallback sang storeMembersProvider nếu stream trực tiếp chưa kịp phát
+  if (member == null) {
+    final members = ref.watch(storeMembersProvider).valueOrNull;
+    if (members != null) {
+      try {
+        member = members.firstWhere((m) => m.userId == uid);
+      } catch (_) {
+        member = null;
+      }
     }
   }
-  return null;
+
+  // ── TRUTH RECONCILIATION ──────────────────────────────────────────────
+  if (currentStore != null) {
+    final isStoreOwner = currentStore.ownerId == uid;
+    if (isStoreOwner) {
+      if (member != null) {
+        if (member.role != UserRole.owner) {
+          member = member.copyWith(role: UserRole.owner);
+        }
+      } else {
+        // Document member chưa tải xong nhưng chắc chắn là chủ cửa hàng
+        final user = ref.watch(currentUserProvider).valueOrNull;
+        member = MemberModel(
+          userId: uid,
+          name: user?.name ?? 'Chủ cửa hàng',
+          role: UserRole.owner,
+          status: MemberStatus.active,
+          employeeType: EmployeeType.fulltime,
+          joinedAt: currentStore.createdAt,
+        );
+      }
+    } else if (!isStoreOwner && member != null && member.role == UserRole.owner) {
+      // User không còn là chủ trong store doc nhưng member doc còn lưu 'owner'
+      // -> Triệt tiêu quyền Owner cũ ngay lập tức
+      member = member.copyWith(role: UserRole.manager1);
+    }
+  }
+
+  return member;
 });
+
 
 // ---------- Advances ----------
 

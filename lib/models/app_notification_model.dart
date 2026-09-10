@@ -121,6 +121,7 @@ extension AppNotificationTypeExtension on AppNotificationType {
 }
 
 class AppNotificationModel {
+  final String? scope;
   final String id;
   final String storeId;
   final String title;
@@ -134,6 +135,7 @@ class AppNotificationModel {
   final Map<String, dynamic>? routeExtra;
 
   const AppNotificationModel({
+    this.scope,
     required this.id,
     required this.storeId,
     required this.title,
@@ -153,6 +155,8 @@ class AppNotificationModel {
   }
 
   bool isRelevantFor(String? userId, UserRole? role) {
+    if (userId == null || userId.isEmpty) return false;
+    // Legacy relevance is retained only for imported models; inbox queries enforce authorization.
     // 1. If targetUserId is set, check if it matches
     if (targetUserId != null) {
       return targetUserId == userId;
@@ -164,8 +168,8 @@ class AppNotificationModel {
       return targetRoles!.contains(effectiveRole);
     }
 
-    // 3. Otherwise it's a broadcast to all members of the store
-    return true;
+    // An unresolved role never receives a legacy broadcast.
+    return role != null;
   }
 
   factory AppNotificationModel.fromFirestore(DocumentSnapshot doc) {
@@ -191,6 +195,7 @@ class AppNotificationModel {
     }
 
     return AppNotificationModel(
+      scope: data['scope'] as String?,
       id: doc.id,
       storeId: data['storeId'] as String? ?? '',
       title: data['title'] as String? ?? '',
@@ -199,7 +204,8 @@ class AppNotificationModel {
       createdAt: parsedCreatedAt,
       targetUserId: data['targetUserId'] as String?,
       targetRoles: parsedRoles,
-      readBy: parsedReadBy,
+      readBy: data['readAt'] != null && data['targetUserId'] is String
+          ? [data['targetUserId'] as String] : parsedReadBy,
       routePath: data['routePath'] as String?,
       routeExtra: data['routeExtra'] as Map<String, dynamic>?,
     );
@@ -207,6 +213,7 @@ class AppNotificationModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'scope': scope,
       'storeId': storeId,
       'title': title,
       'body': body,
@@ -234,6 +241,7 @@ class AppNotificationModel {
     Map<String, dynamic>? routeExtra,
   }) {
     return AppNotificationModel(
+      scope: scope,
       id: id ?? this.id,
       storeId: storeId ?? this.storeId,
       title: title ?? this.title,

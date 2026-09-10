@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -804,6 +806,99 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
       if (mounted) setState(() => _isDeleting = false);
     }
   }
+
+  Future<void> _leaveStore(StoreModel store) async {
+    final repo = ref.read(storeRepositoryProvider);
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    String? successorName;
+    bool isAlone = false;
+
+    final nextOwnerId = await repo.findNextOwnerId(store.id, currentUserId);
+    if (nextOwnerId != null) {
+      final memberDoc = await FirebaseFirestore.instance
+          .collection('stores')
+          .doc(store.id)
+          .collection('members')
+          .doc(nextOwnerId)
+          .get();
+      successorName = memberDoc.data()?['name'] as String? ?? 'Quản lý 1';
+    } else {
+      isAlone = true;
+    }
+
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded,
+                color: AppColors.warning, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'Rời cửa hàng',
+              style: TextStyle(
+                  fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Text(
+          isAlone
+              ? 'Bạn là thành viên duy nhất của "${store.name}".\n\nKhi bạn rời đi, cửa hàng sẽ tự động đóng và không thể hoàn tác. Bạn có chắc chắn muốn rời cửa hàng?'
+              : 'Bạn đang là Chủ cửa hàng "${store.name}".\n\nKhi bạn rời đi, quyền Chủ cửa hàng sẽ được TỰ ĐỘNG CHUYỂN GIAO cho: $successorName.\n\nBạn có chắc chắn muốn rời cửa hàng?',
+          style: const TextStyle(
+              fontFamily: 'BeVietnamPro', fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Hủy',
+                style: TextStyle(
+                    fontFamily: 'BeVietnamPro', color: AppColors.neutral)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warning,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Xác nhận rời',
+                style: TextStyle(
+                    fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isDeleting = true);
+      try {
+        await repo.leaveStore(store.id);
+
+        if (!mounted) return;
+        _showSuccess('Bạn đã rời khỏi cửa hàng "${store.name}"');
+
+        // Invalidate providers
+        ref.invalidate(userStoresProvider);
+        ref.invalidate(currentUserProvider);
+        ref.invalidate(currentStoreProvider);
+        ref.invalidate(currentMemberStreamProvider);
+        ref.invalidate(currentMemberProvider);
+        ref.invalidate(storeMembersProvider);
+        ref.invalidate(activeMembersProvider);
+
+        context.go(AppRoutes.splash);
+      } catch (e) {
+        _showError('Rời cửa hàng thất bại: $e');
+      } finally {
+        if (mounted) setState(() => _isDeleting = false);
+      }
+    }
+  }
+
 
   void _showError(String msg) {
     if (!mounted) return;
@@ -1922,6 +2017,33 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _isDeleting
                                   ? null
+                                  : () => _leaveStore(store),
+                              icon: const Icon(Icons.logout_rounded,
+                                  size: 18, color: AppColors.warning),
+                              label: const Text(
+                                'Rời cửa hàng (Chuyển quyền cho QL1)',
+                                style: TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.warning),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _isDeleting
+                                  ? null
                                   : () => _deleteStore(store),
                               icon: _isDeleting
                                   ? const SizedBox(
@@ -1952,6 +2074,7 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                       ),
                     ),
                   ],
+
                   const SizedBox(height: 24),
                 ],
               ),

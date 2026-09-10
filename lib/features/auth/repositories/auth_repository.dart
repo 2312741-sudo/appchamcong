@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../models/user_model.dart';
+import '../../../models/member_model.dart';
+
 
 class AuthRepository {
   final FirebaseAuth _auth;
@@ -483,6 +485,66 @@ class AuthRepository {
 
       for (final storeId in storeIds) {
         try {
+          final storeDoc =
+              await _firestore.collection('stores').doc(storeId).get();
+          final isOwner = storeDoc.data()?['ownerId'] == user.uid;
+
+          if (isOwner) {
+            // NẾU LÀ CHỦ: Tự động chuyển quyền cho QL1 (hoặc người kế nhiệm phù hợp)
+            final membersSnap = await _firestore
+                .collection('stores')
+                .doc(storeId)
+                .collection('members')
+                .where('status', isEqualTo: 'active')
+                .get();
+
+            final candidates = membersSnap.docs
+                .where((d) => d.id != user.uid)
+                .map((d) => MemberModel.fromFirestore(d))
+                .toList();
+
+            String? nextOwnerId;
+            if (candidates.isNotEmpty) {
+              // 1. Ưu tiên Quản lý 1
+              final ql1List = candidates.where((m) => m.isManager1).toList();
+              if (ql1List.isNotEmpty) {
+                ql1List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+                nextOwnerId = ql1List.first.userId;
+              } else {
+                // 2. Quản lý 2
+                final ql2List = candidates.where((m) => m.isManager2).toList();
+                if (ql2List.isNotEmpty) {
+                  ql2List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+                  nextOwnerId = ql2List.first.userId;
+                } else {
+                  // 3. Nhân viên thâm niên nhất
+                  candidates.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+                  nextOwnerId = candidates.first.userId;
+                }
+              }
+            }
+
+            if (nextOwnerId != null) {
+              // Chuyển quyền Chủ cho nextOwnerId
+              await _firestore.collection('stores').doc(storeId).update({
+                'ownerId': nextOwnerId,
+              });
+              await _firestore
+                  .collection('stores')
+                  .doc(storeId)
+                  .collection('members')
+                  .doc(nextOwnerId)
+                  .update({'role': 'owner'});
+            } else {
+              // Không còn ai khác trong cửa hàng -> soft delete store
+              await _firestore.collection('stores').doc(storeId).update({
+                'status': 'deleted',
+                'deletedAt': FieldValue.serverTimestamp(),
+                'deletedBy': user.uid,
+              });
+            }
+          }
+
           final memberRef = _firestore
               .collection('stores')
               .doc(storeId)

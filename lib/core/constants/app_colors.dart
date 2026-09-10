@@ -18,6 +18,7 @@ class AppColors {
   static const Color checkOut = Color(0xFF888780);
   static const Color pending = accent;
   static const Color danger = primary;
+  static const Color warning = Color(0xFFF59E0B);
 
   // Text Colors
   static const Color textPrimary = Color(0xFF1A1A1A);
