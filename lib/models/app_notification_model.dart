@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'member_model.dart';
+import '../core/auth/app_permissions.dart';
 
 enum AppNotificationType {
   joinRequest,
@@ -156,6 +157,10 @@ class AppNotificationModel {
 
   bool isRelevantFor(String? userId, UserRole? role) {
     if (userId == null || userId.isEmpty) return false;
+    if ((type == AppNotificationType.checkIn || type == AppNotificationType.checkOut) &&
+        !AppPermissions.canViewAllAttendance(role)) return false;
+    if (type == AppNotificationType.advanceRequest && role != UserRole.owner) return false;
+    if (type == AppNotificationType.joinRequest && !AppPermissions.canApproveMembers(role)) return false;
     // Legacy relevance is retained only for imported models; inbox queries enforce authorization.
     // 1. If targetUserId is set, check if it matches
     if (targetUserId != null) {

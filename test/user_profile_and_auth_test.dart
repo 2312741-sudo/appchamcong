@@ -101,6 +101,10 @@ void main() {
         AuthRepository.parseFirebaseAuthError(FirebaseAuthException(code: 'invalid-email')),
         'Địa chỉ email không hợp lệ',
       );
+      expect(
+        AuthRepository.parseFirebaseAuthError(FirebaseAuthException(code: 'missing-email')),
+        'Vui lòng nhập địa chỉ email',
+      );
     });
   });
 }

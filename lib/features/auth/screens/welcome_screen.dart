@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
+import '../../../core/widgets/notification_bell_icon.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 
@@ -14,6 +15,9 @@ class WelcomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+      appBar: FirebaseAuth.instance.currentUser == null ? null : AppBar(
+        backgroundColor: AppColors.surface, automaticallyImplyLeading: false,
+        actions: const [NotificationBellIcon(iconColor: AppColors.primary)]),
       body: Container(
         decoration: const BoxDecoration(
           gradient: AppColors.surfaceGradient,

@@ -491,7 +491,6 @@ class StoreRepository {
     try {
       final storeDoc = await _stores.doc(storeId).get();
       if (!storeDoc.exists) throw Exception('Cửa hàng không tồn tại');
-      final storeName = storeDoc.data()?['name'] as String? ?? 'Cửa hàng';
       final actualOldOwnerId = oldOwnerId ?? storeDoc.data()?['ownerId'] as String?;
 
       final batch = _firestore.batch();
@@ -519,38 +518,6 @@ class StoreRepository {
 
       await batch.commit();
 
-      // 4. Gửi thông báo
-      try {
-        final now = DateTime.now().toUtc();
-        final notifCol =
-            _firestore.collection('stores').doc(storeId).collection('notifications');
-
-        // Thông báo riêng cho chủ mới
-        await notifCol.add({
-          'storeId': storeId,
-          'title': 'Bạn đã trở thành Chủ cửa hàng!',
-          'body': 'Bạn vừa được chuyển giao quyền Chủ cửa hàng "$storeName".',
-          'type': 'ownership_transferred',
-          'createdAt': Timestamp.fromDate(now),
-          'targetUserId': newOwnerId,
-          'readBy': [],
-          'routePath': '/owner-dashboard',
-        });
-
-        // Thông báo cho toàn thể thành viên
-        final newOwnerMemberDoc = await _members(storeId).doc(newOwnerId).get();
-        final newOwnerName =
-            newOwnerMemberDoc.data()?['name'] as String? ?? 'Quản lý';
-        await notifCol.add({
-          'storeId': storeId,
-          'title': 'Cửa hàng có Chủ mới',
-          'body':
-              '$newOwnerName đã trở thành Chủ cửa hàng mới của "$storeName".',
-          'type': 'new_owner_assigned',
-          'createdAt': Timestamp.fromDate(now),
-          'readBy': [],
-        });
-      } catch (_) {}
     } catch (e) {
       throw Exception('Chuyển quyền Chủ cửa hàng thất bại: $e');
     }
@@ -574,7 +541,6 @@ class StoreRepository {
       }
 
       final storeData = storeDoc.data() ?? {};
-      final storeName = storeData['name'] as String? ?? 'Cửa hàng';
       final isOwner = storeData['ownerId'] == caller.uid;
       final now = DateTime.now().toUtc();
 
@@ -634,27 +600,6 @@ class StoreRepository {
         }
       } catch (_) {}
 
-      // Gửi thông báo cho Chủ và Quản lý cửa hàng (nếu caller không phải là chủ duy nhất)
-      if (!isOwner) {
-        try {
-          final callerDoc = await _members(storeId).doc(caller.uid).get();
-          final callerName =
-              callerDoc.data()?['name'] as String? ?? 'Một thành viên';
-          await _firestore
-              .collection('stores')
-              .doc(storeId)
-              .collection('notifications')
-              .add({
-            'storeId': storeId,
-            'title': 'Thành viên đã rời cửa hàng',
-            'body': '$callerName đã rời khỏi cửa hàng "$storeName".',
-            'type': 'member_left',
-            'createdAt': Timestamp.fromDate(now),
-            'targetRoles': ['owner', 'manager_1', 'manager', 'legacyManager'],
-            'readBy': [],
-          });
-        } catch (_) {}
-      }
     } catch (e) {
       throw Exception('Rời cửa hàng thất bại: $e');
     }
@@ -932,17 +877,14 @@ class StoreRepository {
 
   // ---------- Advances ----------
 
-  Stream<List<AdvanceRequestModel>> watchAdvances(
-      String storeId, String month) {
-    return _stores
-        .doc(storeId)
-        .collection('advances')
-        .where('month', isEqualTo: month)
-        .snapshots()
-        .map((snap) {
-      final list = snap.docs
-          .map((doc) => AdvanceRequestModel.fromFirestore(doc))
-          .toList();
+  Stream<List<AdvanceRequestModel>> watchAdvances(String storeId, String month) async* {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) { yield []; return; }
+    final store = await _stores.doc(storeId).get();
+    Query<Map<String, dynamic>> query = _stores.doc(storeId).collection('advances').where('month', isEqualTo: month);
+    if (store.data()?['ownerId'] != uid) query = query.where('userId', isEqualTo: uid);
+    yield* query.snapshots().map((snap) {
+      final list = snap.docs.map(AdvanceRequestModel.fromFirestore).toList();
       list.sort((a, b) => b.requestDate.compareTo(a.requestDate));
       return list;
     });

@@ -334,9 +334,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // ── Send Password Reset ─────────────────────────────────────────────────
 
   Future<bool> sendPasswordResetEmail(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Vui lòng nhập địa chỉ email',
+      );
+      return false;
+    }
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
-      await _repository.sendPasswordResetEmail(email);
+      await _repository.sendPasswordResetEmail(cleanEmail);
       state = state.copyWith(
         isLoading: false,
         successMessage: 'Email đặt lại mật khẩu đã được gửi',

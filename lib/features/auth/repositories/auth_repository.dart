@@ -358,7 +358,14 @@ class AuthRepository {
   // ── Password Reset ────────────────────────────────────────────────────────
 
   Future<void> sendPasswordResetEmail(String email) async {
-    await _auth.sendPasswordResetEmail(email: email.trim());
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'missing-email',
+        message: 'Vui lòng nhập địa chỉ email',
+      );
+    }
+    await _auth.sendPasswordResetEmail(email: cleanEmail);
   }
 
   // ── Change Password ───────────────────────────────────────────────────────
@@ -525,16 +532,12 @@ class AuthRepository {
             }
 
             if (nextOwnerId != null) {
-              // Chuyển quyền Chủ cho nextOwnerId
-              await _firestore.collection('stores').doc(storeId).update({
-                'ownerId': nextOwnerId,
-              });
-              await _firestore
-                  .collection('stores')
-                  .doc(storeId)
-                  .collection('members')
-                  .doc(nextOwnerId)
-                  .update({'role': 'owner'});
+              // Transfer atomically so security rules can verify the new owner role.
+              final transfer = _firestore.batch();
+              transfer.update(_firestore.collection('stores').doc(storeId), {'ownerId': nextOwnerId});
+              transfer.update(_firestore.collection('stores').doc(storeId).collection('members').doc(nextOwnerId), {'role': 'owner'});
+              transfer.update(_firestore.collection('stores').doc(storeId).collection('members').doc(user.uid), {'role': 'manager_1'});
+              await transfer.commit();
             } else {
               // Không còn ai khác trong cửa hàng -> soft delete store
               await _firestore.collection('stores').doc(storeId).update({
@@ -598,6 +601,8 @@ class AuthRepository {
         return 'Email này đã được sử dụng';
       case 'weak-password':
         return 'Mật khẩu phải có ít nhất 6 ký tự';
+      case 'missing-email':
+        return 'Vui lòng nhập địa chỉ email';
       case 'invalid-email':
         return 'Địa chỉ email không hợp lệ';
       case 'network-request-failed':

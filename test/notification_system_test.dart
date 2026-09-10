@@ -205,7 +205,7 @@ void main() {
       // Check-in & Check-out notifications are relevant for Owner and Managers
       expect(checkInNotif.isRelevantFor('u_owner', UserRole.owner), isTrue);
       expect(checkInNotif.isRelevantFor('u_mgr1', UserRole.manager1), isTrue);
-      expect(checkInNotif.isRelevantFor('u_mgr2', UserRole.manager2), isTrue);
+      expect(checkInNotif.isRelevantFor('u_mgr2', UserRole.manager2), isFalse);
       expect(checkInNotif.isRelevantFor('u_emp', UserRole.employee), isFalse);
 
       expect(checkOutNotif.isRelevantFor('u_owner', UserRole.owner), isTrue);

@@ -201,7 +201,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     if (pending != null &&
         (route == AppRoutes.ownerDashboard ||
             route == AppRoutes.managerDashboard ||
-            route == AppRoutes.employeeDashboard)) {
+            route == AppRoutes.employeeDashboard ||
+            route == AppRoutes.welcome || route == AppRoutes.pendingApproval)) {
       NotificationService.pendingRoute = null;
       NotificationService.pendingRouteExtra = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {

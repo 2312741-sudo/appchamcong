@@ -92,63 +92,261 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showForgotPassword() {
-    final emailController = TextEditingController(text: _emailController.text);
+    final emailController = TextEditingController(text: _emailController.text.trim());
+    final dialogFormKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+    bool isSuccess = false;
+    String? errorMessage;
+    String sentEmail = '';
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(AppStrings.forgotPassword),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Nhập email của bạn để nhận link đặt lại mật khẩu',
-              style: TextStyle(color: AppColors.textSecondary),
+      barrierDismissible: !isSubmitting,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          if (isSuccess) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.mark_email_read_rounded,
+                      color: AppColors.success,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Đã gửi email đặt lại mật khẩu',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Link đặt lại mật khẩu đã được gửi tới:\n$sentEmail',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.info_outline, color: Color(0xFFD97706), size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Lưu ý quan trọng:',
+                              style: TextStyle(
+                                fontFamily: 'BeVietnamPro',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: Color(0xFF92400E),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          '• Hãy kiểm tra kỹ mục Thư rác (Spam / Junk) hoặc Quảng cáo nếu không thấy thư ở Hộp thư đến.\n'
+                          '• Nếu bạn đăng ký bằng Google hoặc Apple, hãy đăng nhập trực tiếp bằng nút Google/Apple bên dưới mà không cần mật khẩu.\n'
+                          '• Nhấp vào link trong email để nhập mật khẩu mới, sau đó quay lại ứng dụng để đăng nhập.',
+                          style: TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 12,
+                            color: Color(0xFF78350F),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(dialogCtx),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Đã hiểu, quay lại đăng nhập',
+                      style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: AppStrings.email,
-                prefixIcon: Icon(Icons.email_outlined),
+            title: Row(
+              children: const [
+                Icon(Icons.lock_reset_rounded, color: AppColors.primary, size: 24),
+                SizedBox(width: 8),
+                Text(
+                  AppStrings.forgotPassword,
+                  style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
+            ),
+            content: Form(
+              key: dialogFormKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nhập email của bạn để nhận link đặt lại mật khẩu:',
+                    style: TextStyle(fontFamily: 'BeVietnamPro', color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    enabled: !isSubmitting,
+                    decoration: const InputDecoration(
+                      labelText: AppStrings.email,
+                      hintText: AppStrings.emailHint,
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    validator: (value) {
+                      final val = value?.trim() ?? '';
+                      if (val.isEmpty) {
+                        return 'Vui lòng nhập địa chỉ email';
+                      }
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val)) {
+                        return 'Địa chỉ email không đúng định dạng';
+                      }
+                      return null;
+                    },
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: AppColors.danger, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                fontFamily: 'BeVietnamPro',
+                                color: AppColors.danger,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(AppStrings.cancel),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await ref
-                  .read(authNotifierProvider.notifier)
-                  .sendPasswordResetEmail(emailController.text);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success
-                          ? AppStrings.successPasswordReset
-                          : ref.read(authNotifierProvider).errorMessage ??
-                              AppStrings.errorGeneral,
-                    ),
-                    backgroundColor:
-                        success ? AppColors.success : AppColors.danger,
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(dialogCtx),
+                child: const Text(AppStrings.cancel, style: TextStyle(fontFamily: 'BeVietnamPro')),
+              ),
+              ElevatedButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        if (!dialogFormKey.currentState!.validate()) return;
+                        final targetEmail = emailController.text.trim();
+                        setDialogState(() {
+                          isSubmitting = true;
+                          errorMessage = null;
+                        });
+
+                        final success = await ref
+                            .read(authNotifierProvider.notifier)
+                            .sendPasswordResetEmail(targetEmail);
+
+                        if (!ctx.mounted) return;
+
+                        if (success) {
+                          setDialogState(() {
+                            isSubmitting = false;
+                            isSuccess = true;
+                            sentEmail = targetEmail;
+                          });
+                        } else {
+                          setDialogState(() {
+                            isSubmitting = false;
+                            errorMessage = ref.read(authNotifierProvider).errorMessage ??
+                                'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.';
+                          });
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              minimumSize: Size.zero,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: const Text(AppStrings.sendResetEmail),
-          ),
-        ],
+                ),
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        AppStrings.sendResetEmail,
+                        style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w600),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

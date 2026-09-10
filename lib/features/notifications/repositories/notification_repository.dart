@@ -34,6 +34,7 @@ class NotificationRepository {
     final controller = StreamController<List<AppNotificationModel>>();
     final subscriptions = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
     final pages = <int, List<AppNotificationModel>>{};
+    var failed = false;
     controller.onListen = () {
       for (var index = 0; index < queries.length; index++) {
         final key = index;
@@ -41,6 +42,7 @@ class NotificationRepository {
             ? queries[index].where('readAt', isNull: true)
             : queries[index].orderBy('createdAt', descending: true).limit(limit);
         subscriptions.add(query.snapshots().listen((snapshot) {
+          if (failed) return;
           pages[key] = snapshot.docs.map(AppNotificationModel.fromFirestore).toList();
           if (pages.length != queries.length) return;
           final items = pages.values.expand((page) => page).toList()
@@ -49,7 +51,9 @@ class NotificationRepository {
               return order != 0 ? order : a.id.compareTo(b.id);
             });
           controller.add(items);
-        }, onError: controller.addError));
+        }, onError: (Object error, StackTrace stack) {
+          failed = true; pages.clear(); controller.addError(error, stack);
+        }));
       }
     };
     controller.onCancel = () async {
