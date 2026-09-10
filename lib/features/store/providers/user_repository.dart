@@ -40,7 +40,11 @@ class UserRepository {
 
   Future<void> updateCurrentStoreId(String userId, String? storeId) async {
     try {
-      await _users.doc(userId).update({'currentStoreId': storeId});
+      final updateData = <String, dynamic>{'currentStoreId': storeId};
+      if (storeId != null && storeId.isNotEmpty) {
+        updateData['storeIds'] = FieldValue.arrayUnion([storeId]);
+      }
+      await _users.doc(userId).update(updateData);
     } catch (e) {
       throw Exception('Cập nhật cửa hàng thất bại: $e');
     }

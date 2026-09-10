@@ -69,9 +69,35 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
   Widget build(BuildContext context) {
     final uid = ref.watch(currentUserProvider).value?.id;
 
+    // Proactive role check on build: Never stay on EmployeeDashboard if Owner or Manager
+    final currentMember = ref.watch(currentMemberProvider);
+    if (currentMember != null) {
+      if (currentMember.status == MemberStatus.pending) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.pendingApproval);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      } else if (currentMember.status == MemberStatus.kicked) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.welcome);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      } else if (currentMember.isOwner) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.ownerDashboard);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      } else if (currentMember.isManager) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.managerDashboard);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      }
+    }
+
     // Reactive role check: If user is actually Owner or Manager, auto-navigate to right dashboard
     ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
-      if (FirebaseAuth.instance.currentUser == null) return;
+      if (FirebaseAuth.instance.currentUser == null || !mounted) return;
       if (next == null) return;
       if (next.status == MemberStatus.pending) {
         context.go(AppRoutes.pendingApproval);

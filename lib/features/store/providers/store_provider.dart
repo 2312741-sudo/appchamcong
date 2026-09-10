@@ -19,23 +19,36 @@ final currentStoreIdProvider = Provider<String?>((ref) {
   final user = ref.watch(currentUserProvider).valueOrNull;
   if (user == null) return null;
 
-  // 1. If currentStoreId is set and valid within storeIds, return it
+  final stores = ref.watch(userStoresProvider).valueOrNull;
+  final validStoreIds = stores?.map((s) => s.id).toSet();
+
+  // 1. If currentStoreId is set, verify it is not explicitly revoked/kicked
   if (user.currentStoreId != null && user.currentStoreId!.isNotEmpty) {
-    if (user.storeIds.isEmpty || user.storeIds.contains(user.currentStoreId)) {
-      return user.currentStoreId;
+    final cur = user.currentStoreId!;
+    // If stores list has loaded and has items, check if cur is in either storeIds or stores list
+    if (validStoreIds != null && validStoreIds.isNotEmpty) {
+      if (validStoreIds.contains(cur) || user.storeIds.contains(cur)) {
+        return cur;
+      }
+      // If store was deleted or kicked, cur is invalid -> will fallback below
+    } else {
+      // Stores list not loaded yet: trust currentStoreId unless storeIds is non-empty and excludes it
+      if (user.storeIds.isEmpty || user.storeIds.contains(cur)) {
+        return cur;
+      }
     }
   }
 
-  // 2. If currentStoreId is invalid (e.g. user was kicked), fallback to first available storeId
+  // 2. Fallback to first available store in loaded stores list
+  if (stores != null && stores.isNotEmpty) {
+    return stores.first.id;
+  }
+
+  // 3. Fallback to user.storeIds if available
   if (user.storeIds.isNotEmpty) {
     return user.storeIds.first;
   }
 
-  // 3. Fallback to loaded stores list if available
-  final stores = ref.watch(userStoresProvider).valueOrNull;
-  if (stores != null && stores.isNotEmpty) {
-    return stores.first.id;
-  }
   return null;
 });
 

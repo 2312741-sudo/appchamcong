@@ -43,9 +43,35 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Proactive role check on build: Never stay on OwnerDashboard if not an owner
+    final currentMember = ref.watch(currentMemberProvider);
+    if (currentMember != null) {
+      if (currentMember.status == MemberStatus.pending) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.pendingApproval);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      } else if (currentMember.status == MemberStatus.kicked) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.welcome);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      } else if (currentMember.isManager) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.managerDashboard);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      } else if (currentMember.isEmployee) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(AppRoutes.employeeDashboard);
+        });
+        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+      }
+    }
+
     // Reactive role check: If user role changed to Manager or Employee, auto-navigate
     ref.listen<MemberModel?>(currentMemberProvider, (prev, next) {
-      if (FirebaseAuth.instance.currentUser == null) return;
+      if (FirebaseAuth.instance.currentUser == null || !mounted) return;
       if (next == null) return;
       if (next.status == MemberStatus.pending) {
         context.go(AppRoutes.pendingApproval);

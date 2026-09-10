@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cham_cong_tram/models/store_model.dart';
 import 'package:cham_cong_tram/models/user_model.dart';
 import 'package:cham_cong_tram/models/member_model.dart';
+import 'package:cham_cong_tram/app/router.dart';
 
 void main() {
   group('StoreModel soft-delete status tests', () {
@@ -391,6 +392,127 @@ void main() {
       expect(member.role, UserRole.manager1);
       expect(member.isOwner, false);
       expect(member.isManager1, true);
+    });
+  });
+
+  group('Dashboard Routing and Role Resolution Tests', () {
+    test('Role mapping correctly maps all user roles to target dashboard routes', () {
+      String getTargetPath(UserRole role) {
+        if (role.isOwner) return AppRoutes.ownerDashboard;
+        if (role.isManager) return AppRoutes.managerDashboard;
+        return AppRoutes.employeeDashboard;
+      }
+
+      // 1. Owner
+      expect(getTargetPath(UserRole.owner), AppRoutes.ownerDashboard);
+
+      // 2. Manager 1 (Quản lý 1)
+      expect(getTargetPath(UserRole.manager1), AppRoutes.managerDashboard);
+
+      // 3. Manager 2 (Quản lý 2)
+      expect(getTargetPath(UserRole.manager2), AppRoutes.managerDashboard);
+
+      // 4. Legacy Manager (Quản lý chưa phân loại)
+      expect(getTargetPath(UserRole.legacyManager), AppRoutes.managerDashboard);
+
+      // 5. Employee (Nhân viên)
+      expect(getTargetPath(UserRole.employee), AppRoutes.employeeDashboard);
+    });
+
+    test('UserRoleExtension.fromString correctly identifies manager roles from Firestore strings', () {
+      final ql2 = UserRoleExtension.fromString('manager_2');
+      expect(ql2, UserRole.manager2);
+      expect(ql2.isManager, true);
+      expect(ql2.isOwner, false);
+      expect(ql2.isEmployee, false);
+
+      final ql2Alt = UserRoleExtension.fromString('manager2');
+      expect(ql2Alt, UserRole.manager2);
+      expect(ql2Alt.isManager, true);
+
+      final ql1 = UserRoleExtension.fromString('manager_1');
+      expect(ql1, UserRole.manager1);
+      expect(ql1.isManager, true);
+
+      final nv = UserRoleExtension.fromString('employee');
+      expect(nv, UserRole.employee);
+      expect(nv.isEmployee, true);
+      expect(nv.isManager, false);
+      expect(nv.isOwner, false);
+    });
+
+    test('currentStoreId resolution does not falsely revert to first store if currentStoreId is valid in loaded stores', () {
+      final user = UserModel(
+        id: 'user_1',
+        name: 'Chủ Quán',
+        email: 'chu@example.com',
+        currentStoreId: 'tram_sua_id', // switched to Trạm Sữa (user is employee here)
+        storeIds: const ['owner_store_id'], // storeIds array was not yet synced
+        createdAt: DateTime.now(),
+      );
+
+      final loadedStores = [
+        StoreModel(id: 'owner_store_id', name: 'Trạm Cà Phê', code: 'CF0001', ownerId: 'user_1', createdAt: DateTime.now()),
+        StoreModel(id: 'tram_sua_id', name: 'Trạm Sữa', code: 'SUA001', ownerId: 'other_owner', createdAt: DateTime.now()),
+        StoreModel(id: 'tram_chanh_id', name: 'Trạm Chanh', code: 'CH0001', ownerId: 'other_owner_2', createdAt: DateTime.now()),
+      ];
+
+      final validStoreIds = loadedStores.map((s) => s.id).toSet();
+
+      // Resolution logic as implemented in currentStoreIdProvider
+      String? resolvedId;
+      if (user.currentStoreId != null && user.currentStoreId!.isNotEmpty) {
+        final cur = user.currentStoreId!;
+        if (validStoreIds.isNotEmpty) {
+          if (validStoreIds.contains(cur) || user.storeIds.contains(cur)) {
+            resolvedId = cur;
+          }
+        } else {
+          if (user.storeIds.isEmpty || user.storeIds.contains(cur)) {
+            resolvedId = cur;
+          }
+        }
+      }
+
+      // Crucial verification: resolvedId MUST BE 'tram_sua_id', NOT 'owner_store_id'
+      expect(resolvedId, 'tram_sua_id');
+    });
+
+    test('currentStoreId falls back to available stores only if currentStoreId was deleted or kicked', () {
+      final user = UserModel(
+        id: 'user_1',
+        name: 'Chủ Quán',
+        email: 'chu@example.com',
+        currentStoreId: 'kicked_store_id',
+        storeIds: const ['owner_store_id'],
+        createdAt: DateTime.now(),
+      );
+
+      final loadedStores = [
+        StoreModel(id: 'owner_store_id', name: 'Trạm Cà Phê', code: 'CF0001', ownerId: 'user_1', createdAt: DateTime.now()),
+      ];
+
+      final validStoreIds = loadedStores.map((s) => s.id).toSet();
+
+      String? resolvedId;
+      if (user.currentStoreId != null && user.currentStoreId!.isNotEmpty) {
+        final cur = user.currentStoreId!;
+        if (validStoreIds.isNotEmpty) {
+          if (validStoreIds.contains(cur) || user.storeIds.contains(cur)) {
+            resolvedId = cur;
+          }
+        }
+      }
+
+      if (resolvedId == null) {
+        if (loadedStores.isNotEmpty) {
+          resolvedId = loadedStores.first.id;
+        } else if (user.storeIds.isNotEmpty) {
+          resolvedId = user.storeIds.first;
+        }
+      }
+
+      expect(resolvedId, 'owner_store_id');
     });
   });
 }

@@ -12,6 +12,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/app_update_service.dart';
 import '../../../core/utils/version_utils.dart';
+import '../../../models/member_model.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -133,14 +134,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             _navigateTo(AppRoutes.pendingApproval);
             return;
           }
-          if (status == 'active') {
-            if (role == 'owner') {
+          if (status == 'active' || status == null) {
+            final isOwner = storeData?['ownerId'] == authUser.uid;
+            final parsedRole = isOwner
+                ? UserRole.owner
+                : UserRoleExtension.fromString(role);
+
+            if (parsedRole.isOwner) {
               _navigateTo(AppRoutes.ownerDashboard);
-            } else if (role == 'manager_1' ||
-                role == 'manager1' ||
-                role == 'manager_2' ||
-                role == 'manager2' ||
-                role == 'manager') {
+            } else if (parsedRole.isManager) {
               _navigateTo(AppRoutes.managerDashboard);
             } else {
               _navigateTo(AppRoutes.employeeDashboard);

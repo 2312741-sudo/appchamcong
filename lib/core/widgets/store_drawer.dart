@@ -90,67 +90,65 @@ class StoreDrawer extends ConsumerWidget {
                           ? const Icon(Icons.check_circle, color: AppColors.primary, size: 20)
                           : null,
                       onTap: () async {
-                        if (!isSelected && user != null) {
-                          try {
+                        try {
+                          final navContext = rootNavigatorKey.currentContext ?? context;
+                          Navigator.of(context).pop(); // Close drawer first
+
+                          if (user == null) return;
+
+                          if (!isSelected) {
                             final userRepo = ref.read(userRepositoryProvider);
                             await userRepo.updateCurrentStoreId(user.id, store.id);
-                            
-                            if (!context.mounted) return;
-                            
+
                             // Invalidate session providers to prevent any permission/member caching from old store
                             ref.invalidate(currentStoreProvider);
                             ref.invalidate(currentMemberStreamProvider);
                             ref.invalidate(currentMemberProvider);
                             ref.invalidate(storeMembersProvider);
                             ref.invalidate(activeMembersProvider);
+                          }
 
-                            // Fetch role in new store
+                          // Fetch role in target store
+                          final isOwner = store.ownerId == user.id;
+                          UserRole targetRole = isOwner ? UserRole.owner : UserRole.employee;
+
+                          if (!isOwner) {
                             final memberDoc = await FirebaseFirestore.instance
                                 .collection('stores')
                                 .doc(store.id)
                                 .collection('members')
                                 .doc(user.id)
                                 .get();
-                            
-                            if (context.mounted) {
-                              Navigator.pop(context); // close drawer
-                              
-                              final isOwner = store.ownerId == user.id;
-                              if (memberDoc.exists || isOwner) {
-                                final role = isOwner
-                                    ? UserRole.owner
-                                    : UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
-
-                                final currentPath = GoRouterState.of(context).uri.toString();
-                                String targetPath = AppRoutes.employeeDashboard;
-                                if (role.isOwner) {
-                                  targetPath = AppRoutes.ownerDashboard;
-                                } else if (role.isManager) {
-                                  targetPath = AppRoutes.managerDashboard;
-                                }
-                                
-                                if (currentPath == targetPath) {
-                                  // Force UI refresh if staying on same route
-                                  // Just let Riverpod handle it, but we can show a snackbar
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Đã chuyển sang: ${store.name}'), backgroundColor: AppColors.success),
-                                  );
-                                } else {
-                                  context.go(targetPath);
-                                }
-                              } else {
-                                context.go(AppRoutes.welcome);
-                              }
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Lỗi chuyển cửa hàng: $e'), backgroundColor: AppColors.primary),
-                              );
+                            if (memberDoc.exists && memberDoc.data() != null) {
+                              targetRole = UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
                             }
                           }
-                        } else {
-                          Navigator.pop(context);
+
+                          String targetPath = AppRoutes.employeeDashboard;
+                          if (targetRole.isOwner) {
+                            targetPath = AppRoutes.ownerDashboard;
+                          } else if (targetRole.isManager) {
+                            targetPath = AppRoutes.managerDashboard;
+                          }
+
+                          final currentPath = GoRouterState.of(navContext).uri.toString();
+                          if (currentPath == targetPath) {
+                            if (!isSelected) {
+                              ScaffoldMessenger.of(navContext).showSnackBar(
+                                SnackBar(content: Text('Đã chuyển sang: ${store.name}'), backgroundColor: AppColors.success),
+                              );
+                            }
+                          } else {
+                            navContext.go(targetPath);
+                          }
+                        } catch (e) {
+                          debugPrint('Lỗi chuyển cửa hàng: $e');
+                          final navContext = rootNavigatorKey.currentContext ?? context;
+                          if (navContext.mounted) {
+                            ScaffoldMessenger.of(navContext).showSnackBar(
+                              SnackBar(content: Text('Lỗi chuyển cửa hàng: $e'), backgroundColor: AppColors.primary),
+                            );
+                          }
                         }
                       },
                     );
