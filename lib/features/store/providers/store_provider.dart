@@ -179,27 +179,26 @@ final currentMemberProvider = Provider<MemberModel?>((ref) {
   // ── TRUTH RECONCILIATION ──────────────────────────────────────────────
   if (currentStore != null) {
     final isStoreOwner = currentStore.ownerId == uid;
-    if (isStoreOwner) {
-      if (member != null) {
-        if (member.role != UserRole.owner) {
-          member = member.copyWith(role: UserRole.owner);
+    if (member != null) {
+      if (member.role == UserRole.owner) {
+        // User không còn là chủ trong store doc nhưng member doc còn lưu 'owner'
+        // -> Triệt tiêu quyền Owner cũ ngay lập tức, hạ xuống manager1
+        if (!isStoreOwner) {
+          member = member.copyWith(role: UserRole.manager1);
         }
-      } else {
-        // Document member chưa tải xong nhưng chắc chắn là chủ cửa hàng
-        final user = ref.watch(currentUserProvider).valueOrNull;
-        member = MemberModel(
-          userId: uid,
-          name: user?.name ?? 'Chủ cửa hàng',
-          role: UserRole.owner,
-          status: MemberStatus.active,
-          employeeType: EmployeeType.fulltime,
-          joinedAt: currentStore.createdAt,
-        );
       }
-    } else if (!isStoreOwner && member != null && member.role == UserRole.owner) {
-      // User không còn là chủ trong store doc nhưng member doc còn lưu 'owner'
-      // -> Triệt tiêu quyền Owner cũ ngay lập tức
-      member = member.copyWith(role: UserRole.manager1);
+      // Nếu member.role rõ ràng là manager1, manager2, employee -> TÔN TRỌNG VAI TRÒ ĐÓ
+    } else if (isStoreOwner) {
+      // Document member chưa tải xong nhưng chắc chắn là chủ cửa hàng tạo store
+      final user = ref.watch(currentUserProvider).valueOrNull;
+      member = MemberModel(
+        userId: uid,
+        name: user?.name ?? 'Chủ cửa hàng',
+        role: UserRole.owner,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.fulltime,
+        joinedAt: currentStore.createdAt,
+      );
     }
   }
 

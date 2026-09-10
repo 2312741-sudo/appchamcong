@@ -333,7 +333,7 @@ void main() {
 
   // === VẤN ĐỀ 5: Permission truth reconciliation tests ========================
   group('Permission truth reconciliation tests (chống lưu quyền cũ)', () {
-    test('store.ownerId == uid -> Luôn đảm bảo role == UserRole.owner', () {
+    test('store.ownerId == uid && member == null -> Fallback role == UserRole.owner', () {
       const currentUserId = 'user_owner';
       final store = StoreModel(
         id: 'store_1',
@@ -343,11 +343,44 @@ void main() {
         createdAt: DateTime.now(),
       );
 
-      // Giả sử member doc bị lưu sai thành manager1 do cache hoặc lag
+      MemberModel? member;
+
+      // Reconciliation logic:
+      final isStoreOwner = store.ownerId == currentUserId;
+      if (member != null) {
+        if (member.role == UserRole.owner && !isStoreOwner) {
+          member = member.copyWith(role: UserRole.manager1);
+        }
+      } else if (isStoreOwner) {
+        member = MemberModel(
+          userId: currentUserId,
+          name: 'Chủ cửa hàng',
+          role: UserRole.owner,
+          status: MemberStatus.active,
+          employeeType: EmployeeType.fulltime,
+          joinedAt: store.createdAt,
+        );
+      }
+
+      expect(member?.role, UserRole.owner);
+      expect(member?.isOwner, true);
+    });
+
+    test('store.ownerId == uid && member có role rõ ràng (manager2, employee) -> Tôn trọng vai trò đó', () {
+      const currentUserId = 'user_owner';
+      final store = StoreModel(
+        id: 'store_1',
+        name: 'Quán 1',
+        code: 'Q1',
+        ownerId: currentUserId,
+        createdAt: DateTime.now(),
+      );
+
+      // User có document member rõ ràng là manager2
       var member = MemberModel(
         userId: currentUserId,
-        name: 'Nguyễn Văn Chủ',
-        role: UserRole.manager1,
+        name: 'Nguyễn Quản Lý',
+        role: UserRole.manager2,
         status: MemberStatus.active,
         employeeType: EmployeeType.fulltime,
         joinedAt: DateTime.now(),
@@ -355,12 +388,13 @@ void main() {
 
       // Reconciliation logic:
       final isStoreOwner = store.ownerId == currentUserId;
-      if (isStoreOwner && member.role != UserRole.owner) {
-        member = member.copyWith(role: UserRole.owner);
+      if (member.role == UserRole.owner && !isStoreOwner) {
+        member = member.copyWith(role: UserRole.manager1);
       }
 
-      expect(member.role, UserRole.owner);
-      expect(member.isOwner, true);
+      expect(member.role, UserRole.manager2);
+      expect(member.isOwner, false);
+      expect(member.isManager2, true);
     });
 
     test('store.ownerId != uid -> Triệt tiêu quyền Owner cũ, hạ xuống manager1', () {

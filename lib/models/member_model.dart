@@ -85,18 +85,28 @@ extension UserRoleExtension on UserRole {
   }
 
   static UserRole fromString(String? value) {
-    switch (value) {
+    if (value == null) return UserRole.employee;
+    final val = value.trim().toLowerCase();
+    switch (val) {
       case 'owner':
+      case 'chu':
         return UserRole.owner;
       case 'manager_1':
       case 'manager1':
+      case 'ql1':
+      case 'quan_ly_1':
         return UserRole.manager1;
       case 'manager_2':
       case 'manager2':
+      case 'ql2':
+      case 'quan_ly_2':
         return UserRole.manager2;
       case 'manager':
+      case 'legacymanager':
         return UserRole.legacyManager;
       case 'employee':
+      case 'nv':
+      case 'nhan_vien':
       default:
         return UserRole.employee;
     }

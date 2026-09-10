@@ -109,19 +109,23 @@ class StoreDrawer extends ConsumerWidget {
                           }
 
                           // Fetch role in target store
-                          final isOwner = store.ownerId == user.id;
-                          UserRole targetRole = isOwner ? UserRole.owner : UserRole.employee;
-
-                          if (!isOwner) {
-                            final memberDoc = await FirebaseFirestore.instance
-                                .collection('stores')
-                                .doc(store.id)
-                                .collection('members')
-                                .doc(user.id)
-                                .get();
-                            if (memberDoc.exists && memberDoc.data() != null) {
-                              targetRole = UserRoleExtension.fromString(memberDoc.data()?['role'] as String?);
+                          UserRole targetRole = UserRole.employee;
+                          final memberDoc = await FirebaseFirestore.instance
+                              .collection('stores')
+                              .doc(store.id)
+                              .collection('members')
+                              .doc(user.id)
+                              .get();
+                          if (memberDoc.exists && memberDoc.data() != null) {
+                            final rawRole = memberDoc.data()?['role'] as String?;
+                            final parsedRole = UserRoleExtension.fromString(rawRole);
+                            if (parsedRole == UserRole.owner && store.ownerId != user.id) {
+                              targetRole = UserRole.manager1;
+                            } else {
+                              targetRole = parsedRole;
                             }
+                          } else if (store.ownerId == user.id) {
+                            targetRole = UserRole.owner;
                           }
 
                           String targetPath = AppRoutes.employeeDashboard;

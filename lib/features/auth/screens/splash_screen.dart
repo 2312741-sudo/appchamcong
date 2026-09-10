@@ -136,9 +136,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           }
           if (status == 'active' || status == null) {
             final isOwner = storeData?['ownerId'] == authUser.uid;
-            final parsedRole = isOwner
-                ? UserRole.owner
-                : UserRoleExtension.fromString(role);
+            UserRole parsedRole = UserRoleExtension.fromString(role);
+            if (parsedRole == UserRole.owner && !isOwner) {
+              parsedRole = UserRole.manager1;
+            }
 
             if (parsedRole.isOwner) {
               _navigateTo(AppRoutes.ownerDashboard);
