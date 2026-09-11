@@ -1,8 +1,21 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.0.7 (06/09/2026)
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.0.8 (11/09/2026)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.0.7` (Mobile: `1.0.7+9`, Web: `1.0.7`)
+**Phiên bản hiện tại:** `v1.0.8` (Mobile: `1.0.8+10`, Web: `1.0.8`)
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.0.8 (11/09/2026)
+1. **[TỐI ƯU HỆ THỐNG] Đồng bộ phân quyền Store & Dashboard Routing**:
+   - Khắc phục triệt để xung đột vai trò giữa các cửa hàng khác nhau (Owner vs Manager vs Employee).
+   - Bảo toàn phân quyền rõ ràng của thành viên, ngăn chặn việc ép quyền Chủ cửa hàng sai lệch.
+   - Xử lý mượt mà chuyển đổi cửa hàng (store switching) và bắt lỗi lifecycle context.
+2. **[SỬA LỖI & HIỆU NĂNG] Cải tiến thông báo & Firebase FCM**:
+   - Sửa lỗi không tải được thông báo, phục hồi ghi nhận trực tiếp Firestore và cơ chế fallback đăng ký FCM token.
+   - Đồng bộ rules bảo mật Firestore mới nhất.
+3. **[KIỂM THỬ TỰ ĐỘNG] 136/136 Unit Tests vượt qua 100%**:
+   - Kiểm thử toàn diện các luồng phân quyền, routing dashboard, chia sẻ dữ liệu và logic chấm công.
 
 ---
 
