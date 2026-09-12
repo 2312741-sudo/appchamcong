@@ -48,15 +48,27 @@ class AuthRepository {
 
   Future<UserCredential> signInWithGoogle() async {
     try {
-      final googleProvider = GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
-
       UserCredential userCredential;
       if (kIsWeb) {
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
         userCredential = await _auth.signInWithPopup(googleProvider);
       } else {
-        userCredential = await _auth.signInWithProvider(googleProvider);
+        final googleSignIn = GoogleSignIn();
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          throw FirebaseAuthException(
+            code: 'cancelled',
+            message: 'Người dùng đã hủy đăng nhập Google',
+          );
+        }
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        userCredential = await _auth.signInWithCredential(credential);
       }
       await _ensureFirestoreUserExists(userCredential.user);
       return userCredential;
@@ -72,6 +84,16 @@ class AuthRepository {
       }
       rethrow;
     } catch (e) {
+      final errorStr = e.toString();
+      if (errorStr.contains('sign_in_canceled') ||
+          errorStr.contains('canceled') ||
+          errorStr.contains('cancelled') ||
+          errorStr.contains('user-cancelled')) {
+        throw FirebaseAuthException(
+          code: 'cancelled',
+          message: 'Người dùng đã hủy đăng nhập Google',
+        );
+      }
       throw FirebaseAuthException(
         code: 'google-sign-in-failed',
         message: 'Lỗi đăng nhập Google: $e',
@@ -613,6 +635,8 @@ class AuthRepository {
         return 'Tài khoản đã bị vô hiệu hóa';
       case 'requires-recent-login':
         return 'Vui lòng đăng nhập lại để thực hiện thao tác này';
+      case 'google-sign-in-failed':
+        return 'Đăng nhập bằng Google không thành công. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau.';
       default:
         return 'Có lỗi xảy ra: ${e.message}';
     }
