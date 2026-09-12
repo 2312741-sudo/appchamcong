@@ -8,8 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../models/user_model.dart';
-import '../../../models/member_model.dart';
-
+import '../../store/services/store_inheritance_service.dart';
 
 class AuthRepository {
   final FirebaseAuth _auth;
@@ -512,86 +511,15 @@ class AuthRepository {
         }
       } catch (_) {}
 
+      final inheritanceService =
+          StoreInheritanceService(firestore: _firestore);
       for (final storeId in storeIds) {
         try {
-          final storeDoc =
-              await _firestore.collection('stores').doc(storeId).get();
-          final isOwner = storeDoc.data()?['ownerId'] == user.uid;
-
-          if (isOwner) {
-            // NẾU LÀ CHỦ: Tự động chuyển quyền cho QL1 (hoặc người kế nhiệm phù hợp)
-            final membersSnap = await _firestore
-                .collection('stores')
-                .doc(storeId)
-                .collection('members')
-                .where('status', isEqualTo: 'active')
-                .get();
-
-            final candidates = membersSnap.docs
-                .where((d) => d.id != user.uid)
-                .map((d) => MemberModel.fromFirestore(d))
-                .toList();
-
-            String? nextOwnerId;
-            if (candidates.isNotEmpty) {
-              // 1. Ưu tiên Quản lý 1
-              final ql1List = candidates.where((m) => m.isManager1).toList();
-              if (ql1List.isNotEmpty) {
-                ql1List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-                nextOwnerId = ql1List.first.userId;
-              } else {
-                // 2. Quản lý 2
-                final ql2List = candidates.where((m) => m.isManager2).toList();
-                if (ql2List.isNotEmpty) {
-                  ql2List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-                  nextOwnerId = ql2List.first.userId;
-                } else {
-                  // 3. Nhân viên thâm niên nhất
-                  candidates.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-                  nextOwnerId = candidates.first.userId;
-                }
-              }
-            }
-
-            if (nextOwnerId != null) {
-              // Transfer atomically so security rules can verify the new owner role.
-              final transfer = _firestore.batch();
-              transfer.update(_firestore.collection('stores').doc(storeId), {'ownerId': nextOwnerId});
-              transfer.update(_firestore.collection('stores').doc(storeId).collection('members').doc(nextOwnerId), {'role': 'owner'});
-              transfer.update(_firestore.collection('stores').doc(storeId).collection('members').doc(user.uid), {'role': 'manager_1'});
-              await transfer.commit();
-            } else {
-              // Không còn ai khác trong cửa hàng -> soft delete store
-              await _firestore.collection('stores').doc(storeId).update({
-                'status': 'deleted',
-                'deletedAt': FieldValue.serverTimestamp(),
-                'deletedBy': user.uid,
-              });
-            }
-          }
-
-          final memberRef = _firestore
-              .collection('stores')
-              .doc(storeId)
-              .collection('members')
-              .doc(user.uid);
-          final memberDoc = await memberRef.get();
-          if (memberDoc.exists) {
-            final currentStatus = memberDoc.data()?['status'] as String?;
-            if (currentStatus != 'kicked') {
-              await memberRef.update({
-                'status': 'kicked',
-                'kickedAt': FieldValue.serverTimestamp(),
-                'kickedReason': 'account_deleted',
-              });
-            }
-          }
-
-          // Dọn dẹp userId khỏi memberOrder và hiddenScheduleUserIds của store
-          await _firestore.collection('stores').doc(storeId).update({
-            'memberOrder': FieldValue.arrayRemove([user.uid]),
-            'hiddenScheduleUserIds': FieldValue.arrayRemove([user.uid]),
-          });
+          await inheritanceService.executeInheritance(
+            storeId: storeId,
+            leavingUserId: user.uid,
+            reason: 'account_deleted',
+          );
         } catch (_) {
           // Bỏ qua lỗi từng store, không chặn quá trình xóa TK
         }

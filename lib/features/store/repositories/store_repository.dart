@@ -5,6 +5,7 @@ import '../../../core/auth/app_permissions.dart';
 import '../../../models/store_model.dart';
 import '../../../models/advance_request_model.dart';
 import '../../../models/member_model.dart';
+import '../services/store_inheritance_service.dart';
 
 class StoreRepository {
   final FirebaseFirestore _firestore;
@@ -438,40 +439,13 @@ class StoreRepository {
 
 
   /// Tìm người kế nhiệm chức vụ Chủ cửa hàng:
-  /// Ưu tiên 1: Quản lý 1 (manager1 / manager_1 / legacyManager) có joinedAt sớm nhất
-  /// Ưu tiên 2 (Fallback): Quản lý 2 (manager2 / manager_2) có joinedAt sớm nhất
-  /// Ưu tiên 3 (Fallback): Nhân viên (employee) có joinedAt sớm nhất
-  /// Trả về null nếu cửa hàng không còn thành viên active nào khác.
+  /// Sử dụng StoreInheritanceService để đảm bảo thứ tự ưu tiên chuẩn xác:
+  /// QL1 -> QL2 -> NV thâm niên nhất (joinedAt sớm nhất -> userId).
   Future<String?> findNextOwnerId(String storeId, String currentOwnerId) async {
     try {
-      final membersSnap = await _members(storeId)
-          .where('status', isEqualTo: 'active')
-          .get();
-
-      final candidates = membersSnap.docs
-          .map((d) => MemberModel.fromFirestore(d))
-          .where((m) => m.userId != currentOwnerId)
-          .toList();
-
-      if (candidates.isEmpty) return null;
-
-      // 1. Ưu tiên Quản lý 1
-      final ql1List = candidates.where((m) => m.isManager1).toList();
-      if (ql1List.isNotEmpty) {
-        ql1List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-        return ql1List.first.userId;
-      }
-
-      // 2. Fallback: Quản lý 2
-      final ql2List = candidates.where((m) => m.isManager2).toList();
-      if (ql2List.isNotEmpty) {
-        ql2List.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-        return ql2List.first.userId;
-      }
-
-      // 3. Fallback: Nhân viên thâm niên nhất
-      candidates.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
-      return candidates.first.userId;
+      final candidate = await StoreInheritanceService(firestore: _firestore)
+          .findNextOwnerCandidate(storeId, currentOwnerId);
+      return candidate?.userId;
     } catch (_) {
       return null;
     }
@@ -481,7 +455,7 @@ class StoreRepository {
   /// - Cập nhật /stores/{storeId}: ownerId = newOwnerId
   /// - Cập nhật /stores/{storeId}/members/{newOwnerId}: role = 'owner'
   /// - Cập nhật cựu chủ (nếu có): role = oldOwnerNewRole (mặc định manager1)
-  /// - Gửi thông báo đến người nhận quyền và toàn thể cửa hàng
+  /// - Ghi vết kiểm toán (Audit Trail)
   Future<void> transferStoreOwnership(
     String storeId,
     String newOwnerId, {
@@ -498,11 +472,14 @@ class StoreRepository {
       // 1. Cập nhật ownerId trên store document
       batch.update(_stores.doc(storeId), {
         'ownerId': newOwnerId,
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       // 2. Thăng cấp newOwner thành 'owner'
       batch.update(_members(storeId).doc(newOwnerId), {
         'role': 'owner',
+        'promotedAt': FieldValue.serverTimestamp(),
+        'promotedReason': 'manual_transfer',
       });
 
       // 3. Nếu cựu chủ vẫn còn trong cửa hàng, chuyển vai trò thành oldOwnerNewRole hoặc manager1
@@ -516,6 +493,20 @@ class StoreRepository {
         }
       }
 
+      // 4. Ghi vết kiểm toán (Audit Trail)
+      final auditRef = _firestore
+          .collection('stores')
+          .doc(storeId)
+          .collection('audit_logs')
+          .doc();
+      batch.set(auditRef, {
+        'action': 'manual_transfer',
+        'storeId': storeId,
+        'previousOwnerId': actualOldOwnerId,
+        'newOwnerId': newOwnerId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
       await batch.commit();
 
     } catch (e) {
@@ -524,10 +515,10 @@ class StoreRepository {
   }
 
   /// Rời cửa hàng cho mọi thành viên (Nhân viên, Quản lý, Chủ):
-  /// - Nếu là Chủ: Tự động chuyển quyền cho QL1 (hoặc người kế nhiệm phù hợp nhất).
-  ///   Nếu cửa hàng không còn ai khác -> soft-delete cửa hàng.
-  /// - Nếu là Nhân viên / Quản lý: Đánh dấu status = 'kicked' (kickedReason: 'member_left').
-  /// - Dọn dẹp storeIds của user và cập nhật currentStoreId sang cửa hàng khác nếu có.
+  /// - Tự động ủy quyền kế thừa cho StoreInheritanceService xử lý nguyên tử.
+  /// - Nếu là Chủ: Tự động chuyển giao quyền cho người kế vị hoặc chuyển trạng thái orphaned.
+  /// - Nếu là Nhân viên / Quản lý: Đánh dấu status = 'kicked' (member_left).
+  /// - Dọn dẹp storeIds và currentStoreId an toàn.
   Future<void> leaveStore(String storeId) async {
     try {
       final caller = _auth.currentUser;
@@ -535,71 +526,11 @@ class StoreRepository {
         throw Exception('401 Unauthorized: Chưa đăng nhập');
       }
 
-      final storeDoc = await _stores.doc(storeId).get();
-      if (!storeDoc.exists) {
-        throw Exception('Cửa hàng không tồn tại');
-      }
-
-      final storeData = storeDoc.data() ?? {};
-      final isOwner = storeData['ownerId'] == caller.uid;
-      final now = DateTime.now().toUtc();
-
-      if (isOwner) {
-        // CHỦ RỜI CỬA HÀNG: Tự động chuyển giao quyền trước
-        final nextOwnerId = await findNextOwnerId(storeId, caller.uid);
-        if (nextOwnerId != null) {
-          // Có người kế vị -> Chuyển quyền cho người đó
-          await transferStoreOwnership(storeId, nextOwnerId, oldOwnerId: caller.uid);
-        } else {
-          // Không còn ai khác trong cửa hàng -> Soft-delete cửa hàng
-          await _stores.doc(storeId).update({
-            'status': 'deleted',
-            'deletedAt': Timestamp.fromDate(now),
-            'deletedBy': caller.uid,
-          });
-        }
-      }
-
-      // Đánh dấu caller là kicked (rời cửa hàng)
-      final batch = _firestore.batch();
-      batch.update(_members(storeId).doc(caller.uid), {
-        'status': 'kicked',
-        'kickedAt': Timestamp.fromDate(now),
-        'kickedReason': isOwner ? 'owner_left' : 'member_left',
-      });
-
-      // Dọn dẹp memberOrder và hiddenScheduleUserIds
-      batch.update(_stores.doc(storeId), {
-        'memberOrder': FieldValue.arrayRemove([caller.uid]),
-        'hiddenScheduleUserIds': FieldValue.arrayRemove([caller.uid]),
-      });
-
-      // Gỡ storeId khỏi users/{caller.uid}.storeIds
-      final userRef = _firestore.collection('users').doc(caller.uid);
-      batch.update(userRef, {
-        'storeIds': FieldValue.arrayRemove([storeId]),
-      });
-
-      await batch.commit();
-
-      // Cập nhật currentStoreId nếu đang trỏ tới store vừa rời
-      try {
-        final userDoc = await userRef.get();
-        if (userDoc.exists) {
-          final userData = userDoc.data() ?? {};
-          final currentStoreId = userData['currentStoreId'] as String?;
-          final remainingStoreIds =
-              List<String>.from(userData['storeIds'] ?? []);
-
-          if (currentStoreId == storeId ||
-              !remainingStoreIds.contains(currentStoreId)) {
-            final newCurrentStoreId =
-                remainingStoreIds.isNotEmpty ? remainingStoreIds.first : null;
-            await userRef.update({'currentStoreId': newCurrentStoreId});
-          }
-        }
-      } catch (_) {}
-
+      await StoreInheritanceService(firestore: _firestore).executeInheritance(
+        storeId: storeId,
+        leavingUserId: caller.uid,
+        reason: 'owner_left',
+      );
     } catch (e) {
       throw Exception('Rời cửa hàng thất bại: $e');
     }
