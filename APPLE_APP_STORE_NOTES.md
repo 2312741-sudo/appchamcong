@@ -13,7 +13,7 @@
 | **Bundle ID** | `com.chamcong.chamCongTram` | |
 | **SKU** | `chamcong_tram_ios` | |
 | **Version** (Phiên bản) | `1.0.8` | |
-| **Build Number** | `10` | |
+| **Build Number** | `13` (hoặc build mới nhất khi archive) | |
 | **Age Rating** (Xếp hạng độ tuổi) | **4+** (Không có nội dung nhạy cảm / không giới hạn) | |
 | **Copyright** (Bản quyền) | `© 2026 Trạm Chanh. All rights reserved.` | |
 
@@ -84,24 +84,24 @@ cham cong,tinh luong,quan ly ca,lich lam viec,nhan su,f&b,diem danh,bang cong,tr
 
 ### 🇻🇳 Tiếng Việt:
 ```text
-Phiên bản 1.0.8 mang đến nâng cấp lớn về bảo mật tài khoản, quản trị cửa hàng và trải nghiệm người dùng:
+Phiên bản 1.0.8 mang đến nâng cấp lớn về độ ổn định, quản trị cửa hàng và trải nghiệm người dùng:
 
-1. [MỚI] Tự động chuyển giao quyền sở hữu cửa hàng: Khi Chủ cửa hàng rời quán hoặc xóa tài khoản, quyền Chủ được tự động chuyển giao một cách nguyên tử cho Quản lý 1 thâm niên nhất (hoặc Quản lý 2 / nhân viên kế tiếp), đảm bảo cửa hàng hoạt động liên tục không gián đoạn.
-2. [MỚI] Chức năng Rời cửa hàng: Bổ sung tính năng rời cửa hàng linh hoạt cho tất cả các thành viên (Nhân viên, Quản lý, Chủ cửa hàng) ngay trong Cài đặt cá nhân.
-3. [NÂNG CẤP] Cơ chế phân quyền thời gian thực: Triệt tiêu hoàn toàn lỗi lưu/rò rỉ quyền cũ khi chuyển đổi giữa các cửa hàng, luôn đồng bộ theo chuẩn cao nhất từ hệ thống.
-4. [TỐI ƯU] Đặt lại mật khẩu hoàn thiện: Nâng cấp luồng Quên mật khẩu với xác thực thông minh, xử lý lỗi chi tiết và hướng dẫn kiểm tra thư rác (Spam) trên cả ứng dụng di động và web quản lý.
-5. [TỐI ƯU] Hệ thống thông báo bảo mật: Nâng cấp kiến trúc hộp thư thông báo riêng tư cho từng người dùng, tự động gửi lại thông báo khi mất mạng và điều hướng thông minh.
+1. [NÂNG CẤP] Chuyển đổi cửa hàng siêu mượt: Sửa triệt để lỗi khi chuyển đổi giữa các cửa hàng trong chuỗi, tối ưu hóa bộ nhớ và điều hướng tức thì.
+2. [MỚI] Tự động kế thừa quyền sở hữu cửa hàng: Khi Chủ cửa hàng rời quán hoặc xóa tài khoản, quyền Chủ được tự động chuyển giao nguyên tử cho Quản lý 1 thâm niên nhất (hoặc người kế thừa tiếp theo), bảo đảm cửa hàng vận hành liên tục.
+3. [MỚI] Rời cửa hàng linh hoạt: Tính năng "Rời cửa hàng" trực tiếp trong Cài đặt cá nhân cho tất cả thành viên (Nhân viên, Quản lý, Chủ quán).
+4. [TỐI ƯU] Đồng bộ phân quyền thời gian thực: Áp dụng cơ chế Permission Truth Reconciliation, bảo đảm quyền hạn chính xác tuyệt đối theo dữ liệu thời gian thực.
+5. [CẢI TIẾN] Nâng cao tính ổn định thông báo đẩy và đồng bộ dữ liệu đa chi nhánh.
 ```
 
 ### 🇬🇧 English:
 ```text
-Version 1.0.8 brings major upgrades to account security, store governance, and user experience:
+Version 1.0.8 brings major enhancements to store switching stability, governance, and user experience:
 
-1. [NEW] Automatic Store Ownership Transfer: When a Store Owner leaves the store or deletes their account, ownership is atomically transferred to the most senior Manager 1 (or successor), ensuring seamless business continuity.
-2. [NEW] Leave Store Feature: Added a dedicated "Leave Store" option for all members (Employees, Managers, Owners) directly in Profile Settings.
-3. [ENHANCEMENT] Real-Time Role & Permission Truth Reconciliation: Eliminates stale role caching when switching stores, ensuring strict role enforcement based on the single source of truth.
-4. [IMPROVEMENT] Overhauled Forgot Password Flow: Streamlined password recovery with smart email validation, comprehensive Vietnamese error handling, and spam folder guidance across mobile and web.
-5. [IMPROVEMENT] Secure Notification Inbox Architecture: Complete overhaul of notifications into private user inboxes with automatic offline retries and verified destination routing.
+1. [ENHANCEMENT] Seamless Store Switching: Resolved store transition issues, optimizing widget lifecycle and ensuring smooth, immediate multi-store navigation.
+2. [NEW] Automatic Store Ownership Inheritance: When a store owner departs or deletes their account, ownership is atomically transferred to the most senior Manager 1 (or next successor), ensuring business continuity.
+3. [NEW] Leave Store Feature: Added a dedicated "Leave Store" option in Profile Settings for all members (Employees, Managers, Owners).
+4. [IMPROVEMENT] Real-Time Permission Reconciliation: Strict enforcement of roles and access privileges against the single source of truth.
+5. [IMPROVEMENT] Enhanced push notification stability and cross-store data synchronization.
 ```
 
 ---
@@ -113,24 +113,28 @@ Version 1.0.8 brings major upgrades to account security, store governance, and u
 ```text
 Dear Apple App Review Team,
 
-We would like to express our sincere gratitude for your continued diligence, guidance, and assistance in reviewing our application.
+We would like to express our sincere appreciation for your time and continued guidance in reviewing our application.
 
-Our application is a dedicated shift scheduling, attendance, and operational management tool for retail and F&B staff in Vietnam. In Version 1.0.8 (Build 10), we have introduced important governance, security, and account management enhancements:
+Chấm Công Trạm is an internal workforce attendance, shift scheduling, and payroll calculation application tailored for retail and F&B store chains in Vietnam. In Version 1.0.8 (Build 13), we have introduced critical stability, governance, and account management enhancements:
 
-1. Automatic Store Ownership Handover: When a store owner decides to leave a store or delete their account, store ownership is seamlessly and atomically handed over to the primary manager (Manager 1) or next eligible successor, preventing orphaned stores and maintaining business operations.
-2. Member Leave Store Option: Any member (employee, manager, or owner) can cleanly depart a store from Profile Settings, automatically updating affiliations and cleaning store order registries.
-3. Strict Permission Synchronization: Reconciles all role permissions against the authoritative store record, preventing any stale or cached permissions across multiple stores.
-4. Enhanced Password Recovery: Upgraded the password reset flow with client-side format checks, clear status feedback, and delivery guidance across mobile and web.
-5. Secure Notification Inbox Architecture: Modernized notifications into isolated, privacy-compliant user inboxes with offline retry capabilities.
+1. Multi-Store Switching Stability: Fixed navigation and state lifecycle issues during rapid store transitions in the store drawer, ensuring smooth multi-branch management.
+2. Automatic Store Ownership Handover: When a store owner departs or closes their account, ownership seamlessly transitions to the primary manager or eligible successor, preventing orphaned stores.
+3. Clean Leave Store Option: Any member can cleanly leave a store directly from Profile Settings, immediately updating memberships and schedule rosters.
+4. Strict Permission Truth Reconciliation: Role access is continuously reconciled against authoritative store metadata, preventing outdated permission caching.
+5. Notification & Connectivity Reliability: Improved offline queueing and verified push delivery.
 
 Demo Account Credentials for App Review Testing:
 - Email: nguyenthanhlinh677@gmail.com
 - Password: Linh1234
-- Role: Store Owner (Full access to all dashboard features, staff lists, schedule planning, and settings)
+- Role: Store Owner (Full administrative access to attendance tracking, staff schedules, reports, and settings)
 
-All features can be tested directly from the home dashboard, attendance tab, active staff screen, and store settings screen.
+Test Steps for Reviewer:
+1. Log in using the demo account above.
+2. On the home dashboard, tap "Chấm công" (Attendance) to view QR and GPS/WiFi verification modes.
+3. Tap the side drawer icon to switch between demo stores seamlessly.
+4. Navigate to "Lịch làm" (Schedule) or "Nhân viên" (Staff) to view shift planning and member management.
 
-Once again, thank you very much for your time, patience, and support. Please feel free to contact us if any additional information is required.
+Thank you very much for your time, support, and dedication. Please do not hesitate to contact us if any additional information or clarification is needed.
 
 Warm regards!
 ```
