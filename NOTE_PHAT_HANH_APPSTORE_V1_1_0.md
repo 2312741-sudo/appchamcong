@@ -19,9 +19,11 @@
 *Copy nguyên văn đoạn sau vào ô "What's New" trên App Store Connect:*
 
 ```text
-Phiên bản 1.1.0 mang đến diện mạo mới cùng nhiều cải tiến về trải nghiệm và độ ổn định:
+Phiên bản 1.1.0 mang đến diện mạo mới cùng nhiều cải tiến về trải nghiệm, phân quyền và độ ổn định:
 - Cập nhật biểu tượng và nhận diện thương hiệu Trạm mới hiện đại, đồng bộ.
-- Khắc phục lỗi khi hủy yêu cầu tham gia cửa hàng (ở màn hình chờ duyệt).
+- Nâng cấp hệ thống Thông báo: khắc phục độ trễ tải dữ liệu và hỗ trợ đầy đủ các vai trò (Quản lý 2, Nhân viên).
+- Cho phép đánh dấu đã đọc một chạm cho toàn bộ thông báo.
+- Khắc phục lỗi khi hủy yêu cầu tham gia cửa hàng ở màn hình chờ duyệt.
 - Hỗ trợ nhân sự nộp lại đơn tham gia thuận tiện sau khi được quản lý mời lại.
 - Bổ sung quyền theo dõi bảng công cho Quản lý 2 để kiểm soát chính xác phụ cấp ca trực.
 - Nâng cao tính bảo mật dữ liệu và tối ưu tốc độ đồng bộ thời gian thực.
@@ -43,11 +45,12 @@ cham cong, cham cong tram, cham cong f&b, quan ly ca lam, bang cong, tinh luong,
 | STT | Khu vực | Mô tả thay đổi | Giá trị mang lại |
 | :---: | :--- | :--- | :--- |
 | 1 | **Brand Identity** | Thay bộ App Icon mới độ phân giải cao cho iOS & Android | Đồng bộ nhận diện thương hiệu chuỗi F&B Trạm |
-| 2 | **Store Membership** | Sửa quyền hủy yêu cầu tham gia cửa hàng | Thành viên có thể tự rút đơn chờ duyệt mà không bị lỗi 403 Forbidden |
-| 3 | **Store Membership** | Cho phép thành viên từng bị kick nộp lại đơn | Khắc phục lỗi chặn đăng ký lại khi nhân sự quay trở lại làm việc |
-| 4 | **RBAC / Phân quyền** | Cấp quyền đọc bảng công `attendances` cho Quản lý 2 | Quản lý 2 theo dõi được ca trực để giám sát phụ cấp giao hàng |
-| 5 | **Bảo mật & Rules** | Nâng cấp toàn diện bộ Firestore Security Rules (260 dòng) | Bảo vệ tuyệt đối bảng lương cơ bản, chống sửa dữ liệu trái phép |
-| 6 | **Audit Dữ liệu** | Dọn dẹp rác Firestore, bổ sung Collection Group Index `members.userId` | Tối ưu hiệu năng đồng bộ dữ liệu đa chi nhánh |
+| 2 | **Hệ thống Thông báo** | Sửa triệt để race condition và phân quyền đọc/ghi thông báo cho QL2 và Nhân viên | Thông báo hiển thị tức thì, badge chuẩn xác, hỗ trợ "Đã đọc tất cả" mượt mà |
+| 3 | **Store Membership** | Bổ sung hàm `cancelJoinRequest` và sửa quyền hủy yêu cầu tham gia | Thành viên có thể tự rút đơn chờ duyệt mà không bị lỗi 403 Forbidden |
+| 4 | **Store Membership** | Cho phép thành viên từng bị kick nộp lại đơn | Khắc phục lỗi chặn đăng ký lại khi nhân sự quay trở lại làm việc |
+| 5 | **RBAC / Phân quyền** | Cấp quyền đọc bảng công `attendances` cho Quản lý 2 | Quản lý 2 theo dõi được ca trực để giám sát phụ cấp giao hàng |
+| 6 | **Bảo mật & Rules** | Nâng cấp toàn diện bộ Firestore Security Rules (270 dòng) | Bảo vệ tuyệt đối bảng lương cơ bản, phân quyền đa tầng an toàn |
+| 7 | **Audit Dữ liệu** | Dọn dẹp rác Firestore, bổ sung Collection Group Index `members.userId` | Tối ưu hiệu năng đồng bộ dữ liệu đa chi nhánh |
 
 ---
 
