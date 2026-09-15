@@ -1,28 +1,28 @@
-# 📱 TÀI LIỆU HƯỚNG DẪN PHÁT HÀNH APP STORE — CHẤM CÔNG TRẠM v1.1.0
+# 📱 TÀI LIỆU HƯỚNG DẪN PHÁT HÀNH APP STORE — CHẤM CÔNG TRẠM v1.1.1
 
 > **Ứng dụng**: Chấm Công Trạm (Smart Attendance for F&B / Retail)  
-> **Phiên bản (Version)**: `1.1.0`  
-> **Số bản dựng (Build Number)**: `15`  
+> **Phiên bản (Version)**: `1.1.1`  
+> **Số bản dựng (Build Number)**: `16`  
 > **Bundle Identifier**: `com.chamcong.chamCongTram`  
 > **Apple Team ID**: `W97CS7VC54`  
-> **Ngày chuẩn bị**: 14/09/2026  
+> **Ngày chuẩn bị**: 16/09/2026  
 
 ---
 
 ## 1. THÔNG TIN ĐIỀN TRÊN APP STORE CONNECT
 
 ### 1.1. Phiên bản & Bản dựng
-- **Version Number**: `1.1.0`
-- **Build**: `15`
+- **Version Number**: `1.1.1`
+- **Build**: `16`
 
 ### 1.2. Có gì mới trong phiên bản này? (What's New in This Version)
 *Copy nguyên văn đoạn sau vào ô "What's New" trên App Store Connect:*
 
 ```text
-Phiên bản 1.1.0 mang đến diện mạo mới cùng nhiều cải tiến về trải nghiệm, phân quyền và độ ổn định:
+Phiên bản 1.1.1 mang đến diện mạo mới cùng nhiều cải tiến về trải nghiệm, phân quyền và độ ổn định:
 - Cập nhật biểu tượng và nhận diện thương hiệu Trạm mới hiện đại, đồng bộ.
-- Nâng cấp hệ thống Thông báo: khắc phục độ trễ tải dữ liệu và hỗ trợ đầy đủ các vai trò (Quản lý 2, Nhân viên).
-- Cho phép đánh dấu đã đọc một chạm cho toàn bộ thông báo.
+- Nâng cấp hệ thống Thông báo: hiển thị tức thì, hỗ trợ đầy đủ các vai trò (Chủ, Quản lý 1, Quản lý 2, Nhân viên).
+- Bổ sung tính năng đánh dấu đã đọc một chạm ("Đã đọc tất cả").
 - Khắc phục lỗi khi hủy yêu cầu tham gia cửa hàng ở màn hình chờ duyệt.
 - Hỗ trợ nhân sự nộp lại đơn tham gia thuận tiện sau khi được quản lý mời lại.
 - Bổ sung quyền theo dõi bảng công cho Quản lý 2 để kiểm soát chính xác phụ cấp ca trực.
@@ -40,7 +40,7 @@ cham cong, cham cong tram, cham cong f&b, quan ly ca lam, bang cong, tinh luong,
 
 ---
 
-## 2. DANH SÁCH CẢI TIẾN & BẢN VÁ TRONG BẢN 1.1.0
+## 2. DANH SÁCH CẢI TIẾN & BẢN VÁ TRONG BẢN 1.1.1
 
 | STT | Khu vực | Mô tả thay đổi | Giá trị mang lại |
 | :---: | :--- | :--- | :--- |
