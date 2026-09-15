@@ -135,6 +135,8 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   Widget build(BuildContext context) {
     final storeId = ref.watch(currentStoreIdProvider);
     final membersAsync = ref.watch(storeMembersProvider);
+    final currentMember = ref.watch(currentMemberProvider);
+    final isOwner = currentMember?.isOwner ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -379,18 +381,20 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                         : const Text('Lưu thay đổi', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: TextButton(
-                    onPressed: _isLoading || storeId == null ? null : () => _kickMember(storeId),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.danger,
+                if (isOwner) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: TextButton(
+                      onPressed: _isLoading || storeId == null ? null : () => _kickMember(storeId),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                      ),
+                      child: const Text('Xóa khỏi cửa hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16)),
                     ),
-                    child: const Text('Xóa khỏi cửa hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16)),
                   ),
-                ),
+                ],
               ],
             ),
           );

@@ -322,14 +322,44 @@ class StoreRepository {
       });
 
       final userRef = _firestore.collection('users').doc(userId);
-      batch.update(userRef, {
+      batch.set(userRef, {
         'storeIds': FieldValue.arrayUnion([storeId])
-      });
+      }, SetOptions(merge: true));
 
       await batch.commit();
 
     } catch (e) {
       throw Exception('Tham gia cửa hàng thất bại: $e');
+    }
+  }
+
+  /// Hủy yêu cầu tham gia cửa hàng (chính chủ tự hủy khi đang ở trạng thái pending)
+  Future<void> cancelJoinRequest(String storeId, String userId) async {
+    try {
+      final caller = _auth.currentUser;
+      if (caller == null) {
+        throw Exception('401 Unauthorized: Chưa đăng nhập');
+      }
+      if (caller.uid != userId) {
+        throw Exception('403 Forbidden: Bạn chỉ có thể hủy yêu cầu của chính mình');
+      }
+
+      final batch = _firestore.batch();
+
+      // 1. Xóa bản ghi xin gia nhập đang chờ duyệt
+      final memberRef = _members(storeId).doc(userId);
+      batch.delete(memberRef);
+
+      // 2. Gỡ storeId khỏi danh sách storeIds của người dùng và gỡ currentStoreId
+      final userRef = _firestore.collection('users').doc(userId);
+      batch.set(userRef, {
+        'storeIds': FieldValue.arrayRemove([storeId]),
+        'currentStoreId': null,
+      }, SetOptions(merge: true));
+
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Hủy yêu cầu tham gia thất bại: $e');
     }
   }
 
@@ -395,17 +425,10 @@ class StoreRepository {
 
       final batch = _firestore.batch();
 
-      // 1. Mark member as kicked
+      // 1. Mark member as kicked in store members subcollection
       batch.update(_members(storeId).doc(userId), {'status': 'kicked'});
 
-      // 2. Remove storeId from user's storeIds (only if user document exists)
-      if (userDocExists) {
-        batch.update(userRef, {
-          'storeIds': FieldValue.arrayRemove([storeId]),
-        });
-      }
-
-      // 3. Clean userId from store's memberOrder and hiddenScheduleUserIds
+      // 2. Clean userId from store's memberOrder and hiddenScheduleUserIds
       batch.update(_stores.doc(storeId), {
         'memberOrder': FieldValue.arrayRemove([userId]),
         'hiddenScheduleUserIds': FieldValue.arrayRemove([userId]),
@@ -413,9 +436,18 @@ class StoreRepository {
 
       await batch.commit();
 
-
-      // 3. Fix currentStoreId if it was pointing to the kicked store (only if user exists)
+      // 3. Best-effort soft cleanup of kicked user's profile
+      // Note: Firestore Security Rules strictly forbid updating other users' docs (/users/{uid}).
+      // If caller is not userId (normal manager kicking member), this will be blocked by rules,
+      // which is expected. The user's storeIds will be cleanly self-healed by getUserStores()
+      // when that user next opens the app, and by Cloud Functions.
       if (userDocExists) {
+        try {
+          await userRef.update({
+            'storeIds': FieldValue.arrayRemove([storeId]),
+          });
+        } catch (_) {}
+
         try {
           final userDoc = await userRef.get();
           final userData = userDoc.data() ?? {};

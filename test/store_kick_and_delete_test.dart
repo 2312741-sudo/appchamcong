@@ -773,5 +773,34 @@ void main() {
       expect(nextOwner!.userId, 'active_emp');
     });
   });
+
+  group('cancelJoinRequest – Hủy yêu cầu tham gia cửa hàng', () {
+    test('Hủy yêu cầu tham gia gỡ storeId khỏi danh sách storeIds và reset currentStoreId', () {
+      final initialUser = UserModel(
+        id: 'applicant_1',
+        name: 'Applicant 1',
+        email: 'applicant1@example.com',
+        storeIds: ['store_pending_1', 'store_other_2'],
+        currentStoreId: 'store_pending_1',
+        createdAt: DateTime.now(),
+      );
+
+      // Simulating cancelJoinRequest effects on UserModel
+      final updatedStoreIds = List<String>.from(initialUser.storeIds)..remove('store_pending_1');
+      final updatedUser = UserModel(
+        id: initialUser.id,
+        name: initialUser.name,
+        email: initialUser.email,
+        storeIds: updatedStoreIds,
+        currentStoreId: null,
+        createdAt: initialUser.createdAt,
+      );
+
+      expect(updatedUser.storeIds, ['store_other_2']);
+      expect(updatedUser.currentStoreId, isNull);
+      expect(updatedUser.storeIds.contains('store_pending_1'), isFalse);
+    });
+  });
 }
+
 

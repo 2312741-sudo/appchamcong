@@ -241,10 +241,10 @@ class _PendingApprovalScreenState
       final storeId = ref.read(currentStoreIdProvider);
       if (user != null && storeId != null) {
         final repo = ref.read(storeRepositoryProvider);
-        final userRepo = ref.read(userRepositoryProvider);
-        await repo.kickMember(storeId, user.id);
-        await userRepo.updateCurrentStoreId(user.id, null);
+        await repo.cancelJoinRequest(storeId, user.id);
       }
+      ref.invalidate(userStoresProvider);
+      ref.invalidate(currentStoreIdProvider);
       if (mounted) context.go(AppRoutes.welcome);
     } catch (e) {
       if (mounted) {
