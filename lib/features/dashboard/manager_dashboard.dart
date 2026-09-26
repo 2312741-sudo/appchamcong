@@ -44,6 +44,7 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(shiftReminderSchedulerProvider);
     final uid = ref.watch(currentUserProvider).value?.id;
 
     // Proactive role check on build: Never stay on ManagerDashboard if Owner or Employee

@@ -42,6 +42,10 @@ class NotificationService {
     final id = extra?['notificationId'] as String?;
     if (extra?['targetUserId'] != null && extra!['targetUserId'] != uid) return;
     if (storeId == null || id == null || storeId.contains('/') || id.contains('/')) {
+      if (extra?['routePath'] != null && extra!['routePath'] is String) {
+        context.push(extra['routePath'] as String);
+        return;
+      }
       context.push(AppRoutes.notifications);
       return;
     }

@@ -37,6 +37,7 @@ dependencies:
   intl: any
   # Notifications
   flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.1
   # Utils
   google_fonts: ^6.2.1
   package_info_plus: ^8.2.1
