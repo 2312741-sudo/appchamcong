@@ -21,27 +21,27 @@ class NotificationsScreen extends ConsumerWidget {
     final userId = ref.watch(currentUserIdProvider) ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.info,
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Color(0xFF1A1A1A),
+            color: AppColors.info,
             size: 20,
           ),
           onPressed: () => context.pop(),
         ),
-        iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
+        iconTheme: const IconThemeData(color: AppColors.info),
         title: Text(
           'Thông báo',
-          style: GoogleFonts.beVietnamPro(
+          style: GoogleFonts.merriweather(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF1A1A1A),
+            color: AppColors.info,
           ),
         ),
         actions: [
@@ -70,13 +70,13 @@ class NotificationsScreen extends ConsumerWidget {
                     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể cập nhật trạng thái đã đọc. Vui lòng thử lại.')));
                   }
                 },
-                icon: const Icon(Icons.done_all_rounded, size: 18, color: Color(0xFFC8102E)),
+                icon: const Icon(Icons.done_all_rounded, size: 18, color: AppColors.primary),
                 label: Text(
                   'Đã đọc tất cả',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFFC8102E),
+                    color: AppColors.primary,
                   ),
                 ),
               );
@@ -102,7 +102,7 @@ class NotificationsScreen extends ConsumerWidget {
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1A1A1A),
+                      color: AppColors.neutral,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -134,13 +134,13 @@ class NotificationsScreen extends ConsumerWidget {
                       width: 90,
                       height: 90,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC8102E).withOpacity(0.08),
+                        color: AppColors.primary.withOpacity(0.08),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.notifications_off_rounded,
                         size: 44,
-                        color: Color(0xFFC8102E),
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -149,7 +149,7 @@ class NotificationsScreen extends ConsumerWidget {
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A1A),
+                        color: AppColors.neutral,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -233,15 +233,15 @@ class _NotificationCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isRead ? Colors.white : Colors.white,
+            color: AppColors.cardSurface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isRead ? Colors.black.withOpacity(0.06) : const Color(0xFFC8102E).withOpacity(0.3),
+              color: isRead ? AppColors.border : AppColors.primary,
               width: isRead ? 1 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: isRead ? Colors.black.withOpacity(0.02) : const Color(0xFFC8102E).withOpacity(0.06),
+                color: isRead ? AppColors.shadow.withOpacity(0.15) : AppColors.primary.withOpacity(0.10),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -275,7 +275,7 @@ class _NotificationCard extends StatelessWidget {
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 14.5,
                               fontWeight: isRead ? FontWeight.w600 : FontWeight.w800,
-                              color: isRead ? const Color(0xFF2C3E50) : const Color(0xFF1A1A1A),
+                              color: isRead ? const Color(0xFF2C3E50) : AppColors.neutral,
                             ),
                           ),
                         ),
@@ -285,7 +285,7 @@ class _NotificationCard extends StatelessWidget {
                             width: 8,
                             height: 8,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFC8102E),
+                              color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -362,19 +362,19 @@ class _NotificationCard extends StatelessWidget {
   _TypeConfig _getTypeConfig(AppNotificationType type) {
     switch (type) {
       case AppNotificationType.joinRequest:
-        return const _TypeConfig(Icons.person_add_rounded, Color(0xFFC8102E));
+        return const _TypeConfig(Icons.person_add_rounded, AppColors.primary);
       case AppNotificationType.joinApproved:
-        return const _TypeConfig(Icons.check_circle_rounded, Color(0xFF1A6B5A));
+        return const _TypeConfig(Icons.check_circle_rounded, AppColors.success);
       case AppNotificationType.joinRejected:
-        return const _TypeConfig(Icons.cancel_rounded, Color(0xFFC8102E));
+        return const _TypeConfig(Icons.cancel_rounded, AppColors.primary);
       case AppNotificationType.advanceRequest:
-        return const _TypeConfig(Icons.account_balance_wallet_rounded, Color(0xFFB8860B));
+        return const _TypeConfig(Icons.account_balance_wallet_rounded, AppColors.accentInk);
       case AppNotificationType.advanceApproved:
-        return const _TypeConfig(Icons.payments_rounded, Color(0xFF1A6B5A));
+        return const _TypeConfig(Icons.payments_rounded, AppColors.success);
       case AppNotificationType.advanceRejected:
-        return const _TypeConfig(Icons.money_off_rounded, Color(0xFFC8102E));
+        return const _TypeConfig(Icons.money_off_rounded, AppColors.primary);
       case AppNotificationType.scheduleChanged:
-        return const _TypeConfig(Icons.calendar_month_rounded, Color(0xFF1C4E6B));
+        return const _TypeConfig(Icons.calendar_month_rounded, AppColors.info);
       case AppNotificationType.scheduleRegistrationReminder:
         return const _TypeConfig(Icons.alarm_rounded, Color(0xFFD97706));
       case AppNotificationType.checklistReminder:
@@ -384,9 +384,9 @@ class _NotificationCard extends StatelessWidget {
       case AppNotificationType.birthday:
         return const _TypeConfig(Icons.cake_rounded, Color(0xFFE91E63));
       case AppNotificationType.checkIn:
-        return const _TypeConfig(Icons.login_rounded, Color(0xFF1A6B5A));
+        return const _TypeConfig(Icons.login_rounded, AppColors.success);
       case AppNotificationType.checkOut:
-        return const _TypeConfig(Icons.logout_rounded, Color(0xFFC8102E));
+        return const _TypeConfig(Icons.logout_rounded, AppColors.primary);
       case AppNotificationType.general:
         return const _TypeConfig(Icons.notifications_rounded, Color(0xFF475569));
     }

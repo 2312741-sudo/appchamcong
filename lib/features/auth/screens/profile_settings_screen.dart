@@ -630,7 +630,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.business_center_rounded, color: Color(0xFF1C4E6B), size: 20),
+                        const Icon(Icons.business_center_rounded, color: AppColors.info, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Bộ phận của tôi',
@@ -689,21 +689,21 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                       child: OutlinedButton(
                         onPressed: _isSavingDept ? null : () => _saveDepartment(store.id),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF1C4E6B)),
+                          side: const BorderSide(color: AppColors.info),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isSavingDept
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1C4E6B)),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.info),
                               )
                             : Text(
                                 'Cập nhật bộ phận',
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1C4E6B),
+                                  color: AppColors.info,
                                 ),
                               ),
                       ),
@@ -829,12 +829,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC8102E).withOpacity(0.08),
+                          color: AppColors.primary.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           Icons.info_outline_rounded,
-                          color: Color(0xFFC8102E),
+                          color: AppColors.primary,
                           size: 22,
                         ),
                       ),

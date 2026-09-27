@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,7 +67,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFFC8102E),
+        backgroundColor: AppColors.logoRed,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -91,7 +92,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFC8102E).withValues(alpha: 0.15),
+                          color: AppColors.logoRed.withValues(alpha: 0.15),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -102,7 +103,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                       'assets/images/logo.jpg',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFC8102E),
+                        color: AppColors.logoRed,
                         child: const Icon(
                           Icons.access_time_filled_rounded,
                           color: Colors.white,
@@ -134,10 +135,10 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFC8102E).withValues(alpha: 0.08),
+                      color: AppColors.logoRed.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: const Color(0xFFC8102E).withValues(alpha: 0.2),
+                        color: AppColors.logoRed.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -147,7 +148,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                             height: 14,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Color(0xFFC8102E),
+                              color: AppColors.logoRed,
                             ),
                           )
                         : Text(
@@ -155,7 +156,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFFC8102E),
+                              color: AppColors.logoRed,
                             ),
                           ),
                   ),
@@ -234,12 +235,12 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC8102E).withValues(alpha: 0.08),
+                          color: AppColors.logoRed.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
                           Icons.verified_user_outlined,
-                          color: Color(0xFFC8102E),
+                          color: AppColors.logoRed,
                           size: 20,
                         ),
                       ),

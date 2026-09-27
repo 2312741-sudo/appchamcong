@@ -8,7 +8,7 @@ import '../../../models/store_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
-import '../../../models/member_model.dart';
+import 'schedule_palette.dart';
 
 class ScheduleRegisterScreen extends ConsumerStatefulWidget {
   final String? initialWeekStart;
@@ -22,6 +22,9 @@ class ScheduleRegisterScreen extends ConsumerStatefulWidget {
 
 class _ScheduleRegisterScreenState
     extends ConsumerState<ScheduleRegisterScreen> {
+  SchedulePalette get _palette =>
+      SchedulePalette.forRole(ref.read(currentMemberProvider)?.role);
+
   late int _selectedWeekIndex;
   late List<String> _weeks;
   // Local draft: dayIndex (0=Mon..6=Sun) → List of selected shift IDs
@@ -146,7 +149,7 @@ class _ScheduleRegisterScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi: $e'),
-            backgroundColor: AppColors.primary,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -228,7 +231,7 @@ class _ScheduleRegisterScreenState
                                 );
                               }),
                               CheckboxListTile(
-                                title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                                 value: hasDelivery,
                                 onChanged: (val) {
                                   setModalState(() {
@@ -238,7 +241,7 @@ class _ScheduleRegisterScreenState
                                 }
                               ),
                               CheckboxListTile(
-                                title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                                 value: hasGiaoHang,
                                 onChanged: (val) {
                                   setModalState(() {
@@ -263,7 +266,7 @@ class _ScheduleRegisterScreenState
                             });
                             Navigator.pop(ctx);
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                          style: ElevatedButton.styleFrom(backgroundColor: _palette.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
                           child: const Text('Xác nhận'),
                         ),
                       )
@@ -303,15 +306,15 @@ class _ScheduleRegisterScreenState
     final pastDeadline = _isPastDeadline(_currentWeek);
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: _palette.surface,
       appBar: widget.showAppBar
           ? AppBar(
-              backgroundColor: AppColors.primary,
+              backgroundColor: _palette.accent,
               foregroundColor: Colors.white,
               title: Text(
                 'Đăng ký lịch làm',
-                style: GoogleFonts.beVietnamPro(
-                    fontWeight: FontWeight.w600, color: Colors.white),
+                style: GoogleFonts.merriweather(
+                    fontWeight: FontWeight.w700, color: Colors.white),
               ),
               elevation: 0,
             )
@@ -336,7 +339,7 @@ class _ScheduleRegisterScreenState
 
   Widget _buildWeekSelector() {
     return Container(
-      color: AppColors.primary,
+      color: _palette.accent,
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
       child: Row(
         children: [
@@ -367,7 +370,7 @@ class _ScheduleRegisterScreenState
                 Text(
                   _weekLabel(_currentWeek),
                   style: GoogleFonts.beVietnamPro(
-                    color: Colors.white70,
+                    color: Colors.white,
                     fontSize: 13,
                   ),
                 ),
@@ -454,13 +457,13 @@ class _ScheduleRegisterScreenState
       child: Row(
         children: [
           const Icon(Icons.warning_amber_rounded,
-              color: AppColors.accent, size: 20),
+              color: AppColors.accentInk, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Đã qua hạn đăng ký (thứ 6 tuần trước). Vui lòng liên hệ quản lý.',
               style: GoogleFonts.beVietnamPro(
-                  fontSize: 13, color: const Color(0xFF7A6000)),
+                  fontSize: 13, color: AppColors.accentInk),
             ),
           ),
         ],
@@ -481,6 +484,7 @@ class _ScheduleRegisterScreenState
           date: dayDate,
           selectedShifts: _draft[dayIndex] ?? [],
           store: store,
+          palette: _palette,
           onTap: () {
             if (!pastDeadline) _showShiftPicker(dayIndex, store, isOwner);
           }
@@ -493,14 +497,14 @@ class _ScheduleRegisterScreenState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
+        border: Border(top: BorderSide(color: _palette.outline)),
       ),
       child: ElevatedButton(
         onPressed: (!disabled && !_saving) ? _save : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: _palette.accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -527,6 +531,7 @@ class _DayRow extends StatelessWidget {
   final DateTime date;
   final List<String> selectedShifts;
   final StoreModel store;
+  final SchedulePalette palette;
   final VoidCallback onTap;
 
   const _DayRow({
@@ -534,6 +539,7 @@ class _DayRow extends StatelessWidget {
     required this.date,
     required this.selectedShifts,
     required this.store,
+    required this.palette,
     required this.onTap,
   });
 
@@ -547,7 +553,7 @@ class _DayRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: palette.outline),
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -579,7 +585,7 @@ class _DayRow extends StatelessWidget {
                 runSpacing: 6,
                   children: selectedShifts.map((s) {
                     if (s == 'delivery') {
-                      return const _Chip(label: 'Chở hàng', color: AppColors.primary, icon: Icons.local_shipping);
+                      return _Chip(label: 'Chở hàng', color: palette.accent, icon: Icons.local_shipping);
                     }
                     if (s == 'giaohang') {
                       return const _Chip(label: 'Giao hàng', color: Colors.orange, icon: Icons.inventory_2);

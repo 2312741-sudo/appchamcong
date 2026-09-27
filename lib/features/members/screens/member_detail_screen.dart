@@ -418,7 +418,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
             children: [
               Text(
                 'Quyền hạn Quản lý 1 (Toàn quyền quản lý):',
-                style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12.5, color: Color(0xFF1C4E6B)),
+                style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.w700, fontSize: 12.5, color: AppColors.info),
               ),
               SizedBox(height: 4),
               Text(

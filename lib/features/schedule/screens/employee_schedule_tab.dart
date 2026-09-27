@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_colors.dart';
+import '../../store/providers/store_provider.dart';
 import 'schedule_manager_screen.dart';
+import 'schedule_palette.dart';
 import 'schedule_register_screen.dart';
 
 class EmployeeScheduleTab extends ConsumerStatefulWidget {
@@ -31,15 +32,16 @@ class _EmployeeScheduleTabState extends ConsumerState<EmployeeScheduleTab>
 
   @override
   Widget build(BuildContext context) {
+    final palette = SchedulePalette.forRole(ref.watch(currentMemberProvider)?.role);
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: palette.surface,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: palette.accent,
         foregroundColor: Colors.white,
         title: Text(
           'Lịch làm việc',
-          style: GoogleFonts.beVietnamPro(
-            fontWeight: FontWeight.w600,
+          style: GoogleFonts.merriweather(
+            fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
         ),
@@ -47,13 +49,13 @@ class _EmployeeScheduleTabState extends ConsumerState<EmployeeScheduleTab>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
-            color: AppColors.primary,
+            color: palette.accent,
             child: TabBar(
               controller: _tabController,
               indicatorColor: Colors.white,
               indicatorWeight: 3,
               labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
+              unselectedLabelColor: Colors.white,
               labelStyle: GoogleFonts.beVietnamPro(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,

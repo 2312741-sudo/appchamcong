@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/location_utils.dart';
 import '../../../core/utils/department_utils.dart';
 import '../../../core/utils/production_checklist_utils.dart';
@@ -266,17 +267,17 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
             final isCheckedIn = attendance?.isActive ?? false;
 
             return Scaffold(
-              backgroundColor: const Color(0xFFF5F6FA),
+              backgroundColor: AppColors.surface,
               appBar: AppBar(
                 title: const Text('Chấm Công',
                     style: TextStyle(
-                        fontWeight: FontWeight.w700, color: Colors.black87)),
+                        fontWeight: FontWeight.w700, color: AppColors.info)),
                 centerTitle: true,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.black87),
+                        color: AppColors.info),
                     onPressed: () => context.pop()),
               ),
               body: SafeArea(
@@ -286,20 +287,18 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Glassmorphism Header
+                        // Branded shift clock
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [Color(0xFFC8102E), Color(0xFFE52040)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight),
-                            borderRadius: BorderRadius.circular(24),
+                            gradient: AppColors.primaryGradient,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.info, width: 1.5),
                             boxShadow: [
                               BoxShadow(
                                   color:
-                                      const Color(0xFFC8102E).withOpacity(0.3),
+                                      AppColors.primary.withOpacity(0.25),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8))
                             ],
@@ -351,8 +350,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
+                              color: AppColors.cardSurface,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: AppColors.cardOutline, width: 1.5),
                               boxShadow: [
                                 BoxShadow(
                                     color: Colors.black.withOpacity(0.05),
@@ -365,10 +365,10 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.1),
+                                      color: AppColors.success.withOpacity(0.1),
                                       shape: BoxShape.circle),
                                   child: const Icon(Icons.login_rounded,
-                                      color: Colors.green, size: 28),
+                                      color: AppColors.success, size: 28),
                                 ),
                                 const SizedBox(width: 16),
                                 Column(
@@ -442,12 +442,12 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
                                     gradient: LinearGradient(
                                       colors: isCheckedIn
                                           ? [
-                                              const Color(0xFF888780),
-                                              const Color(0xFF666560)
+                                              AppColors.textSecondary,
+                                              AppColors.info
                                             ]
                                           : [
-                                              const Color(0xFF1A6B5A),
-                                              const Color(0xFF124D41)
+                                              AppColors.tealAccent,
+                                              AppColors.success
                                             ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -455,8 +455,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
                                     boxShadow: [
                                       BoxShadow(
                                         color: (isCheckedIn
-                                                ? const Color(0xFF888780)
-                                                : const Color(0xFF1A6B5A))
+                                                ? AppColors.info
+                                                : AppColors.success)
                                             .withOpacity(0.4),
                                         blurRadius: 30,
                                         spreadRadius: 10,
@@ -527,16 +527,16 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 20),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF1C4E6B) : Colors.white,
+            color: isSelected ? AppColors.info : AppColors.cardSurface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
                 color:
-                    isSelected ? const Color(0xFF1C4E6B) : Colors.grey.shade300,
+                    isSelected ? AppColors.info : AppColors.border,
                 width: 2),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                        color: const Color(0xFF1C4E6B).withOpacity(0.3),
+                        color: AppColors.info.withOpacity(0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4))
                   ]
@@ -718,17 +718,17 @@ class _ProductionChecklistDialogState
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFC8102E).withOpacity(0.05)
+                        ? AppColors.primary.withOpacity(0.05)
                         : Colors.white,
                     border: Border.all(
                         color: isSelected
-                            ? const Color(0xFFC8102E)
+                            ? AppColors.primary
                             : Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: CheckboxListTile(
                     value: isSelected,
-                    activeColor: const Color(0xFFC8102E),
+                    activeColor: AppColors.primary,
                     title: Text(t.name,
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: isSelected
@@ -770,11 +770,11 @@ class _ProductionChecklistDialogState
                                 : const Row(
                                     children: [
                                       Icon(Icons.check_circle,
-                                          color: Color(0xFF1A6B5A), size: 16),
+                                          color: AppColors.success, size: 16),
                                       SizedBox(width: 6),
                                       Text('Đã hoàn thành',
                                           style: TextStyle(
-                                              color: Color(0xFF1A6B5A),
+                                              color: AppColors.success,
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600)),
                                     ],
@@ -795,7 +795,7 @@ class _ProductionChecklistDialogState
             child: ElevatedButton(
               onPressed: _isSubmitting ? null : _submit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC8102E),
+                backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),

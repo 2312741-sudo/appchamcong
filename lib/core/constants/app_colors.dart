@@ -4,86 +4,102 @@ class AppColors {
   AppColors._();
 
   // Brand Colors
-  static const Color primary = Color(0xFFCB2D2E); // Red from logo
-  static const Color success = Color(0xFF1A6B5A); // Teal green
-  static const Color accent = Color(0xFFEB9B28); // Orange/Yellow from logo
-  static const Color info = Color(0xFF1C4E6B);
-  static const Color neutral = Color(0xFF1A1A1A);
-  static const Color surface = Color(0xFFF8F4EE);
-  static const Color background = Color(0xFFF8F4EE);
+  // Brand palette from webtram. The vivid logo red is kept separate from
+  // interface actions, which use the website's darker maroon.
+  static const Color primary = Color(0xFF7E2930);
+  static const Color primaryDark = Color(0xFF5C1F24);
+  static const Color logoRed = Color(0xFFCB2D2E);
+  static const Color success = Color(0xFF146A65); // Accessible teal for white text
+  static const Color tealAccent = Color(0xFF1E8E87);
+  static const Color accent = Color(0xFFE3A94C);
+  static const Color accentInk = Color(0xFF805214);
+  static const Color info = Color(0xFF2D2A4A);
+  static const Color neutral = Color(0xFF1C1A2D);
+  static const Color surface = Color(0xFFF6EFDF);
+  static const Color background = surface;
+  static const Color paperInk = Color(0xFFE9E1CF);
+  static const Color cardOutline = info;
   static const Color white = Colors.white;
 
   // Semantic Colors
   static const Color checkIn = success;
   static const Color checkOut = Color(0xFF888780);
   static const Color pending = accent;
-  static const Color danger = primary;
+  static const Color danger = logoRed;
   static const Color warning = Color(0xFFF59E0B);
 
   // Text Colors
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B6B6B);
+  static const Color textPrimary = neutral;
+  static const Color textSecondary = Color(0xFF5D5B63);
   static const Color textDisabled = Color(0xFFAAAAAA);
   static const Color textOnPrimary = Colors.white;
 
   // Border & Divider
-  static const Color border = Color(0xFFE0DAD4);
-  static const Color divider = Color(0xFFECE8E2);
+  static const Color border = Color(0xFFD8CFBD);
+  static const Color divider = paperInk;
 
   // Card & Shadow
-  static const Color cardSurface = Color(0xFFFFFFFF);
-  static const Color shadow = Color(0x1A000000);
+  static const Color cardSurface = Color(0xFFFFFEF9);
+  static const Color shadow = Color(0x262D2A4A);
+
+  // Dashboard role accents. Keep these separate from business-status colors.
+  static const Color ownerAccent = Color(0xFF171717);
+  static const Color ownerAccentDark = Color(0xFF050505);
+  static const Color ownerTint = Color(0xFFEDEBE6);
+  static const Color managerAccent = Color(0xFF126CC3);
+  static const Color managerAccentDark = Color(0xFF095AA8);
+  static const Color managerTint = Color(0xFFE8F3FE);
 
   // Status Colors
   static const Color statusActive = success;
-  static const Color statusInactive = Color(0xFF888780);
-  static const Color statusPending = accent;
+  static const Color statusInactive = Color(0xFF6B6870);
+  static const Color statusPending = accentInk;
   static const Color statusDanger = primary;
 
   // Role Badge Colors
-  static const Color ownerBadge = primary;
-  static const Color managerBadge = info;
-  static const Color employeeBadge = Color(0xFF888780);
+  static const Color ownerBadge = ownerAccent;
+  static const Color managerBadge = managerAccent;
+  static const Color employeeBadge = Color(0xFF6B6870);
 
   // Shift Colors
-  static const Color shiftMorning = Color(0xFFF5C842);
-  static const Color shiftAfternoon = Color(0xFFFF8C42);
-  static const Color shiftEvening = Color(0xFF1C4E6B);
+  static const Color shiftMorning = accent;
+  static const Color shiftAfternoon = Color(0xFFC77639);
+  static const Color shiftEvening = info;
   static const Color shiftOff = Color(0xFFCCCCCC);
 
   // Gradient Definitions
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFE8192F), Color(0xFFC8102E)],
+    colors: [Color(0xFF7E2930), Color(0xFF5C1F24)],
   );
 
   static const LinearGradient darkGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF1A1A1A), Color(0xFF2D2D2D)],
+    colors: [Color(0xFF2D2A4A), Color(0xFF1C1A2D)],
   );
 
   static const LinearGradient successGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF22876D), Color(0xFF1A6B5A)],
+    colors: [Color(0xFF1E8E87), Color(0xFF146A65)],
   );
 
   static const LinearGradient surfaceGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFC8102E), Color(0xFFF8F4EE)],
+    colors: [Color(0xFF7E2930), Color(0xFFF6EFDF)],
     stops: [0.0, 0.45],
   );
 
   static const RadialGradient checkInButtonGradient = RadialGradient(
-    colors: [Color(0xFF22876D), Color(0xFF1A6B5A)],
+    colors: [Color(0xFF1E8E87), Color(0xFF146A65)],
     radius: 0.85,
   );
 
   static const RadialGradient checkOutButtonGradient = RadialGradient(
-    colors: [Color(0xFFE8192F), Color(0xFFC8102E)],
+    colors: [Color(0xFF7E2930), Color(0xFF5C1F24)],
     radius: 0.85,
   );
 }

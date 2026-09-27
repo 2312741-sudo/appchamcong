@@ -12,6 +12,7 @@ import '../../../models/store_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
+import 'schedule_palette.dart';
 
 class ScheduleManagerScreen extends ConsumerStatefulWidget {
   final int initialWeekIndex;
@@ -33,6 +34,9 @@ class ScheduleManagerScreen extends ConsumerStatefulWidget {
 
 class _ScheduleManagerScreenState
     extends ConsumerState<ScheduleManagerScreen> {
+  SchedulePalette get _palette =>
+      SchedulePalette.forRole(ref.read(currentMemberProvider)?.role);
+
   late int _selectedWeekIndex;
   late List<String> _weeks;
 
@@ -145,7 +149,7 @@ class _ScheduleManagerScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Lỗi: $e'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.danger,
         ));
       }
     } finally {
@@ -177,7 +181,7 @@ class _ScheduleManagerScreenState
                   if (!canManageSchedule)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
-                      child: Text('Quản lý 2: Chế độ chỉ xem lịch làm. Bạn chỉ có thể tick chở hàng / giao hàng.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      child: Text('Quản lý 2: Chế độ chỉ xem lịch làm. Bạn chỉ có thể tick chở hàng / giao hàng.', style: GoogleFonts.beVietnamPro(fontSize: 13, color: _palette.accent, fontWeight: FontWeight.w600)),
                     ),
                   const SizedBox(height: 16),
                   if (store.customShifts.isEmpty)
@@ -224,7 +228,7 @@ class _ScheduleManagerScreenState
                   }),
                   if (canTick || isOwner || canManageSchedule) ...[
                     CheckboxListTile(
-                      title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                       value: hasDelivery,
                       onChanged: (val) {
                         setModalState(() {
@@ -234,7 +238,7 @@ class _ScheduleManagerScreenState
                       }
                     ),
                     CheckboxListTile(
-                      title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                       value: hasGiaoHang,
                       onChanged: (val) {
                         setModalState(() {
@@ -249,7 +253,7 @@ class _ScheduleManagerScreenState
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () { _setShift(userId, dayIndex, selectedShifts); Navigator.pop(ctx); },
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
+                      style: ElevatedButton.styleFrom(backgroundColor: _palette.accent, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
                       child: const Text('Xác nhận'),
                     ),
                   )
@@ -370,7 +374,7 @@ class _ScheduleManagerScreenState
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
+                                color: _palette.accent,
                               ),
                             ),
                           ],
@@ -392,7 +396,7 @@ class _ScheduleManagerScreenState
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1C4E6B),
+                      color: _palette.accent,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -446,13 +450,13 @@ class _ScheduleManagerScreenState
                               decoration: BoxDecoration(
                                 color: isProd
                                     ? const Color(0xFF2E7D32).withOpacity(0.12)
-                                    : AppColors.primary.withOpacity(0.12),
+                                    : _palette.accent.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.access_time_filled_rounded,
                                 size: 22,
-                                color: isProd ? const Color(0xFF2E7D32) : AppColors.primary,
+                                color: isProd ? const Color(0xFF2E7D32) : _palette.accent,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -478,7 +482,7 @@ class _ScheduleManagerScreenState
                                         style: GoogleFonts.beVietnamPro(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF1C4E6B),
+                                          color: _palette.accent,
                                         ),
                                       ),
                                     ],
@@ -498,7 +502,7 @@ class _ScheduleManagerScreenState
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: isProd ? const Color(0xFF2E7D32) : AppColors.primary,
+                                          color: isProd ? const Color(0xFF2E7D32) : _palette.accent,
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
@@ -659,8 +663,8 @@ class _ScheduleManagerScreenState
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: const BorderSide(color: AppColors.primary, width: 1.5),
+                              foregroundColor: _palette.accent,
+                              side: BorderSide(color: _palette.accent, width: 1.5),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -671,7 +675,7 @@ class _ScheduleManagerScreenState
                           child: ElevatedButton(
                             onPressed: () => Navigator.pop(ctx),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: _palette.accent,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -694,7 +698,7 @@ class _ScheduleManagerScreenState
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(ctx),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: _palette.accent,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -754,10 +758,10 @@ class _ScheduleManagerScreenState
     });
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: _palette.surface,
       appBar: widget.showAppBar
           ? AppBar(
-              backgroundColor: AppColors.primary,
+              backgroundColor: _palette.accent,
               foregroundColor: Colors.white,
               title: Text(
                 canManageSchedule ? 'Quản lý lịch làm' : 'Lịch làm cửa hàng',
@@ -784,7 +788,7 @@ class _ScheduleManagerScreenState
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Lỗi xuất: $e'),
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: AppColors.danger,
                           ),
                         );
                       }
@@ -854,7 +858,7 @@ class _ScheduleManagerScreenState
 
   Widget _buildHeader(StoreModel store, List<MemberModel> members, ScheduleModel? schedule, bool canManageSchedule, bool canTick) {
     return Container(
-      color: AppColors.primary,
+      color: _palette.accent,
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
       child: Column(
         children: [
@@ -884,7 +888,7 @@ class _ScheduleManagerScreenState
                     Text(
                       _weekLabel(_currentWeek),
                       style: GoogleFonts.beVietnamPro(
-                          color: Colors.white70, fontSize: 12),
+                          color: Colors.white, fontSize: 12),
                     ),
                     if (!_isCurrentWeek)
                       Padding(
@@ -977,7 +981,7 @@ class _ScheduleManagerScreenState
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Lỗi xuất: $e'),
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: AppColors.danger,
                           ),
                         );
                       }
@@ -997,9 +1001,9 @@ class _ScheduleManagerScreenState
                   ElevatedButton.icon(
                     onPressed: _saving ? null : _saveAll,
                     icon: _saving
-                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-                        : const Icon(Icons.save_alt_rounded, color: AppColors.primary, size: 16),
-                    label: Text('Lưu thay đổi', style: GoogleFonts.beVietnamPro(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _palette.accent))
+                        : Icon(Icons.save_alt_rounded, color: _palette.accent, size: 16),
+                    label: Text('Lưu thay đổi', style: GoogleFonts.beVietnamPro(color: _palette.accent, fontSize: 12, fontWeight: FontWeight.w700)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -1236,7 +1240,7 @@ class _ScheduleManagerScreenState
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
+                                  color: _palette.accent,
                                 ),
                               ),
                               Text(
@@ -1252,6 +1256,7 @@ class _ScheduleManagerScreenState
                                 shifts: shift,
                                 store: store,
                                 memberDept: m.department,
+                                palette: _palette,
                               ),
                             ],
                           ),
@@ -1303,11 +1308,13 @@ class _DayShiftCell extends StatelessWidget {
   final List<String> shifts;
   final StoreModel store;
   final String? memberDept;
+  final SchedulePalette palette;
 
   const _DayShiftCell({
     required this.shifts,
     required this.store,
     this.memberDept,
+    required this.palette,
   });
 
   List<_ShiftInfo> _parseAndSortShifts() {
@@ -1392,12 +1399,12 @@ class _DayShiftCell extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
       decoration: BoxDecoration(
         color: sortedShifts.isNotEmpty
-            ? AppColors.primary.withOpacity(0.05)
+            ? palette.accent.withOpacity(0.05)
             : const Color(0xFFF8F9FA),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: sortedShifts.isNotEmpty
-              ? AppColors.primary.withOpacity(0.25)
+              ? palette.accent.withOpacity(0.25)
               : const Color(0xFFDEE2E6),
           width: 0.8,
         ),
@@ -1422,12 +1429,12 @@ class _DayShiftCell extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: info.isProduction
                       ? const Color(0xFFE8F5E9)
-                      : AppColors.primary.withOpacity(0.12),
+                      : palette.accent.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
                     color: info.isProduction
                         ? const Color(0xFFA5D6A7)
-                        : AppColors.primary.withOpacity(0.2),
+                        : palette.accent.withOpacity(0.2),
                     width: 0.6,
                   ),
                 ),
@@ -1441,7 +1448,7 @@ class _DayShiftCell extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: info.isProduction
                         ? const Color(0xFF2E7D32)
-                        : AppColors.primary,
+                        : palette.accent,
                   ),
                 ),
               );

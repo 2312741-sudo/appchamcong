@@ -77,22 +77,22 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) context.go(AppRoutes.pendingApproval);
         });
-        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(backgroundColor: AppColors.surface, body: Center(child: CircularProgressIndicator()));
       } else if (currentMember.status == MemberStatus.kicked) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) context.go(AppRoutes.welcome);
         });
-        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(backgroundColor: AppColors.surface, body: Center(child: CircularProgressIndicator()));
       } else if (currentMember.isOwner) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) context.go(AppRoutes.ownerDashboard);
         });
-        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(backgroundColor: AppColors.surface, body: Center(child: CircularProgressIndicator()));
       } else if (currentMember.isManager) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) context.go(AppRoutes.managerDashboard);
         });
-        return const Scaffold(backgroundColor: Color(0xFFF5F6FA), body: Center(child: CircularProgressIndicator()));
+        return const Scaffold(backgroundColor: AppColors.surface, body: Center(child: CircularProgressIndicator()));
       }
     }
 
@@ -141,7 +141,7 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: AppColors.surface,
       drawer: const StoreDrawer(),
       body: IndexedStack(
         index: _selectedIndex,
@@ -158,8 +158,8 @@ class _EmployeeDashboardState extends ConsumerState<EmployeeDashboard>
   Widget _buildBottomNav() {
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, -4))],
+        color: AppColors.cardSurface,
+        border: Border(top: BorderSide(color: AppColors.cardOutline, width: 1.5)),
       ),
       child: SafeArea(
         child: Padding(
@@ -206,7 +206,7 @@ class _HomeTab extends ConsumerWidget {
           child: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFC8102E), Color(0xFF8B0000)],
+                colors: [AppColors.primary, AppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -309,16 +309,16 @@ class _HomeTab extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                      color: AppColors.info.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.business_rounded, size: 14, color: Color(0xFF1C4E6B)),
+                        const Icon(Icons.business_rounded, size: 14, color: AppColors.info),
                         const SizedBox(width: 6),
                         Text(
                           member!.department!,
-                          style: const TextStyle(color: Color(0xFF1C4E6B), fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
+                          style: const TextStyle(color: AppColors.info, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
                         ),
                       ],
                     ),
@@ -335,15 +335,15 @@ class _HomeTab extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Thao tác nhanh', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro')),
+                const Text('Thao tác nhanh', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro')),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _QuickAction(icon: Icons.fingerprint_rounded, label: 'Chấm công', color: const Color(0xFFC8102E), onTap: () => context.push(AppRoutes.checkIn))),
+                    Expanded(child: _QuickAction(icon: Icons.fingerprint_rounded, label: 'Chấm công', color: AppColors.primary, onTap: () => context.push(AppRoutes.checkIn))),
                     const SizedBox(width: 12),
-                    Expanded(child: _QuickAction(icon: Icons.history_rounded, label: 'Lịch sử', color: const Color(0xFF1C4E6B), onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString()))),
+                    Expanded(child: _QuickAction(icon: Icons.history_rounded, label: 'Lịch sử', color: AppColors.info, onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString()))),
                     const SizedBox(width: 12),
-                    Expanded(child: _QuickAction(icon: Icons.payments_rounded, label: 'Lương', color: const Color(0xFF1A6B5A), onTap: () => context.push(AppRoutes.salary))),
+                    Expanded(child: _QuickAction(icon: Icons.payments_rounded, label: 'Lương', color: AppColors.success, onTap: () => context.push(AppRoutes.salary))),
                   ],
                 ),
               ],
@@ -391,8 +391,9 @@ class _StatusCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.cardOutline, width: 1.5),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 16, offset: Offset(0, 4))],
       ),
       child: Row(
@@ -405,15 +406,15 @@ class _StatusCard extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 color: isActive
-                    ? const Color(0xFF1A6B5A).withOpacity(0.1)
+                    ? AppColors.success.withOpacity(0.1)
                     : isDone
-                        ? const Color(0xFF1C4E6B).withOpacity(0.1)
-                        : const Color(0xFFF5F6FA),
+                        ? AppColors.info.withOpacity(0.1)
+                        : AppColors.surface,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 isActive ? Icons.timer_rounded : isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                color: isActive ? const Color(0xFF1A6B5A) : isDone ? const Color(0xFF1C4E6B) : Colors.grey,
+                color: isActive ? AppColors.success : isDone ? AppColors.info : Colors.grey,
                 size: 28,
               ),
             ),
@@ -429,7 +430,7 @@ class _StatusCard extends StatelessWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'BeVietnamPro',
-                    color: isActive ? const Color(0xFF1A6B5A) : isDone ? const Color(0xFF1C4E6B) : Colors.grey[600],
+                    color: isActive ? AppColors.success : isDone ? AppColors.info : Colors.grey[600],
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -450,7 +451,7 @@ class _StatusCard extends StatelessWidget {
             ElevatedButton(
               onPressed: () => GoRouter.of(context).push(AppRoutes.checkIn),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isActive ? const Color(0xFFC8102E) : const Color(0xFF1A6B5A),
+                backgroundColor: isActive ? AppColors.primary : AppColors.success,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -533,13 +534,13 @@ class _TodayScheduleCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5C842).withOpacity(0.15),
+                  color: AppColors.accent.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.event_note_rounded, color: Color(0xFFB8860B), size: 20),
+                child: const Icon(Icons.event_note_rounded, color: AppColors.accentInk, size: 20),
               ),
               const SizedBox(width: 10),
-              const Text('Ca làm hôm nay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: Color(0xFF1A1A1A))),
+              const Text('Ca làm hôm nay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: AppColors.neutral)),
             ],
           ),
           const SizedBox(height: 12),
@@ -579,13 +580,13 @@ class _TodayScheduleCard extends ConsumerWidget {
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5C842).withOpacity(0.1),
+                        color: AppColors.accent.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFF5C842).withOpacity(0.3)),
+                        border: Border.all(color: AppColors.accent.withOpacity(0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFFB8860B)),
+                          const Icon(Icons.access_time_rounded, size: 16, color: AppColors.accentInk),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Row(
@@ -593,7 +594,7 @@ class _TodayScheduleCard extends ConsumerWidget {
                                 Flexible(
                                   child: Text(
                                     '${shift.name}  ${_pad(shift.startHour)}:${_pad(shift.startMinute)} – ${_pad(shift.endHour)}:${_pad(shift.endMinute)}',
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), fontFamily: 'BeVietnamPro'),
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.neutral, fontFamily: 'BeVietnamPro'),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -602,16 +603,16 @@ class _TodayScheduleCard extends ConsumerWidget {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1C4E6B).withOpacity(0.12),
+                                      color: AppColors.info.withOpacity(0.12),
                                       borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(color: const Color(0xFF1C4E6B).withOpacity(0.25)),
+                                      border: Border.all(color: AppColors.info.withOpacity(0.25)),
                                     ),
                                     child: Text(
                                       dept,
                                       style: const TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1C4E6B),
+                                        color: AppColors.info,
                                         fontFamily: 'BeVietnamPro',
                                       ),
                                     ),
@@ -632,16 +633,16 @@ class _TodayScheduleCard extends ConsumerWidget {
                             margin: const EdgeInsets.only(right: 8, bottom: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1A6B5A).withOpacity(0.1),
+                              color: AppColors.success.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFF1A6B5A).withOpacity(0.3)),
+                              border: Border.all(color: AppColors.success.withOpacity(0.3)),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.local_shipping_rounded, size: 14, color: Color(0xFF1A6B5A)),
+                                Icon(Icons.local_shipping_rounded, size: 14, color: AppColors.success),
                                 SizedBox(width: 4),
-                                Text('Chở hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A6B5A), fontFamily: 'BeVietnamPro')),
+                                Text('Chở hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.success, fontFamily: 'BeVietnamPro')),
                               ],
                             ),
                           ),
@@ -650,16 +651,16 @@ class _TodayScheduleCard extends ConsumerWidget {
                             margin: const EdgeInsets.only(right: 8, bottom: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                              color: AppColors.info.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFF1C4E6B).withOpacity(0.3)),
+                              border: Border.all(color: AppColors.info.withOpacity(0.3)),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.delivery_dining_rounded, size: 14, color: Color(0xFF1C4E6B)),
+                                Icon(Icons.delivery_dining_rounded, size: 14, color: AppColors.info),
                                 SizedBox(width: 4),
-                                Text('Giao hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro')),
+                                Text('Giao hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.info, fontFamily: 'BeVietnamPro')),
                               ],
                             ),
                           ),
@@ -713,11 +714,11 @@ class _ProfileTab extends ConsumerWidget {
     final uid = ref.watch(currentUserProvider).value?.id ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
         title: const Text('Hồ sơ cá nhân', style: TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
+        foregroundColor: AppColors.neutral,
         elevation: 0,
         actions: [
           IconButton(
@@ -741,7 +742,7 @@ class _ProfileTab extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 36,
-                  backgroundColor: const Color(0xFFC8102E),
+                  backgroundColor: AppColors.primary,
                   backgroundImage: getAvatarImageProvider(user?.avatarUrl),
                   child: getAvatarImageProvider(user?.avatarUrl) == null
                       ? Text((user?.name ?? 'U')[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800))
@@ -759,10 +760,10 @@ class _ProfileTab extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1C4E6B).withOpacity(0.1),
+                          color: AppColors.info.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text('Nhân viên', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1C4E6B), fontFamily: 'BeVietnamPro')),
+                        child: const Text('Nhân viên', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.info, fontFamily: 'BeVietnamPro')),
                       ),
                     ],
                   ),
@@ -773,10 +774,10 @@ class _ProfileTab extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Menu items
-          _ProfileMenuItem(icon: Icons.person_outline_rounded, label: 'Chỉnh sửa hồ sơ cá nhân', color: const Color(0xFFC8102E), onTap: () => context.push(AppRoutes.profileSettings)),
-          _ProfileMenuItem(icon: Icons.attach_money_rounded, label: 'Xem lương tháng này', color: const Color(0xFF1A6B5A), onTap: () => context.push(AppRoutes.salary)),
-          _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công', color: const Color(0xFF1C4E6B), onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString())),
-          _ProfileMenuItem(icon: Icons.account_balance_wallet_rounded, label: 'Tạm ứng lương', color: const Color(0xFFB8860B), onTap: () => context.push(AppRoutes.salary)),
+          _ProfileMenuItem(icon: Icons.person_outline_rounded, label: 'Chỉnh sửa hồ sơ cá nhân', color: AppColors.primary, onTap: () => context.push(AppRoutes.profileSettings)),
+          _ProfileMenuItem(icon: Icons.attach_money_rounded, label: 'Xem lương tháng này', color: AppColors.success, onTap: () => context.push(AppRoutes.salary)),
+          _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công', color: AppColors.info, onTap: () => context.push(Uri(path: AppRoutes.attendanceHistory, queryParameters: {'userId': uid}).toString())),
+          _ProfileMenuItem(icon: Icons.account_balance_wallet_rounded, label: 'Tạm ứng lương', color: AppColors.accentInk, onTap: () => context.push(AppRoutes.salary)),
           _ProfileMenuItem(icon: Icons.logout_rounded, label: 'Đăng xuất', color: Colors.red, onTap: () async {
             final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
               title: const Text('Đăng xuất?', style: TextStyle(fontFamily: 'BeVietnamPro')),
@@ -854,20 +855,20 @@ class _NavItem extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFC8102E).withOpacity(0.08) : Colors.transparent,
+            color: isSelected ? AppColors.primary.withOpacity(0.08) : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: isSelected ? const Color(0xFFC8102E) : Colors.grey, size: 24),
+              Icon(icon, color: isSelected ? AppColors.primary : Colors.grey, size: 24),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? const Color(0xFFC8102E) : Colors.grey,
+                  color: isSelected ? AppColors.primary : Colors.grey,
                   fontFamily: 'BeVietnamPro',
                 ),
               ),

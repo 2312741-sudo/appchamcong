@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../constants/app_colors.dart';
 import '../../app/router.dart';
 import '../../features/notifications/providers/notification_provider.dart';
 
@@ -36,7 +37,7 @@ class NotificationBellIcon extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
               decoration: BoxDecoration(
-                color: const Color(0xFFC8102E),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white, width: 1.5),
                 boxShadow: const [

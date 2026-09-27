@@ -90,7 +90,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
             ),
           ),
         ),
-        backgroundColor: const Color(0xFFC8102E),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -103,7 +103,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
         loading: () => const Center(
           child: CircularProgressIndicator(
             strokeWidth: 2.5,
-            color: Color(0xFFC8102E),
+            color: AppColors.primary,
           ),
         ),
         error: (e, _) => Center(
@@ -127,13 +127,13 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFC8102E).withValues(alpha: 0.08),
+                        color: AppColors.primary.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.person_off_rounded,
                         size: 40,
-                        color: Color(0xFFC8102E),
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -143,7 +143,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'BeVietnamPro',
-                        color: Color(0xFF1A1A1A),
+                        color: AppColors.neutral,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -201,7 +201,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFC8102E), width: 1.5),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                       ),
                     ),
                   ),
@@ -216,7 +216,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                       width: 10,
                       height: 10,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF1A6B5A),
+                        color: AppColors.success,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -296,7 +296,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                     width: 13,
                                     height: 13,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1A6B5A),
+                                      color: AppColors.success,
                                       shape: BoxShape.circle,
                                       border: Border.all(color: Colors.white, width: 2),
                                     ),
@@ -320,7 +320,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                             fontWeight: FontWeight.w700,
                                             fontFamily: 'BeVietnamPro',
                                             fontSize: 14.5,
-                                            color: Color(0xFF1A1A1A),
+                                            color: AppColors.neutral,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -368,7 +368,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                       Text(
                                         'Đã làm: $workedDuration',
                                         style: const TextStyle(
-                                          color: Color(0xFF1A6B5A),
+                                          color: AppColors.success,
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.w700,
                                           fontFamily: 'BeVietnamPro',
@@ -456,13 +456,13 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1A6B5A).withValues(alpha: 0.1),
+                                color: AppColors.success.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
                                 'Đang làm',
                                 style: TextStyle(
-                                  color: Color(0xFF1A6B5A),
+                                  color: AppColors.success,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'BeVietnamPro',

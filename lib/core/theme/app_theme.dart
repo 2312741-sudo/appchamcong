@@ -19,6 +19,7 @@ class AppTheme {
     );
 
     final baseTextTheme = GoogleFonts.beVietnamProTextTheme();
+    final headingFont = GoogleFonts.merriweather().fontFamily;
 
     return ThemeData(
       useMaterial3: true,
@@ -26,26 +27,32 @@ class AppTheme {
       fontFamily: GoogleFonts.beVietnamPro().fontFamily,
       textTheme: baseTextTheme.copyWith(
         displayLarge: baseTextTheme.displayLarge?.copyWith(
+          fontFamily: headingFont,
           fontWeight: FontWeight.w800,
           color: AppColors.textPrimary,
         ),
         displayMedium: baseTextTheme.displayMedium?.copyWith(
+          fontFamily: headingFont,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
         displaySmall: baseTextTheme.displaySmall?.copyWith(
+          fontFamily: headingFont,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
         headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+          fontFamily: headingFont,
           fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
         ),
         headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+          fontFamily: headingFont,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
         headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+          fontFamily: headingFont,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
@@ -87,19 +94,19 @@ class AppTheme {
         ),
       ),
 
-      // AppBar
+      // Webtram's cream header and navy ink carry through the app shell.
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.info,
         elevation: 0,
-        centerTitle: true,
-        titleTextStyle: GoogleFonts.beVietnamPro(
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.merriweather(
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: AppColors.white,
+          fontWeight: FontWeight.w700,
+          color: AppColors.info,
         ),
-        iconTheme: const IconThemeData(color: AppColors.white),
-        actionsIconTheme: const IconThemeData(color: AppColors.white),
+        iconTheme: const IconThemeData(color: AppColors.info),
+        actionsIconTheme: const IconThemeData(color: AppColors.info),
       ),
 
       // Elevated Button
@@ -111,6 +118,7 @@ class AppTheme {
           disabledForegroundColor: AppColors.white,
           elevation: 2,
           shadowColor: AppColors.primary.withOpacity(0.4),
+          side: const BorderSide(color: AppColors.cardOutline, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -127,7 +135,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          side: const BorderSide(color: AppColors.cardOutline, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -154,10 +162,11 @@ class AppTheme {
       // Card
       cardTheme: CardThemeData(
         color: AppColors.cardSurface,
-        elevation: 2,
+        elevation: 1,
         shadowColor: AppColors.shadow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.cardOutline, width: 1.5),
         ),
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
       ),
@@ -183,11 +192,11 @@ class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.cardOutline, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.cardOutline, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -210,10 +219,11 @@ class AppTheme {
       // Chip
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surface,
-        selectedColor: AppColors.primary,
+        selectedColor: AppColors.accent,
         labelStyle: GoogleFonts.beVietnamPro(
           fontSize: 12,
           fontWeight: FontWeight.w500,
+          color: AppColors.info,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -230,9 +240,9 @@ class AppTheme {
 
       // BottomNavigationBar
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.cardSurface,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textDisabled,
+        unselectedItemColor: AppColors.textSecondary,
         selectedLabelStyle: GoogleFonts.beVietnamPro(
           fontSize: 11,
           fontWeight: FontWeight.w600,
@@ -247,7 +257,7 @@ class AppTheme {
 
       // SnackBar
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.neutral,
+        backgroundColor: AppColors.info,
         contentTextStyle: GoogleFonts.beVietnamPro(
           color: AppColors.white,
           fontSize: 14,
@@ -295,9 +305,10 @@ class AppTheme {
 
       // Dialog
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.cardSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.cardOutline, width: 1.5),
         ),
         titleTextStyle: GoogleFonts.beVietnamPro(
           fontSize: 18,

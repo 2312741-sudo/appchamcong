@@ -266,11 +266,11 @@ class MembersListScreen extends ConsumerWidget {
   Color _getRoleColor(UserRole role) {
     switch (role) {
       case UserRole.owner:
-        return AppColors.danger;
+        return AppColors.ownerBadge;
       case UserRole.manager1:
-        return const Color(0xFF1C4E6B);
+        return AppColors.managerBadge;
       case UserRole.manager2:
-        return const Color(0xFF00796B);
+        return AppColors.managerBadge;
       case UserRole.legacyManager:
         return const Color(0xFFE65100);
       case UserRole.employee:

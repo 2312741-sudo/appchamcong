@@ -485,7 +485,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
           _buildSummaryRow(
             label: 'Tổng đã ứng',
             value: _formatCurrency(totalAdvance),
-            valueColor: const Color(0xFFCB2D2E),
+            valueColor: AppColors.danger,
           ),
 
           const SizedBox(height: 10),
@@ -496,7 +496,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
           _buildSummaryRow(
             label: 'Tổng tiền trừ',
             value: _formatCurrency(totalDeductions),
-            valueColor: const Color(0xFFCB2D2E),
+            valueColor: AppColors.danger,
           ),
 
           const SizedBox(height: 10),
@@ -507,7 +507,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
           _buildSummaryRow(
             label: 'Tổng đã thanh toán',
             value: _formatCurrency(totalPaid),
-            valueColor: const Color(0xFFCB2D2E),
+            valueColor: AppColors.danger,
           ),
 
           const SizedBox(height: 10),
@@ -1080,7 +1080,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isActive ? const Color(0xFF1A6B5A) : AppColors.primary,
+                  backgroundColor: isActive ? AppColors.success : AppColors.primary,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

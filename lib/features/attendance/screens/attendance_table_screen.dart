@@ -278,9 +278,9 @@ class _MemberCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final roleColors = {
-      UserRole.owner: AppColors.primary,
-      UserRole.manager1: const Color(0xFF1C4E6B),
-      UserRole.manager2: const Color(0xFF00796B),
+      UserRole.owner: AppColors.ownerBadge,
+      UserRole.manager1: AppColors.managerBadge,
+      UserRole.manager2: AppColors.managerBadge,
       UserRole.legacyManager: const Color(0xFFE65100),
       UserRole.employee: AppColors.textSecondary,
     };
