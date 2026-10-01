@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/location_utils.dart';
-import '../../../core/utils/department_utils.dart';
 import '../../../core/utils/production_checklist_utils.dart';
 import '../../../models/attendance_model.dart';
 import '../../../models/store_model.dart';
@@ -117,6 +116,16 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
     bool isCheckedIn, {
     AttendanceModel? currentAttendance,
   }) async {
+    if (isCheckedIn) {
+      final confirmed = await _showCheckOutConfirmation(
+        context,
+        currentAttendance,
+        store.id,
+        userId,
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(attendanceRepositoryProvider);
@@ -204,6 +213,189 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<bool?> _showCheckOutConfirmation(
+    BuildContext context,
+    AttendanceModel? attendance,
+    String storeId,
+    String userId,
+  ) async {
+    AttendanceModel? att = attendance;
+    if (att == null) {
+      try {
+        final repo = ref.read(attendanceRepositoryProvider);
+        att = await repo.getActiveAttendance(storeId, userId);
+      } catch (_) {}
+    }
+
+    String? inTimeStr;
+    String? durationStr;
+
+    if (att != null) {
+      final inTimeLocal = att.checkIn.toLocal();
+      inTimeStr = DateFormat('HH:mm - dd/MM/yyyy').format(inTimeLocal);
+      final diff = DateTime.now().difference(att.checkIn);
+      final h = diff.inHours;
+      final m = diff.inMinutes.remainder(60);
+      durationStr = h > 0 ? '$h giờ $m phút' : '$m phút';
+    }
+
+    if (!context.mounted) return false;
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Xác nhận ra ca',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'BeVietnamPro',
+                  color: AppColors.neutral,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Bạn có chắc chắn muốn kết thúc ca làm việc lúc này không?',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.4,
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+            if (inTimeStr != null || durationStr != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.cardSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    if (inTimeStr != null)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Giờ vào:',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'BeVietnamPro',
+                            ),
+                          ),
+                          Text(
+                            inTimeStr,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontFamily: 'BeVietnamPro',
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (inTimeStr != null && durationStr != null)
+                      const SizedBox(height: 8),
+                    if (durationStr != null)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Thời gian làm:',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontFamily: 'BeVietnamPro',
+                            ),
+                          ),
+                          Text(
+                            durationStr,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                              fontFamily: 'BeVietnamPro',
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            ),
+            child: const Text(
+              'Xác nhận ra ca',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool?> _showProductionChecklist(
@@ -668,8 +860,10 @@ class _ProductionChecklistDialogState
         widget.onSubmitted(); // Tell parent to continue checkout
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
