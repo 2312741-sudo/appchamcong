@@ -24,27 +24,22 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Run essential startup tasks concurrently to minimize launch time
-  await Future.wait([
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]),
-    () async {
-      try {
-        if (Firebase.apps.isEmpty) {
-          await Firebase.initializeApp(
-            options: DefaultFirebaseOptions.currentPlatform,
-          );
-        }
-        // Register FCM background handler & initialize notification service
-        FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-        await NotificationService().initialize();
-      } catch (e) {
-        debugPrint('Firebase initialization: $e');
-      }
-    }(),
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
   ]);
+
+  // Initialize Firebase Core
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint('Firebase initialization: $e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -59,9 +54,20 @@ void main() async {
     debugPrint('Flutter error: ${details.exception}');
   };
 
+  // Launch the application UI immediately
   runApp(
     const ProviderScope(
       child: ChamCongTramApp(),
     ),
   );
+
+  // Post-launch background tasks (non-blocking)
+  Future.microtask(() async {
+    try {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      await NotificationService().initialize();
+    } catch (e) {
+      debugPrint('Background notification init error: $e');
+    }
+  });
 }
