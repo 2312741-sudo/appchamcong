@@ -343,6 +343,13 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                   ),
                 ),
                 IconButton(
+                  onPressed: () => FocusScope.of(context).unfocus(),
+                  icon: const Icon(Icons.keyboard_hide_rounded),
+                  tooltip: 'Ẩn bàn phím',
+                  splashRadius: 20,
+                  color: AppColors.textSecondary,
+                ),
+                IconButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   icon: const Icon(Icons.close_rounded),
                   splashRadius: 20,
@@ -355,9 +362,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
 
           // Form content
           Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Form(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,10 +640,11 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   /// Section chọn ngày thực hiện linh hoạt
   Widget _buildExecutionDatesSection() {

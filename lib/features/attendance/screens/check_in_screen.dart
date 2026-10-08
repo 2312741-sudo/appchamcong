@@ -942,81 +942,101 @@ class _ProductionChecklistDialogState
           right: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Báo cáo sản xuất',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context)),
-            ],
-          ),
-          const Text(
-              'Vui lòng đánh dấu các công việc đã làm trong ca và nhập số lượng để hệ thống ghi nhận.',
-              style: TextStyle(color: Colors.grey, fontSize: 14)),
-          const SizedBox(height: 20),
-          ConstrainedBox(
-            constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.4),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: widget.tasks.length,
-              itemBuilder: (ctx, i) {
-                final t = widget.tasks[i];
-                final isSelected = _selected[t.id] ?? false;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primary.withOpacity(0.05)
-                        : Colors.white,
-                    border: Border.all(
-                        color: isSelected
-                            ? AppColors.primary
-                            : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: CheckboxListTile(
-                    value: isSelected,
-                    activeColor: AppColors.primary,
-                    title: Text(t.name,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: isSelected
-                        ? Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: t.unitLabel.trim().isNotEmpty
-                                ? Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _controllers[t.id],
-                                          keyboardType: const TextInputType
-                                              .numberWithOptions(decimal: true),
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter.allow(
-                                                RegExp(r'[\d.,]')),
-                                          ],
-                                          decoration: InputDecoration(
-                                            isDense: true,
-                                            hintText:
-                                                'Nhập số lượng (${t.unitLabel})...',
-                                            border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8)),
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Báo cáo sản xuất',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.keyboard_hide_rounded),
+                      tooltip: 'Ẩn bàn phím',
+                      onPressed: () => FocusScope.of(context).unfocus(),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Text(
+                'Vui lòng đánh dấu các công việc đã làm trong ca và nhập số lượng để hệ thống ghi nhận.',
+                style: TextStyle(color: Colors.grey, fontSize: 14)),
+            const SizedBox(height: 20),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4),
+              child: ListView.builder(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                shrinkWrap: true,
+                itemCount: widget.tasks.length,
+                itemBuilder: (ctx, i) {
+                  final t = widget.tasks[i];
+                  final isSelected = _selected[t.id] ?? false;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary.withOpacity(0.05)
+                          : Colors.white,
+                      border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: CheckboxListTile(
+                      value: isSelected,
+                      activeColor: AppColors.primary,
+                      title: Text(t.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: isSelected
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: t.unitLabel.trim().isNotEmpty
+                                  ? Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _controllers[t.id],
+                                            keyboardType: const TextInputType
+                                                .numberWithOptions(decimal: true),
+                                            textInputAction:
+                                                TextInputAction.done,
+                                            onSubmitted: (_) =>
+                                                FocusScope.of(context).unfocus(),
+                                            inputFormatters: [
+                                              FilteringTextInputFormatter.allow(
+                                                  RegExp(r'[\d.,]')),
+                                            ],
+                                            decoration: InputDecoration(
+                                              isDense: true,
+                                              hintText:
+                                                  'Nhập số lượng (${t.unitLabel})...',
+                                              border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8)),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8),
+                                            ),
                                           ),
                                         ),
-                                      ),
                                       const SizedBox(width: 12),
                                       Text(t.unitLabel,
                                           style: const TextStyle(
@@ -1071,8 +1091,9 @@ class _ProductionChecklistDialogState
           const SizedBox(height: 24),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ── Unfinished Tasks Modal (Check-out Gatekeeper) ────────────────────────────

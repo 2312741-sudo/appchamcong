@@ -376,11 +376,15 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // 1. Thẻ Thông tin Công việc
               _buildTaskInfoCard(),
               const SizedBox(height: 16),
@@ -400,7 +404,8 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildTaskInfoCard() {
@@ -633,18 +638,50 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.edit_note_rounded,
+              const Icon(Icons.edit_note_rounded,
                   color: AppColors.primary, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Nội dung báo cáo / Tiến độ',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'BeVietnamPro',
-                  color: AppColors.neutral,
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Nội dung báo cáo / Tiến độ',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'BeVietnamPro',
+                    color: AppColors.neutral,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => FocusScope.of(context).unfocus(),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.paperInk.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border, width: 0.8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.keyboard_hide_rounded,
+                          size: 15, color: AppColors.textSecondary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Ẩn phím',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'BeVietnamPro',
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
