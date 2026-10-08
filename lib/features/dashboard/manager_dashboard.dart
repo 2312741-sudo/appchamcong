@@ -19,6 +19,7 @@ import '../../features/attendance/providers/attendance_provider.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/schedule/screens/employee_schedule_tab.dart';
 import '../../features/schedule/screens/schedule_manager_screen.dart';
+import '../task_assignment/widgets/shift_tasks_card.dart';
 
 import '../../core/services/app_update_service.dart';
 
@@ -336,6 +337,17 @@ class _ManagerHomeTab extends ConsumerWidget {
           ),
         ),
 
+        // Công việc trong ca của Quản lý
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ShiftTasksCard(
+              storeId: store.id,
+              userId: uid,
+            ),
+          ),
+        ),
+
         // NV đang làm
         SliverToBoxAdapter(
           child: Padding(
@@ -483,6 +495,14 @@ class _ManagerHomeTab extends ConsumerWidget {
                     onTap: () => context.push(AppRoutes.attendanceTable),
                   ),
                 ],
+                const SizedBox(height: 10),
+                _MgrToolCard(
+                  icon: Icons.assignment_outlined,
+                  label: 'Giao việc & Quản lý việc',
+                  sub: 'Phân công công việc & theo dõi báo cáo NV',
+                  color: AppColors.info,
+                  onTap: () => context.push(AppRoutes.taskManagement),
+                ),
               ],
             ),
           ),

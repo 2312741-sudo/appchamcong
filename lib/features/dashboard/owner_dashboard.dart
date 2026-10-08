@@ -19,6 +19,7 @@ import '../../core/utils/attendance_utils.dart';
 import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/members/screens/members_list_screen.dart';
 import '../../features/attendance/screens/attendance_table_screen.dart';
+import '../../features/task_assignment/widgets/shift_tasks_card.dart';
 
 import '../../core/services/app_update_service.dart';
 
@@ -508,6 +509,17 @@ class _OwnerHomeTab extends ConsumerWidget {
           ),
         ),
 
+        // Công việc trong ca của Chủ
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ShiftTasksCard(
+              storeId: store.id,
+              userId: userId,
+            ),
+          ),
+        ),
+
         // Quick tools
         SliverToBoxAdapter(
           child: Padding(
@@ -526,6 +538,8 @@ class _OwnerHomeTab extends ConsumerWidget {
                 _ToolCard(icon: Icons.account_balance_wallet_rounded, label: 'Duyệt tạm ứng', sub: 'Xem yêu cầu ứng lương', color: AppColors.accentInk, onTap: () => GoRouter.of(context).push(AppRoutes.manageAdvances)),
                 const SizedBox(height: 10),
                 _ToolCard(icon: Icons.qr_code_rounded, label: 'QR chấm công', sub: 'Chia sẻ mã QR cho NV', color: AppColors.primaryDark, onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
+                const SizedBox(height: 10),
+                _ToolCard(icon: Icons.assignment_outlined, label: 'Giao việc & Quản lý việc', sub: 'Phân công công việc & theo dõi báo cáo NV', color: AppColors.managerAccent, onTap: () => GoRouter.of(context).push(AppRoutes.taskManagement)),
               ],
             ),
           ),

@@ -36,6 +36,10 @@ import '../features/notifications/screens/notifications_screen.dart';
 import '../features/dashboard/owner_dashboard.dart';
 import '../features/dashboard/manager_dashboard.dart';
 import '../features/dashboard/employee_dashboard.dart';
+import '../features/task_assignment/screens/task_report_screen.dart';
+import '../features/task_assignment/screens/task_management_screen.dart';
+import '../features/task_assignment/screens/task_detail_screen.dart';
+import '../models/task_assignment_model.dart';
 import '../models/member_model.dart';
 
 // Route path constants
@@ -78,6 +82,9 @@ class AppRoutes {
   static const String aboutApp = '/about-app';
   static const String notifications = '/notifications';
   static const String productionTasks = '/production-tasks';
+  static const String taskReport = '/task-report';
+  static const String taskManagement = '/task-management';
+  static const String taskDetail = '/task-detail';
 }
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -354,6 +361,45 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.notifications,
         name: 'notifications',
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.taskReport,
+        name: 'task-report',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final task = extra?['task'] as AssignedTask?;
+          if (task == null) {
+            return const Scaffold(
+              body: Center(child: Text('Không tìm thấy thông tin công việc')),
+            );
+          }
+          final workDate = extra?['workDate'] as String?;
+          final initialSubmission = extra?['initialSubmission'] as TaskSubmission?;
+          return TaskReportScreen(
+            task: task,
+            workDate: workDate,
+            initialSubmission: initialSubmission,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.taskManagement,
+        name: 'task-management',
+        builder: (context, state) => const TaskManagementScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.taskDetail,
+        name: 'task-detail',
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is AssignedTask) {
+            return TaskDetailScreen(task: extra);
+          }
+          final params = state.uri.queryParameters;
+          final taskId = params['taskId'];
+          final storeId = params['storeId'];
+          return TaskDetailScreen(taskId: taskId, storeId: storeId);
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

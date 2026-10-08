@@ -17,6 +17,9 @@ import '../../store/screens/shift_settings_screen.dart';
 import '../repositories/attendance_repository.dart';
 import '../../production/providers/production_provider.dart';
 import '../../schedule/providers/schedule_provider.dart';
+import '../../task_assignment/providers/task_provider.dart';
+import '../../task_assignment/screens/task_report_screen.dart';
+import '../../../models/task_assignment_model.dart';
 
 // File-local provider (private) to avoid name collision with the global
 // todayAttendanceProvider in attendance_provider.dart (which has a different signature).
@@ -117,9 +120,47 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
     AttendanceModel? currentAttendance,
   }) async {
     if (isCheckedIn) {
+      // ── CỔNG RÀNG BUỘC RA CA (CHECK-OUT GATEKEEPER) ──
+      final repo = ref.read(attendanceRepositoryProvider);
+      final activeAtt = currentAttendance ??
+          await repo.getActiveAttendance(store.id, userId);
+      final checkInTime = activeAtt?.checkIn ?? DateTime.now();
+      final checkInVN = checkInTime.toUtc().add(const Duration(hours: 7));
+      final workdayDateStr =
+          '${checkInVN.year}-${checkInVN.month.toString().padLeft(2, '0')}-${checkInVN.day.toString().padLeft(2, '0')}';
+
+      setState(() => _isLoading = true);
+      List<AssignedTask> unfinishedTasks = [];
+      try {
+        unfinishedTasks = await ref
+            .read(taskRepositoryProvider)
+            .getUnfinishedTasksForUserOnDate(
+              store.id,
+              userId,
+              workdayDateStr,
+            );
+      } catch (_) {}
+      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      if (unfinishedTasks.isNotEmpty) {
+        if (!mounted) return;
+        final canProceed = await _showUnfinishedTasksModal(
+          context,
+          store,
+          userId,
+          workdayDateStr,
+          unfinishedTasks,
+        );
+        if (canProceed != true || !mounted) {
+          // CHẶN RA CA khi còn công việc chưa hoàn thành!
+          return;
+        }
+      }
+
       final confirmed = await _showCheckOutConfirmation(
         context,
-        currentAttendance,
+        activeAtt,
         store.id,
         userId,
       );
@@ -418,6 +459,28 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
           userId: userId,
           workdayDate: workdayDate,
           onSubmitted: () => Navigator.pop(ctx, true),
+        );
+      },
+    );
+  }
+
+  Future<bool?> _showUnfinishedTasksModal(
+    BuildContext context,
+    StoreModel store,
+    String userId,
+    String workdayDateStr,
+    List<AssignedTask> unfinishedTasks,
+  ) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return _UnfinishedTasksModal(
+          store: store,
+          userId: userId,
+          workdayDateStr: workdayDateStr,
+          initialUnfinishedTasks: unfinishedTasks,
         );
       },
     );
@@ -1011,3 +1074,341 @@ class _ProductionChecklistDialogState
     );
   }
 }
+
+// ── Unfinished Tasks Modal (Check-out Gatekeeper) ────────────────────────────
+
+class _UnfinishedTasksModal extends ConsumerStatefulWidget {
+  final StoreModel store;
+  final String userId;
+  final String workdayDateStr;
+  final List<AssignedTask> initialUnfinishedTasks;
+
+  const _UnfinishedTasksModal({
+    required this.store,
+    required this.userId,
+    required this.workdayDateStr,
+    required this.initialUnfinishedTasks,
+  });
+
+  @override
+  ConsumerState<_UnfinishedTasksModal> createState() =>
+      _UnfinishedTasksModalState();
+}
+
+class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
+  late List<AssignedTask> _tasks;
+  bool _isChecking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tasks = List.from(widget.initialUnfinishedTasks);
+  }
+
+  Future<void> _checkTasksAgain() async {
+    setState(() => _isChecking = true);
+    try {
+      final updated = await ref
+          .read(taskRepositoryProvider)
+          .getUnfinishedTasksForUserOnDate(
+            widget.store.id,
+            widget.userId,
+            widget.workdayDateStr,
+          );
+      if (mounted) {
+        setState(() {
+          _tasks = updated;
+          _isChecking = false;
+        });
+        if (_tasks.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Tuyệt vời! Bạn đã hoàn thành tất cả công việc được giao.'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isChecking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        top: 20,
+        left: 20,
+        right: 20,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Header cảnh báo
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.assignment_late_rounded,
+                    color: AppColors.danger,
+                    size: 26,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bạn còn ${_tasks.length} công việc chưa hoàn thành!',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'BeVietnamPro',
+                          color: AppColors.neutral,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Vui lòng hoàn thành và nộp báo cáo các công việc được giao trước khi ra ca.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'BeVietnamPro',
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Divider(color: AppColors.divider, height: 1),
+            const SizedBox(height: 14),
+
+            // Danh sách task chưa hoàn thành
+            if (_isChecking)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _tasks.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (ctx, index) {
+                    final task = _tasks[index];
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () async {
+                        await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TaskReportScreen(
+                              task: task,
+                              workDate: widget.workdayDateStr,
+                            ),
+                          ),
+                        );
+                        if (mounted) {
+                          await _checkTasksAgain();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.pending_actions_rounded,
+                                color: AppColors.warning,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    task.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: 'BeVietnamPro',
+                                      color: AppColors.neutral,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      if (task.createdByName.isNotEmpty) ...[
+                                        Text(
+                                          'Người giao: ${task.createdByName}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                            fontFamily: 'BeVietnamPro',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      if (task.requirePhoto)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFF3E0),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.camera_alt_rounded,
+                                                  size: 10,
+                                                  color: Color(0xFFE65100)),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'Cần ảnh',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFFE65100),
+                                                  fontFamily: 'BeVietnamPro',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () async {
+                                await Navigator.push<bool>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TaskReportScreen(
+                                      task: task,
+                                      workDate: widget.workdayDateStr,
+                                    ),
+                                  ),
+                                );
+                                if (mounted) {
+                                  await _checkTasksAgain();
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                'Báo cáo',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'BeVietnamPro',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 18),
+
+            // Nút đóng / Quay lại
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context, false),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.border),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Quay lại tiếp tục làm việc',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'BeVietnamPro',
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
