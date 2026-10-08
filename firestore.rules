@@ -271,6 +271,20 @@ service cloud.firestore {
           (isSignedIn() && request.auth.uid == request.resource.data.actorId);
         allow update, delete: if false;
       }
+
+      // 4.8. Giao việc & Báo cáo công việc trong ca (assigned_tasks)
+      match /assigned_tasks/{taskId} {
+        allow read: if isActiveMember(storeId);
+        allow create, update, delete: if isAnyManagerOrOwner(storeId);
+
+        match /submissions/{submissionId} {
+          allow read: if isActiveMember(storeId);
+          allow create, update: if isActiveMember(storeId) &&
+            request.resource.data.userId == request.auth.uid;
+          allow delete: if isAnyManagerOrOwner(storeId) ||
+            (isActiveMember(storeId) && resource.data.userId == request.auth.uid);
+        }
+      }
     }
 
     // =========================================================================
