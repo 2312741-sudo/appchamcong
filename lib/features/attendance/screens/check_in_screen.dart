@@ -1298,6 +1298,7 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     task.title,
@@ -1310,54 +1311,55 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
                                       color: AppColors.neutral,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      if (task.createdByName.isNotEmpty) ...[
-                                        Text(
-                                          'Người giao: ${task.createdByName}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary,
-                                            fontFamily: 'BeVietnamPro',
+                                  if (task.createdByName.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Người giao: ${task.createdByName}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontFamily: 'BeVietnamPro',
+                                      ),
+                                    ),
+                                  ],
+                                  if (task.requirePhoto) ...[
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF3E0),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                            color: const Color(0xFFFFB74D),
+                                            width: 0.6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.camera_alt_rounded,
+                                              size: 10,
+                                              color: Color(0xFFE65100)),
+                                          SizedBox(width: 3),
+                                          Text(
+                                            'Cần ảnh chụp',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFFE65100),
+                                              fontFamily: 'BeVietnamPro',
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      if (task.requirePhoto)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFFF3E0),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.camera_alt_rounded,
-                                                  size: 10,
-                                                  color: Color(0xFFE65100)),
-                                              SizedBox(width: 3),
-                                              Text(
-                                                'Cần ảnh',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Color(0xFFE65100),
-                                                  fontFamily: 'BeVietnamPro',
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             ElevatedButton(
                               onPressed: () async {
                                 await Navigator.push<bool>(
@@ -1378,7 +1380,7 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
+                                    horizontal: 14, vertical: 9),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 shape: RoundedRectangleBorder(
@@ -1388,7 +1390,7 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
                               child: const Text(
                                 'Báo cáo',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'BeVietnamPro',
                                 ),
