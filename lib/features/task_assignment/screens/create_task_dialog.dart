@@ -233,6 +233,12 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       final repo = ref.read(taskRepositoryProvider);
       await repo.createTask(task);
 
+      // Ép làm mới các provider để giao diện cập nhật ngay lập tức
+      ref.invalidate(todayUserTasksProvider);
+      ref.invalidate(unfinishedUserTasksProvider);
+      ref.invalidate(storeTasksProvider(storeId));
+      ref.invalidate(storeTasksFilteredProvider);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
