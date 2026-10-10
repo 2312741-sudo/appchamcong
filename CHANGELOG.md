@@ -1,8 +1,33 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.0.8 (11/09/2026)
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.1.6 (11/10/2026)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.0.8` (Mobile: `1.0.8+10`, Web: `1.0.8`)
+**Phiên bản hiện tại:** `v1.1.6` (Mobile: `1.1.6+23`, Web: `1.1.6`)
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.1.6 (11/10/2026)
+1. **[TỐI ƯU RA CA] Không còn ép buộc chặn ca**:
+   - Nhân sự có thể ra ca (out ca) bình thường ngay cả khi còn công việc được giao chưa hoàn thành.
+   - Bảng nhắc nhở lịch sự với thời gian làm việc ca hiện tại và nút **"Xác nhận ra ca (Hoàn thành sau)"** để kết thúc ca tức thì (1 chạm).
+2. **[ĐIỀU HƯỚNG NGÀY THÔNG MINH] Thanh chuyển ngày trên Dashboard (`ShiftTasksCard`)**:
+   - Hỗ trợ chuyển đổi nhanh ngày `<` (Hôm qua), `>` (Ngày mai) hoặc mở Lịch chọn ngày bất kỳ.
+   - Nút tiện ích "Về hôm nay" giúp quay lại ngày hiện tại.
+   - Nhân viên có thể nộp báo cáo và đính kèm ảnh minh chứng mọi lúc (kể cả sau ca hoặc hôm sau).
+3. **[SỬA LỖI GIAO DIỆN & PHÍM]**:
+   - Sửa triệt để lỗi chồng đè chữ giữa tên người giao, nhãn "Cần ảnh chụp" và nút "Báo cáo".
+   - Khắc phục lỗi không ẩn được bàn phím ảo bằng thao tác chạm ngoài hoặc cuộn màn hình (`onDrag`).
+4. **[KIỂM THỬ TỰ ĐỘNG]**:
+   - Đạt 171/171 Unit & Widget tests (Pass 100%).
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.1.5 (09/10/2026)
+1. **[TÍNH NĂNG MỚI] Giao việc & Báo cáo công việc trong ca (Shift Tasks)**:
+   - Chủ quán, Quản lý 1 và Quản lý 2 có thể giao việc cho từng nhân sự hoặc toàn cửa hàng.
+   - Cho phép chọn nhiều ngày thực hiện linh hoạt trong tương lai.
+   - Báo cáo văn bản tự do kèm hình ảnh minh chứng (Camera / Thư viện ảnh).
+   - Tự động đồng bộ thời gian thực (Real-time) trên mobile và Web Dashboard.
 
 ---
 
