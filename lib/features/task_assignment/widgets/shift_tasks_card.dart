@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/task_assignment_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -8,11 +9,12 @@ import '../providers/task_provider.dart';
 import '../screens/task_report_screen.dart';
 
 /// Thẻ hiển thị trên Dashboard ca làm việc:
-/// - Lấy danh sách task của ngày hôm nay áp dụng cho user hiện tại (todayUserTasksProvider)
-/// - Hiển thị tiến độ: ví dụ "Công việc trong ca hôm nay: 2/3 hoàn thành" kèm Progress Indicator
+/// - Lấy danh sách task của ngày được chọn áp dụng cho user hiện tại (todayUserTasksProvider)
+/// - Hỗ trợ chuyển đổi ngày (hôm nay, hôm qua, ngày mai, hoặc chọn ngày bất kỳ) để nhân viên có thể xem và hoàn thành việc bất cứ lúc nào
+/// - Hiển thị tiến độ: ví dụ "Công việc: 2/3 hoàn thành" kèm Progress Indicator
 /// - Danh sách tóm tắt các việc trong ca, icon trạng thái (đã hoàn thành xanh lá, chưa hoàn thành cam)
 /// - Bấm vào từng việc mở TaskReportScreen để xem/báo cáo ngay
-class ShiftTasksCard extends ConsumerWidget {
+class ShiftTasksCard extends ConsumerStatefulWidget {
   final String? storeId;
   final String? userId;
   final String? dateStr; // YYYY-MM-DD
@@ -27,23 +29,126 @@ class ShiftTasksCard extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final effectiveStoreId = storeId ?? ref.watch(currentStoreIdProvider) ?? '';
-    final effectiveUserId = userId ?? ref.watch(currentUserIdProvider) ?? '';
+  ConsumerState<ShiftTasksCard> createState() => _ShiftTasksCardState();
+}
+
+class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDate();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShiftTasksCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.dateStr != oldWidget.dateStr && widget.dateStr != null) {
+      _initDate();
+    }
+  }
+
+  void _initDate() {
+    if (widget.dateStr != null) {
+      try {
+        _selectedDate = DateTime.parse(widget.dateStr!);
+      } catch (_) {
+        final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+        _selectedDate = DateTime(vnNow.year, vnNow.month, vnNow.day);
+      }
+    } else {
+      final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+      _selectedDate = DateTime(vnNow.year, vnNow.month, vnNow.day);
+    }
+  }
+
+  void _previousDay() {
+    setState(() {
+      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+    });
+  }
+
+  void _nextDay() {
+    setState(() {
+      _selectedDate = _selectedDate.add(const Duration(days: 1));
+    });
+  }
+
+  void _goToToday() {
+    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+    setState(() {
+      _selectedDate = DateTime(vnNow.year, vnNow.month, vnNow.day);
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 90)),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      locale: const Locale('vi', 'VN'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  String _formatDateTitle(DateTime dt) {
+    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+    final today = DateTime(vnNow.year, vnNow.month, vnNow.day);
+    final target = DateTime(dt.year, dt.month, dt.day);
+
+    if (target == today) {
+      return 'Hôm nay (${DateFormat('dd/MM').format(dt)})';
+    } else if (target == today.subtract(const Duration(days: 1))) {
+      return 'Hôm qua (${DateFormat('dd/MM').format(dt)})';
+    } else if (target == today.add(const Duration(days: 1))) {
+      return 'Ngày mai (${DateFormat('dd/MM').format(dt)})';
+    } else {
+      return DateFormat('dd/MM/yyyy').format(dt);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveStoreId =
+        widget.storeId ?? ref.watch(currentStoreIdProvider) ?? '';
+    final effectiveUserId =
+        widget.userId ?? ref.watch(currentUserIdProvider) ?? '';
 
     if (effectiveStoreId.isEmpty || effectiveUserId.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
-    final effectiveDateStr = dateStr ??
-        '${vnNow.year}-${vnNow.month.toString().padLeft(2, '0')}-${vnNow.day.toString().padLeft(2, '0')}';
+    final effectiveDateStr =
+        '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
 
     final params = (
       storeId: effectiveStoreId,
       userId: effectiveUserId,
       dateStr: effectiveDateStr,
     );
+
+    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+    final today = DateTime(vnNow.year, vnNow.month, vnNow.day);
+    final target =
+        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final isToday = target == today;
+    final dateTitle = _formatDateTitle(_selectedDate);
 
     final tasksAsync = ref.watch(todayUserTasksProvider(params));
     final unfinishedAsync = ref.watch(unfinishedUserTasksProvider(params));
@@ -53,7 +158,7 @@ class ShiftTasksCard extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (tasks) {
         if (tasks.isEmpty) {
-          return _buildEmptyCard();
+          return _buildEmptyCard(dateTitle: dateTitle, isToday: isToday);
         }
 
         final unfinishedTasks = unfinishedAsync.valueOrNull ?? [];
@@ -61,7 +166,8 @@ class ShiftTasksCard extends ConsumerWidget {
 
         final totalCount = tasks.length;
         final unfinishedCount = unfinishedTasks.length;
-        final completedCount = (totalCount - unfinishedCount).clamp(0, totalCount);
+        final completedCount =
+            (totalCount - unfinishedCount).clamp(0, totalCount);
         final progress = totalCount > 0 ? (completedCount / totalCount) : 1.0;
         final isAllDone = completedCount == totalCount;
 
@@ -87,7 +193,7 @@ class ShiftTasksCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header & Badge tiến độ
+              // Header & Date Switcher
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -108,20 +214,47 @@ class ShiftTasksCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Công việc trong ca hôm nay',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'BeVietnamPro',
-                        color: AppColors.neutral,
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Công việc được giao',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'BeVietnamPro',
+                            color: AppColors.neutral,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        InkWell(
+                          onTap: _pickDate,
+                          borderRadius: BorderRadius.circular(4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                dateTitle,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'BeVietnamPro',
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const Icon(Icons.arrow_drop_down_rounded,
+                                  size: 16, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  // Progress badge
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                     decoration: BoxDecoration(
                       color: isAllDone
                           ? AppColors.success.withValues(alpha: 0.12)
@@ -134,25 +267,90 @@ class ShiftTasksCard extends ConsumerWidget {
                       ),
                     ),
                     child: Text(
-                      '$completedCount/$totalCount hoàn thành',
+                      '$completedCount/$totalCount xong',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'BeVietnamPro',
-                        color: isAllDone ? AppColors.success : AppColors.warning,
+                        color:
+                            isAllDone ? AppColors.success : AppColors.warning,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
+
+              // Date navigation row (< Hôm nay >)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: _previousDay,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.border, width: 0.8),
+                          ),
+                          child: const Icon(Icons.chevron_left_rounded,
+                              size: 18, color: AppColors.textSecondary),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: _nextDay,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.border, width: 0.8),
+                          ),
+                          child: const Icon(Icons.chevron_right_rounded,
+                              size: 18, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (!isToday)
+                    InkWell(
+                      onTap: _goToToday,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'Về hôm nay',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            fontFamily: 'BeVietnamPro',
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
 
               // Progress Bar
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: LinearProgressIndicator(
                   value: progress,
-                  minHeight: 8,
+                  minHeight: 7,
                   backgroundColor: AppColors.paperInk,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     isAllDone ? AppColors.success : AppColors.primary,
@@ -161,13 +359,13 @@ class ShiftTasksCard extends ConsumerWidget {
               ),
               const SizedBox(height: 14),
 
-              // Danh sách tóm tắt các việc trong ca
+              // Danh sách các việc
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: tasks.length,
                 separatorBuilder: (_, __) =>
-                    const Divider(color: AppColors.divider, height: 16),
+                    const Divider(color: AppColors.divider, height: 14),
                 itemBuilder: (ctx, index) {
                   final AssignedTask task = tasks[index];
                   final isDone = !unfinishedIds.contains(task.id);
@@ -187,7 +385,7 @@ class ShiftTasksCard extends ConsumerWidget {
                       if (res == true || ctx.mounted) {
                         ref.invalidate(todayUserTasksProvider(params));
                         ref.invalidate(unfinishedUserTasksProvider(params));
-                        onTasksChanged?.call();
+                        widget.onTasksChanged?.call();
                       }
                     },
                     child: Padding(
@@ -291,7 +489,7 @@ class ShiftTasksCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyCard() {
+  Widget _buildEmptyCard({required String dateTitle, required bool isToday}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -306,45 +504,125 @@ class ShiftTasksCard extends ConsumerWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.task_alt_rounded,
-              color: AppColors.success,
-              size: 22,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.task_alt_rounded,
+                  color: AppColors.success,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Công việc được giao',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'BeVietnamPro',
+                        color: AppColors.neutral,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    InkWell(
+                      onTap: _pickDate,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            dateTitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'BeVietnamPro',
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down_rounded,
+                              size: 16, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: _previousDay,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.border, width: 0.8),
+                      ),
+                      child: const Icon(Icons.chevron_left_rounded,
+                          size: 18, color: AppColors.textSecondary),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: _nextDay,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.border, width: 0.8),
+                      ),
+                      child: const Icon(Icons.chevron_right_rounded,
+                          size: 18, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Công việc trong ca',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'BeVietnamPro',
-                    color: AppColors.neutral,
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isToday
+                    ? 'Hôm nay bạn không có công việc được phân công'
+                    : 'Không có công việc được phân công vào ngày này',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                  fontFamily: 'BeVietnamPro',
+                ),
+              ),
+              if (!isToday)
+                InkWell(
+                  onTap: _goToToday,
+                  child: const Text(
+                    'Về hôm nay',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      fontFamily: 'BeVietnamPro',
+                    ),
                   ),
                 ),
-                SizedBox(height: 2),
-                Text(
-                  'Hôm nay bạn không có công việc được phân công',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
-                    fontFamily: 'BeVietnamPro',
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         ],
       ),

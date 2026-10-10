@@ -143,6 +143,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
       if (mounted) setState(() => _isLoading = false);
       if (!mounted) return;
 
+      bool isConfirmed = false;
       if (unfinishedTasks.isNotEmpty) {
         if (!mounted) return;
         final canProceed = await _showUnfinishedTasksModal(
@@ -151,20 +152,25 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
           userId,
           workdayDateStr,
           unfinishedTasks,
+          attendance: activeAtt,
         );
         if (canProceed != true || !mounted) {
-          // CHẶN RA CA khi còn công việc chưa hoàn thành!
+          // Người dùng chọn ở lại tiếp tục làm việc hoặc đóng modal
           return;
         }
+        // Đã bấm xác nhận ra ca (hoàn thành sau) ngay trên modal nhắc việc
+        isConfirmed = true;
       }
 
-      final confirmed = await _showCheckOutConfirmation(
-        context,
-        activeAtt,
-        store.id,
-        userId,
-      );
-      if (confirmed != true || !mounted) return;
+      if (!isConfirmed) {
+        final confirmed = await _showCheckOutConfirmation(
+          context,
+          activeAtt,
+          store.id,
+          userId,
+        );
+        if (confirmed != true || !mounted) return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -469,8 +475,9 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
     StoreModel store,
     String userId,
     String workdayDateStr,
-    List<AssignedTask> unfinishedTasks,
-  ) {
+    List<AssignedTask> unfinishedTasks, {
+    AttendanceModel? attendance,
+  }) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -481,6 +488,7 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
           userId: userId,
           workdayDateStr: workdayDateStr,
           initialUnfinishedTasks: unfinishedTasks,
+          attendance: attendance,
         );
       },
     );
@@ -1103,12 +1111,14 @@ class _UnfinishedTasksModal extends ConsumerStatefulWidget {
   final String userId;
   final String workdayDateStr;
   final List<AssignedTask> initialUnfinishedTasks;
+  final AttendanceModel? attendance;
 
   const _UnfinishedTasksModal({
     required this.store,
     required this.userId,
     required this.workdayDateStr,
     required this.initialUnfinishedTasks,
+    this.attendance,
   });
 
   @override
@@ -1159,6 +1169,17 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
 
   @override
   Widget build(BuildContext context) {
+    String? inTimeStr;
+    String? durationStr;
+    if (widget.attendance != null) {
+      final inTimeLocal = widget.attendance!.checkIn.toLocal();
+      inTimeStr = DateFormat('HH:mm').format(inTimeLocal);
+      final diff = DateTime.now().difference(widget.attendance!.checkIn);
+      final h = diff.inHours;
+      final m = diff.inMinutes.remainder(60);
+      durationStr = h > 0 ? '$h giờ $m phút' : '$m phút';
+    }
+
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
@@ -1188,18 +1209,22 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
             ),
             const SizedBox(height: 16),
 
-            // Header cảnh báo
+            // Header thông báo công việc
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.12),
+                    color: const Color(0xFFFFF3E0),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
+                      width: 1,
+                    ),
                   ),
                   child: const Icon(
-                    Icons.assignment_late_rounded,
-                    color: AppColors.danger,
+                    Icons.assignment_outlined,
+                    color: Color(0xFFE65100),
                     size: 26,
                   ),
                 ),
@@ -1209,19 +1234,19 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bạn còn ${_tasks.length} công việc chưa hoàn thành!',
+                        'Bạn còn ${_tasks.length} công việc chưa hoàn thành',
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 16.5,
                           fontWeight: FontWeight.w800,
                           fontFamily: 'BeVietnamPro',
                           color: AppColors.neutral,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       const Text(
-                        'Vui lòng hoàn thành và nộp báo cáo các công việc được giao trước khi ra ca.',
+                        'Bạn có thể báo cáo ngay bây giờ hoặc tiếp tục ra ca và hoàn thành sau bất kỳ lúc nào.',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           color: AppColors.textSecondary,
                           fontFamily: 'BeVietnamPro',
                           height: 1.35,
@@ -1232,7 +1257,48 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            if (durationStr != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded,
+                            size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Thời gian làm: $durationStr',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.success,
+                            fontFamily: 'BeVietnamPro',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (inTimeStr != null)
+                      Text(
+                        'Vào ca: $inTimeStr',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontFamily: 'BeVietnamPro',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
             const Divider(color: AppColors.divider, height: 1),
             const SizedBox(height: 14),
 
@@ -1405,22 +1471,40 @@ class _UnfinishedTasksModalState extends ConsumerState<_UnfinishedTasksModal> {
               ),
             const SizedBox(height: 18),
 
-            // Nút đóng / Quay lại
+            // Nút hành động: Ra ca ngay (hoàn thành sau) & Ở lại làm việc
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context, false),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text(
+                  'Xác nhận ra ca (Hoàn thành sau)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
                 child: const Text(
-                  'Quay lại tiếp tục làm việc',
+                  'Ở lại tiếp tục làm việc',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'BeVietnamPro',
                     color: AppColors.textSecondary,
