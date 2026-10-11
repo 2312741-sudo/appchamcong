@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../core/widgets/role_badge.dart';
 import '../../../models/member_model.dart';
+import '../../../models/store_model.dart';
 import '../../../models/task_assignment_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
@@ -40,8 +41,15 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   // Danh sách các ngày thực hiện được chọn (YYYY-MM-DD)
   final Set<String> _selectedDates = {};
 
+  // Lặp mỗi ngày
+  bool _repeatDaily = false;
+
   // Đối tượng nhận việc
   TaskTargetType _targetType = TaskTargetType.allStore;
+
+  // Bộ phận được chọn khi targetType == department
+  String? _selectedDepartmentId;
+  String? _selectedDepartmentName;
 
   // Danh sách ID thành viên được chọn khi targetType == individual
   final Set<String> _selectedMemberIds = {};
@@ -171,6 +179,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       return;
     }
 
+    if (_targetType == TaskTargetType.department &&
+        (_selectedDepartmentId == null || _selectedDepartmentId!.isEmpty)) {
+      setState(() {
+        _errorMessage = 'Vui lòng chọn một bộ phận nhận việc!';
+      });
+      return;
+    }
+
     final storeId = ref.read(currentStoreIdProvider);
     if (storeId == null || storeId.isEmpty) {
       setState(() {
@@ -186,10 +202,22 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     final creatorName = currentMember?.name ?? currentUser?.name ?? 'Quản lý';
     final creatorRole = currentMember?.role ?? UserRole.manager1;
 
-    // Lấy tên các thành viên được chọn
+    // Lấy thành viên được giao việc
     final allMembers = ref.read(activeMembersProvider);
-    final selectedNames = <String>[];
-    if (_targetType == TaskTargetType.individual) {
+    final List<String> assignedUids;
+    final List<String> assignedNames;
+
+    if (_targetType == TaskTargetType.allStore) {
+      assignedUids = const [];
+      assignedNames = const [];
+    } else if (_targetType == TaskTargetType.department) {
+      final deptMembers = allMembers.where((m) =>
+          m.department == _selectedDepartmentId ||
+          m.department == _selectedDepartmentName).toList();
+      assignedUids = deptMembers.map((m) => m.userId).toList();
+      assignedNames = deptMembers.map((m) => m.name).toList();
+    } else {
+      final selectedNames = <String>[];
       for (final id in _selectedMemberIds) {
         final m = allMembers.cast<MemberModel?>().firstWhere(
               (element) => element?.userId == id,
@@ -201,6 +229,8 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
           selectedNames.add('Thành viên');
         }
       }
+      assignedUids = _selectedMemberIds.toList();
+      assignedNames = selectedNames;
     }
 
     final sortedDates = _selectedDates.toList()..sort();
@@ -214,12 +244,12 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       createdByName: creatorName,
       createdByRole: creatorRole,
       targetType: _targetType,
-      assignedUserIds: _targetType == TaskTargetType.allStore
-          ? const []
-          : _selectedMemberIds.toList(),
-      assignedNames:
-          _targetType == TaskTargetType.allStore ? const [] : selectedNames,
+      targetDepartmentId: _targetType == TaskTargetType.department ? _selectedDepartmentId : null,
+      targetDepartmentName: _targetType == TaskTargetType.department ? _selectedDepartmentName : null,
+      assignedUserIds: assignedUids,
+      assignedNames: assignedNames,
       executionDates: sortedDates,
+      repeatDaily: _repeatDaily,
       requirePhoto: _requirePhoto,
       status: TaskStatus.active,
       createdAt: DateTime.now(),
@@ -274,6 +304,8 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   @override
   Widget build(BuildContext context) {
     final activeMembers = ref.watch(activeMembersProvider);
+    final currentStore = ref.watch(currentStoreProvider).valueOrNull;
+    final departments = currentStore?.departments ?? const <DepartmentDefinition>[];
     final viewInsets = MediaQuery.of(context).viewInsets;
     final size = MediaQuery.of(context).size;
 
@@ -523,7 +555,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                     const SizedBox(height: 20),
 
                     // 4. Chọn đối tượng nhận việc
-                    _buildTargetSelectionSection(activeMembers),
+                    _buildTargetSelectionSection(activeMembers, departments),
                     const SizedBox(height: 20),
 
                     // 5. Switch Yêu cầu ảnh minh chứng
@@ -646,7 +678,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   );
 }
 
-  /// Section chọn ngày thực hiện linh hoạt
+  /// Section chọn ngày thực hiện linh hoạt & lặp mỗi ngày
   Widget _buildExecutionDatesSection() {
     final now = DateTime.now();
     final today = _formatDateIso(now);
@@ -662,162 +694,298 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'Ngày thực hiện *',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+        // Switch Lặp mỗi ngày
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: _repeatDaily
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _repeatDaily
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : AppColors.border.withValues(alpha: 0.7),
             ),
-            const SizedBox(width: 8),
-            Text(
-              '(${_selectedDates.length} ngày đã chọn)',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 12,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Chọn một hoặc nhiều ngày trong tương lai task này cần làm:',
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 12,
-            color: AppColors.textSecondary,
           ),
-        ),
-        const SizedBox(height: 8),
-
-        // Quick add buttons
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildQuickDateChip(
-                label: 'Hôm nay',
-                isoDate: today,
-                isSelected: _selectedDates.contains(today),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (_repeatDaily ? AppColors.primary : AppColors.textDisabled)
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.repeat_rounded,
+                  color: _repeatDaily ? AppColors.primary : AppColors.textSecondary,
+                  size: 20,
+                ),
               ),
-              const SizedBox(width: 6),
-              _buildQuickDateChip(
-                label: 'Ngày mai',
-                isoDate: tomorrow,
-                isSelected: _selectedDates.contains(tomorrow),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Lặp mỗi ngày',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (_repeatDaily) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'BẬT',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      _repeatDaily
+                          ? 'Tự động áp dụng cho các ca làm việc mỗi ngày'
+                          : 'Giao việc cho các ngày cụ thể được chọn bên dưới',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 6),
-              _buildQuickDateChip(
-                label: 'Ngày kia',
-                isoDate: dayAfterTomorrow,
-                isSelected: _selectedDates.contains(dayAfterTomorrow),
-              ),
-              const SizedBox(width: 6),
-              for (final dt in upcomingDays) ...[
-                _buildQuickDateChip(
-                  label: '${_weekdayName(dt.weekday)} (${DateFormat('dd/MM').format(dt)})',
-                  isoDate: _formatDateIso(dt),
-                  isSelected: _selectedDates.contains(_formatDateIso(dt)),
-                ),
-                const SizedBox(width: 6),
-              ],
-              ActionChip(
-                avatar: const Icon(
-                  Icons.calendar_month_rounded,
-                  size: 16,
-                  color: AppColors.primary,
-                ),
-                label: Text(
-                  '+ Chọn ngày khác',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-                backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                side: BorderSide(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                ),
-                onPressed: _pickCustomDate,
+              Switch(
+                value: _repeatDaily,
+                activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+                activeThumbColor: AppColors.primary,
+                onChanged: (val) {
+                  setState(() {
+                    _repeatDaily = val;
+                    if (_repeatDaily) {
+                      _selectedDates.clear();
+                      final currNow = DateTime.now();
+                      for (int i = 0; i < 60; i++) {
+                        _selectedDates.add(_formatDateIso(currNow.add(Duration(days: i))));
+                      }
+                    } else {
+                      _selectedDates.clear();
+                      _selectedDates.add(_formatDateIso(DateTime.now()));
+                    }
+                    _errorMessage = null;
+                  });
+                },
               ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
 
-        // Danh sách Chips các ngày đã chọn
-        if (_selectedDates.isNotEmpty)
+        if (_repeatDaily) ...[
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.7),
+                color: AppColors.primary.withValues(alpha: 0.25),
               ),
-            ),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: (_selectedDates.toList()..sort()).map((iso) {
-                return Chip(
-                  label: Text(
-                    _formatDateDisplay(iso),
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  deleteIcon: const Icon(
-                    Icons.close_rounded,
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
-                  onDeleted: () {
-                    setState(() {
-                      _selectedDates.remove(iso);
-                    });
-                  },
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                  side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                );
-              }).toList(),
-            ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
                 const SizedBox(width: 8),
-                Text(
-                  'Chưa chọn ngày nào. Vui lòng bấm chọn ngày phía trên.',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    color: Colors.deepOrange,
+                Expanded(
+                  child: Text(
+                    'Đã bật lặp mỗi ngày: Công việc sẽ tự động xuất hiện trong ca làm việc của nhân viên hàng ngày kể từ hôm nay.',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+        ] else ...[
+          Row(
+            children: [
+              Text(
+                'Ngày thực hiện *',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '(${_selectedDates.length} ngày đã chọn)',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 12,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Chọn một hoặc nhiều ngày trong tương lai task này cần làm:',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Quick add buttons
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildQuickDateChip(
+                  label: 'Hôm nay',
+                  isoDate: today,
+                  isSelected: _selectedDates.contains(today),
+                ),
+                const SizedBox(width: 6),
+                _buildQuickDateChip(
+                  label: 'Ngày mai',
+                  isoDate: tomorrow,
+                  isSelected: _selectedDates.contains(tomorrow),
+                ),
+                const SizedBox(width: 6),
+                _buildQuickDateChip(
+                  label: 'Ngày kia',
+                  isoDate: dayAfterTomorrow,
+                  isSelected: _selectedDates.contains(dayAfterTomorrow),
+                ),
+                const SizedBox(width: 6),
+                for (final dt in upcomingDays) ...[
+                  _buildQuickDateChip(
+                    label: '${_weekdayName(dt.weekday)} (${DateFormat('dd/MM').format(dt)})',
+                    isoDate: _formatDateIso(dt),
+                    isSelected: _selectedDates.contains(_formatDateIso(dt)),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                ActionChip(
+                  avatar: const Icon(
+                    Icons.calendar_month_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                  label: Text(
+                    '+ Chọn ngày khác',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                  side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                  onPressed: _pickCustomDate,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Danh sách Chips các ngày đã chọn
+          if (_selectedDates.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.7),
+                ),
+              ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (_selectedDates.toList()..sort()).map((iso) {
+                  return Chip(
+                    label: Text(
+                      _formatDateDisplay(iso),
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    deleteIcon: const Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                    onDeleted: () {
+                      setState(() {
+                        _selectedDates.remove(iso);
+                      });
+                    },
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    side: BorderSide(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  );
+                }).toList(),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Chưa chọn ngày nào. Vui lòng bấm chọn ngày phía trên.',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      color: Colors.deepOrange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -859,8 +1027,11 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     );
   }
 
-  /// Section chọn đối tượng nhận việc
-  Widget _buildTargetSelectionSection(List<MemberModel> members) {
+  /// Section chọn đối tượng nhận việc: Toàn cửa hàng, Theo bộ phận, Chỉ định cá nhân
+  Widget _buildTargetSelectionSection(
+    List<MemberModel> members,
+    List<DepartmentDefinition> departments,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -874,7 +1045,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
         ),
         const SizedBox(height: 8),
 
-        // Segmented Control
+        // Segmented Control (3 nút: Toàn cửa hàng, Theo bộ phận, Cá nhân/nhóm)
         Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
@@ -888,7 +1059,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             children: [
               Expanded(
                 child: _buildSegmentButton(
-                  title: 'Toàn bộ cửa hàng',
+                  title: 'Toàn cửa hàng',
                   icon: Icons.storefront_rounded,
                   isSelected: _targetType == TaskTargetType.allStore,
                   onTap: () {
@@ -902,7 +1073,25 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               const SizedBox(width: 4),
               Expanded(
                 child: _buildSegmentButton(
-                  title: 'Chỉ định cá nhân/nhóm',
+                  title: 'Theo bộ phận',
+                  icon: Icons.apartment_rounded,
+                  isSelected: _targetType == TaskTargetType.department,
+                  onTap: () {
+                    setState(() {
+                      _targetType = TaskTargetType.department;
+                      if (_selectedDepartmentId == null && departments.isNotEmpty) {
+                        _selectedDepartmentId = departments.first.id;
+                        _selectedDepartmentName = departments.first.name;
+                      }
+                      _errorMessage = null;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildSegmentButton(
+                  title: 'Cá nhân/nhóm',
                   icon: Icons.group_outlined,
                   isSelected: _targetType == TaskTargetType.individual,
                   onTap: () {
@@ -918,11 +1107,203 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
         ),
         const SizedBox(height: 12),
 
+        // Khi chọn "Theo bộ phận"
+        if (_targetType == TaskTargetType.department) ...[
+          _buildDepartmentSelectionSection(members, departments),
+        ],
+
         // Khi chọn "Chỉ định cá nhân / nhóm"
         if (_targetType == TaskTargetType.individual) ...[
           _buildIndividualMembersList(members),
         ],
       ],
+    );
+  }
+
+  /// UI chọn bộ phận và hiển thị danh sách thành viên thuộc bộ phận đó
+  Widget _buildDepartmentSelectionSection(
+    List<MemberModel> members,
+    List<DepartmentDefinition> departments,
+  ) {
+    if (departments.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 18, color: Colors.orange),
+                const SizedBox(width: 8),
+                Text(
+                  'Chưa thiết lập bộ phận',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.deepOrange,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Cửa hàng chưa có danh sách bộ phận (ví dụ: Pha chế, Phục vụ, Thu ngân...). Bạn có thể thêm bộ phận trong Cài đặt cửa hàng hoặc chọn giao theo Toàn cửa hàng / Cá nhân.',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final selectedDept = departments
+        .cast<DepartmentDefinition?>()
+        .firstWhere((d) => d?.id == _selectedDepartmentId, orElse: () => null);
+
+    final deptMembers = selectedDept == null
+        ? <MemberModel>[]
+        : members.where((m) =>
+            m.department == selectedDept.id ||
+            m.department == selectedDept.name ||
+            m.department == selectedDept.shortName).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.7)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Chọn bộ phận nhận việc:',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Danh sách Chips các bộ phận
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: departments.map((dept) {
+              final isSelected = _selectedDepartmentId == dept.id;
+              final count = members.where((m) =>
+                  m.department == dept.id ||
+                  m.department == dept.name ||
+                  m.department == dept.shortName).length;
+
+              return ChoiceChip(
+                label: Text('${dept.name} ($count)'),
+                selected: isSelected,
+                selectedColor: AppColors.primary,
+                backgroundColor: AppColors.cardSurface,
+                labelStyle: GoogleFonts.beVietnamPro(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                ),
+                side: BorderSide(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                ),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedDepartmentId = dept.id;
+                      _selectedDepartmentName = dept.name;
+                    } else {
+                      _selectedDepartmentId = null;
+                      _selectedDepartmentName = null;
+                    }
+                    _errorMessage = null;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+
+          if (selectedDept != null) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: AppColors.divider),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.people_outline_rounded, size: 16, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Text(
+                  'Thành viên thuộc ${selectedDept.name} (${deptMembers.length}):',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (deptMembers.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Chưa có nhân viên nào được gán vào bộ phận "${selectedDept.name}". Công việc sẽ tự động áp dụng khi có nhân viên thuộc bộ phận này.',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 11.5,
+                    color: AppColors.textSecondary,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 180),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: deptMembers.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.divider),
+                  itemBuilder: (context, index) {
+                    final member = deptMembers[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+                          const SizedBox(width: 8),
+                          AvatarWidget(name: member.name, avatarUrl: member.avatarUrl, radius: 14),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              member.name,
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          RoleBadge(role: member.role, compact: true),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ],
+      ),
     );
   }
 

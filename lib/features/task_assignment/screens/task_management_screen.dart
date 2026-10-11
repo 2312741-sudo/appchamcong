@@ -662,11 +662,41 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: Status badge + Photo requirement + Menu actions
+                // Top row: Status badge + Repeat daily + Photo requirement + Menu actions
                 Row(
                   children: [
                     _buildStatusBadge(task.status),
                     const SizedBox(width: 8),
+                    if (task.repeatDaily) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.repeat_rounded,
+                              size: 13,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Lặp mỗi ngày',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     if (task.requirePhoto)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -847,7 +877,9 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                     Icon(
                       task.isAllStore
                           ? Icons.storefront_rounded
-                          : Icons.group_outlined,
+                          : (task.isDepartment
+                              ? Icons.apartment_rounded
+                              : Icons.group_outlined),
                       size: 15,
                       color: AppColors.textSecondary,
                     ),
@@ -863,9 +895,11 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                       child: Text(
                         task.isAllStore
                             ? 'Toàn bộ cửa hàng'
-                            : (task.assignedNames.isNotEmpty
-                                ? '${task.assignedNames.length} người (${task.assignedNames.take(2).join(', ')}${task.assignedNames.length > 2 ? '...' : ''})'
-                                : '${task.assignedUserIds.length} người'),
+                            : (task.isDepartment
+                                ? 'Bộ phận ${task.targetDepartmentName ?? 'Bộ phận'} (${task.assignedNames.isNotEmpty ? task.assignedNames.length : task.assignedUserIds.length} người)'
+                                : (task.assignedNames.isNotEmpty
+                                    ? '${task.assignedNames.length} người (${task.assignedNames.take(2).join(', ')}${task.assignedNames.length > 2 ? '...' : ''})'
+                                    : '${task.assignedUserIds.length} người')),
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -893,11 +927,13 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        task.executionDates.isNotEmpty
-                            ? task.executionDates
-                                .map((d) => _formatDateShortDisplay(d))
-                                .join(', ')
-                            : 'Chưa đặt ngày',
+                        task.repeatDaily
+                            ? 'Lặp lại mỗi ngày'
+                            : (task.executionDates.isNotEmpty
+                                ? task.executionDates
+                                    .map((d) => _formatDateShortDisplay(d))
+                                    .join(', ')
+                                : 'Chưa đặt ngày'),
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,

@@ -547,6 +547,36 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             children: [
               _buildStatusBadge(task.status),
               const SizedBox(width: 8),
+              if (task.repeatDaily) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.repeat_rounded,
+                        size: 13,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Lặp mỗi ngày',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               if (task.requirePhoto)
                 Container(
                   padding:
@@ -666,7 +696,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               Icon(
                 task.isAllStore
                     ? Icons.storefront_rounded
-                    : Icons.group_rounded,
+                    : (task.isDepartment
+                        ? Icons.apartment_rounded
+                        : Icons.group_rounded),
                 size: 18,
                 color: AppColors.textSecondary,
               ),
@@ -682,9 +714,11 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 child: Text(
                   task.isAllStore
                       ? 'Toàn bộ cửa hàng'
-                      : (task.assignedNames.isNotEmpty
-                          ? task.assignedNames.join(', ')
-                          : '${task.assignedUserIds.length} người'),
+                      : (task.isDepartment
+                          ? 'Bộ phận ${task.targetDepartmentName ?? 'Bộ phận'} (${task.assignedNames.isNotEmpty ? task.assignedNames.length : task.assignedUserIds.length} người)'
+                          : (task.assignedNames.isNotEmpty
+                              ? task.assignedNames.join(', ')
+                              : '${task.assignedUserIds.length} người')),
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -1286,7 +1320,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       return activeMembers;
     }
 
-    // Nếu chỉ định cá nhân
+    if (task.isDepartment) {
+      final deptMembers = activeMembers.where((m) =>
+          m.department == task.targetDepartmentId ||
+          m.department == task.targetDepartmentName ||
+          task.assignedUserIds.contains(m.userId)).toList();
+      if (deptMembers.isNotEmpty) return deptMembers;
+    }
+
+    // Nếu chỉ định cá nhân hoặc fallback
     final result = <MemberModel>[];
     for (int i = 0; i < task.assignedUserIds.length; i++) {
       final uid = task.assignedUserIds[i];

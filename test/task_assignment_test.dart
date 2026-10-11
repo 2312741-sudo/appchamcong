@@ -49,13 +49,19 @@ void main() {
           equals(TaskTargetType.allStore));
       expect(TaskTargetTypeExtension.fromString('all'),
           equals(TaskTargetType.allStore));
+      expect(TaskTargetTypeExtension.fromString('department'),
+          equals(TaskTargetType.department));
+      expect(TaskTargetTypeExtension.fromString('dept'),
+          equals(TaskTargetType.department));
       expect(TaskTargetTypeExtension.fromString(null),
           equals(TaskTargetType.individual));
 
       expect(TaskTargetType.individual.value, equals('individual'));
       expect(TaskTargetType.allStore.value, equals('allStore'));
+      expect(TaskTargetType.department.value, equals('department'));
       expect(TaskTargetType.individual.label, equals('Cá nhân'));
       expect(TaskTargetType.allStore.label, equals('Toàn cửa hàng'));
+      expect(TaskTargetType.department.label, equals('Theo bộ phận'));
     });
 
     test('TaskStatus parse from string & value conversion', () {
@@ -491,6 +497,118 @@ void main() {
           storeId, userId, '2026-12-31');
 
       expect(unfinished, isEmpty);
+    });
+  });
+
+  group('6. Department Task Assignment Tests', () {
+    final deptTask = AssignedTask(
+      id: 'task_dept_pha_che',
+      storeId: 'store_alpha',
+      title: 'Vệ sinh máy xay cà phê',
+      description: 'Lau cặn và chạy chu trình làm sạch',
+      createdBy: 'uid_mgr',
+      createdByName: 'Quản lý',
+      createdByRole: UserRole.manager1,
+      targetType: TaskTargetType.department,
+      targetDepartmentId: 'dept_pha_che',
+      targetDepartmentName: 'Pha chế',
+      assignedUserIds: const ['uid_barista_1', 'uid_barista_2'],
+      assignedNames: const ['Barista A', 'Barista B'],
+      executionDates: const ['2026-10-12'],
+      repeatDaily: false,
+      requirePhoto: true,
+      status: TaskStatus.active,
+      createdAt: DateTime(2026, 10, 12, 8, 0),
+    );
+
+    test('Department task serialization & deserialization roundtrip', () {
+      final json = deptTask.toJson(useTimestamp: false);
+      expect(json['targetType'], equals('department'));
+      expect(json['targetDepartmentId'], equals('dept_pha_che'));
+      expect(json['targetDepartmentName'], equals('Pha chế'));
+      expect(json['repeatDaily'], isFalse);
+
+      final fromJson = AssignedTask.fromJson(json, 'task_dept_pha_che');
+      expect(fromJson.isDepartment, isTrue);
+      expect(fromJson.targetDepartmentId, equals('dept_pha_che'));
+      expect(fromJson.targetDepartmentName, equals('Pha chế'));
+    });
+
+    test('isApplicableForUserOnDate matches user with matching department', () {
+      final matchesDeptId = deptTask.isApplicableForUserOnDate(
+        userId: 'uid_barista_new',
+        dateStr: '2026-10-12',
+        userDepartment: 'dept_pha_che',
+      );
+      expect(matchesDeptId, isTrue);
+
+      final matchesDeptName = deptTask.isApplicableForUserOnDate(
+        userId: 'uid_barista_new',
+        dateStr: '2026-10-12',
+        userDepartment: 'Pha chế',
+      );
+      expect(matchesDeptName, isTrue);
+    });
+
+    test('isApplicableForUserOnDate matches pre-assigned user ID even without userDepartment argument', () {
+      final matchesAssignedUser = deptTask.isApplicableForUserOnDate(
+        userId: 'uid_barista_1',
+        dateStr: '2026-10-12',
+      );
+      expect(matchesAssignedUser, isTrue);
+    });
+
+    test('isApplicableForUserOnDate rejects user in different department not in assigned list', () {
+      final matchesOtherDept = deptTask.isApplicableForUserOnDate(
+        userId: 'uid_cashier',
+        dateStr: '2026-10-12',
+        userDepartment: 'Thu ngân',
+      );
+      expect(matchesOtherDept, isFalse);
+    });
+  });
+
+  group('7. Daily Recurring (repeatDaily) Task Tests', () {
+    final dailyTask = AssignedTask(
+      id: 'task_daily_cleanup',
+      storeId: 'store_alpha',
+      title: 'Đổ rác & vệ sinh sàn cuối ngày',
+      description: 'Lau sàn và gom rác ra bãi tập kết',
+      createdBy: 'uid_mgr',
+      createdByName: 'Quản lý',
+      createdByRole: UserRole.manager1,
+      targetType: TaskTargetType.allStore,
+      executionDates: const ['2026-10-12'], // Ngày bắt đầu
+      repeatDaily: true,
+      requirePhoto: true,
+      status: TaskStatus.active,
+      createdAt: DateTime(2026, 10, 12, 7, 0),
+    );
+
+    test('repeatDaily task serialization & deserialization', () {
+      final json = dailyTask.toJson(useTimestamp: false);
+      expect(json['repeatDaily'], isTrue);
+
+      final fromJson = AssignedTask.fromJson(json, 'task_daily_cleanup');
+      expect(fromJson.repeatDaily, isTrue);
+    });
+
+    test('isApplicableForUserOnDate returns true for any future date when repeatDaily is true', () {
+      // Ngày không nằm trong executionDates nhưng repeatDaily == true
+      expect(
+        dailyTask.isApplicableForUserOnDate(
+          userId: 'any_user',
+          dateStr: '2026-10-13',
+        ),
+        isTrue,
+      );
+      expect(
+        dailyTask.isApplicableForUserOnDate(
+          userId: 'any_user',
+          dateStr: '2026-10-25',
+        ),
+        isTrue,
+      );
     });
   });
 }

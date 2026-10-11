@@ -1,8 +1,24 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.1.6 (11/10/2026)
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.1.7 (12/10/2026)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.1.6` (Mobile: `1.1.6+23`, Web: `1.1.6`)
+**Phiên bản hiện tại:** `v1.1.7` (Mobile: `1.1.7+24`, Web: `1.1.7`)
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.1.7 (12/10/2026)
+1. **[TÍNH NĂNG MỚI] Giao việc theo bộ phận**:
+   - Bổ sung `TaskTargetType.department` cho phép giao việc cho từng bộ phận (Pha chế, Thu ngân, Bếp, Phục vụ...).
+   - Nhân viên khi vào ca sẽ tự động nhận đúng việc thuộc bộ phận của mình.
+   - Thêm badge `🏢 Bộ phận: [Tên bộ phận]` nhận diện rõ ràng.
+2. **[BẢO MẬT XÁC THỰC] Khóa chọn từ thư viện ảnh**:
+   - Gỡ bỏ hoàn toàn nút chọn ảnh từ album/thư viện.
+   - Bắt buộc chụp ảnh trực tiếp từ camera tại thời điểm hoàn thành để đảm bảo minh chứng thời gian thực.
+3. **[TÍNH NĂNG MỚI] Tùy chọn Lặp mỗi ngày**:
+   - Thêm Switch "Lặp mỗi ngày" tự động kích hoạt công việc mỗi ngày mà không cần tạo lại.
+   - Lập lịch tự động 60 ngày liên tục, tối ưu hiển thị dạng `🔁 Lặp mỗi ngày`.
+4. **[KIỂM THỬ TỰ ĐỘNG]**:
+   - Đạt 22/22 unit tests về Giao việc, `dart analyze` 0 lỗi.
 
 ---
 

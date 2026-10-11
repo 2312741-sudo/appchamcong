@@ -110,7 +110,8 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
     return 'Nhân viên';
   }
 
-  Future<void> _pickAndUploadPhoto(ImageSource source) async {
+  /// Chụp ảnh trực tiếp từ camera tại thời điểm hoàn thành (đã khóa chọn từ thư viện)
+  Future<void> _pickAndUploadPhoto([ImageSource source = ImageSource.camera]) async {
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -121,8 +122,9 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
 
     try {
       final picker = ImagePicker();
+      // Bắt buộc chụp trực tiếp từ camera, không cho phép chọn từ thư viện
       final pickedFile = await picker.pickImage(
-        source: source,
+        source: ImageSource.camera,
         imageQuality: 80,
         maxWidth: 1600,
         maxHeight: 1600,
@@ -778,60 +780,64 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Nút Chụp ảnh & Thư viện
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _isUploadingPhoto
-                      ? null
-                      : () => _pickAndUploadPhoto(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt_rounded, size: 18),
-                  label: const Text(
-                    'Chụp ảnh',
+          // Nút Chụp ảnh trực tiếp từ Camera (Đã khóa chọn từ Thư viện)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isUploadingPhoto
+                  ? null
+                  : () => _pickAndUploadPhoto(ImageSource.camera),
+              icon: const Icon(Icons.camera_alt_rounded, size: 20),
+              label: const Text(
+                'Chụp ảnh trực tiếp tại thời điểm hoàn thành',
+                style: TextStyle(
+                  fontFamily: 'BeVietnamPro',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Đã khóa chọn từ thư viện. Bắt buộc chụp ảnh trực tiếp tại thời điểm hoàn thành để xác thực.',
                     style: TextStyle(
                       fontFamily: 'BeVietnamPro',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      fontSize: 11.5,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isUploadingPhoto
-                      ? null
-                      : () => _pickAndUploadPhoto(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library_rounded, size: 18),
-                  label: const Text(
-                    'Thư viện',
-                    style: TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.neutral,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           if (_isUploadingPhoto) ...[

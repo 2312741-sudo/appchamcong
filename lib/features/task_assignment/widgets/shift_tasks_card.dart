@@ -435,7 +435,38 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                                           fontFamily: 'BeVietnamPro',
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
+                                    ],
+                                    if (task.repeatDaily) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 5, vertical: 1.5),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.repeat_rounded,
+                                                size: 10,
+                                                color: AppColors.primary),
+                                            SizedBox(width: 3),
+                                            Text(
+                                              'Lặp mỗi ngày',
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.primary,
+                                                fontFamily: 'BeVietnamPro',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
                                     ],
                                     if (task.requirePhoto)
                                       Container(

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/task_assignment_model.dart';
+import '../../store/providers/store_provider.dart';
 import '../repositories/task_repository.dart';
 
 /// Tham số truy vấn task cho nhân viên theo ngày
@@ -45,12 +46,16 @@ final todayUserTasksProvider =
     StreamProvider.family<List<AssignedTask>, UserTaskParams>((ref, args) {
   if (args.storeId.isEmpty || args.userId.isEmpty) return Stream.value([]);
   final repo = ref.watch(taskRepositoryProvider);
+  final currentMember = ref.watch(currentMemberProvider);
+  final userDept = (currentMember?.userId == args.userId) ? currentMember?.department : null;
+
   return repo.watchTasksForStore(args.storeId).map((allTasks) {
     return allTasks.where((task) {
       return task.status == TaskStatus.active &&
           task.isApplicableForUserOnDate(
             userId: args.userId,
             dateStr: args.dateStr,
+            userDepartment: userDept,
           );
     }).toList();
   });
