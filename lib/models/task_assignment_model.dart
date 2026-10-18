@@ -171,11 +171,12 @@ class AssignedTask extends Equatable {
     if (!hasDate) return false;
     if (targetType == TaskTargetType.allStore) return true;
     if (targetType == TaskTargetType.department) {
-      if (targetDepartmentId != null && targetDepartmentId!.isNotEmpty) {
-        if (userDepartment != null && userDepartment.isNotEmpty) {
-          if (userDepartment == targetDepartmentId || userDepartment == targetDepartmentName) {
-            return true;
-          }
+      if (userDepartment != null && userDepartment.trim().isNotEmpty) {
+        final uDept = userDepartment.trim().toLowerCase();
+        final tId = (targetDepartmentId ?? '').trim().toLowerCase();
+        final tName = (targetDepartmentName ?? '').trim().toLowerCase();
+        if ((tId.isNotEmpty && uDept == tId) || (tName.isNotEmpty && uDept == tName)) {
+          return true;
         }
       }
       return assignedUserIds.contains(userId);

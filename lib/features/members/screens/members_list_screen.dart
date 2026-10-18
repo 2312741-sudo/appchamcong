@@ -5,6 +5,7 @@ import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../models/member_model.dart';
+import '../../../models/store_model.dart';
 import '../../store/providers/store_provider.dart';
 
 class MembersListScreen extends ConsumerWidget {
@@ -80,6 +81,7 @@ class MembersListScreen extends ConsumerWidget {
                         isOwner: isOwner,
                         isHidden: isHidden,
                         index: index,
+                        store: store,
                       ),
                     );
                   },
@@ -100,6 +102,7 @@ class MembersListScreen extends ConsumerWidget {
                       isOwner: isOwner,
                       isHidden: isHidden,
                       index: index,
+                      store: store,
                     );
                   },
                 ),
@@ -113,6 +116,7 @@ class MembersListScreen extends ConsumerWidget {
     required bool isOwner,
     required bool isHidden,
     required int index,
+    StoreModel? store,
   }) {
     return InkWell(
       key: key,
@@ -220,6 +224,44 @@ class MembersListScreen extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      if (member.department != null && member.department!.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Builder(
+                          builder: (context) {
+                            final dept = store?.departments.cast<DepartmentDefinition?>().firstWhere(
+                              (d) => d?.id == member.department || d?.name == member.department,
+                              orElse: () => null,
+                            );
+                            final deptName = dept?.name ?? member.department!;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE0F2FE),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFFBAE6FD)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.apartment_rounded,
+                                      size: 11, color: Color(0xFF0369A1)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    deptName,
+                                    style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0369A1),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                       if (member.isLegacyManager) ...[
                         const SizedBox(width: 6),
                         Container(

@@ -12,6 +12,7 @@ import '../../../models/member_model.dart';
 import '../../../models/task_assignment_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
+import 'create_task_dialog.dart';
 
 /// Màn hình Chi tiết Công việc & Báo cáo hoàn thành.
 /// Cho phép Chủ và Quản lý theo dõi ai đã nộp báo cáo (văn bản + ảnh chụp)
@@ -381,7 +382,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             icon: const Icon(Icons.more_vert_rounded),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             onSelected: (val) {
-              if (val == 'complete') {
+              if (val == 'edit') {
+                CreateTaskDialog.show(context, taskToEdit: currentTask);
+              } else if (val == 'complete') {
                 _updateTaskStatus(currentTask, TaskStatus.completed);
               } else if (val == 'cancel') {
                 _updateTaskStatus(currentTask, TaskStatus.cancelled);
@@ -390,6 +393,18 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               }
             },
             itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined,
+                        color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Chỉnh sửa công việc',
+                        style: GoogleFonts.beVietnamPro(fontSize: 13.5)),
+                  ],
+                ),
+              ),
               if (currentTask.status == TaskStatus.active) ...[
                 PopupMenuItem(
                   value: 'complete',

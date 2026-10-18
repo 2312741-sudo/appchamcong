@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../models/member_model.dart';
 import '../../../models/task_assignment_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/task_repository.dart';
@@ -46,8 +47,14 @@ final todayUserTasksProvider =
     StreamProvider.family<List<AssignedTask>, UserTaskParams>((ref, args) {
   if (args.storeId.isEmpty || args.userId.isEmpty) return Stream.value([]);
   final repo = ref.watch(taskRepositoryProvider);
+  final activeMembers = ref.watch(activeMembersProvider);
+  final memberFromList = activeMembers.cast<MemberModel?>().firstWhere(
+    (m) => m?.userId == args.userId, 
+    orElse: () => null,
+  );
   final currentMember = ref.watch(currentMemberProvider);
-  final userDept = (currentMember?.userId == args.userId) ? currentMember?.department : null;
+  final userDept = memberFromList?.department ?? 
+      ((currentMember?.userId == args.userId) ? currentMember?.department : null);
 
   return repo.watchTasksForStore(args.storeId).map((allTasks) {
     return allTasks.where((task) {

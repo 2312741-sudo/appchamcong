@@ -743,6 +743,8 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                               builder: (_) => TaskDetailScreen(task: task),
                             ),
                           );
+                        } else if (val == 'edit') {
+                          CreateTaskDialog.show(context, taskToEdit: task);
                         } else if (val == 'complete') {
                           _updateStatus(task, TaskStatus.completed);
                         } else if (val == 'cancel') {
@@ -760,6 +762,19 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                                   size: 18, color: AppColors.textSecondary),
                               const SizedBox(width: 8),
                               Text('Xem chi tiết',
+                                  style: GoogleFonts.beVietnamPro(
+                                      fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.edit_outlined,
+                                  size: 18, color: AppColors.primary),
+                              const SizedBox(width: 8),
+                              Text('Chỉnh sửa công việc',
                                   style: GoogleFonts.beVietnamPro(
                                       fontSize: 13)),
                             ],

@@ -16,15 +16,16 @@ import '../providers/task_provider.dart';
 /// Modal / Dialog tạo và giao việc mới cho nhân viên cửa hàng.
 /// Dành cho Chủ cửa hàng (Owner), Quản lý 1 (Manager 1), Quản lý 2 (Manager 2).
 class CreateTaskDialog extends ConsumerStatefulWidget {
-  const CreateTaskDialog({super.key});
+  final AssignedTask? taskToEdit;
+  const CreateTaskDialog({super.key, this.taskToEdit});
 
   /// Helper mở modal bottom sheet thuận tiện từ bất kỳ màn hình nào
-  static Future<bool?> show(BuildContext context) {
+  static Future<bool?> show(BuildContext context, {AssignedTask? taskToEdit}) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const CreateTaskDialog(),
+      builder: (ctx) => CreateTaskDialog(taskToEdit: taskToEdit),
     );
   }
 
@@ -57,15 +58,32 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   // Yêu cầu ảnh chụp minh chứng
   bool _requirePhoto = false;
 
+  // Trạng thái công việc (dùng khi chỉnh sửa)
+  TaskStatus _status = TaskStatus.active;
+
   bool _isSubmitting = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // Mặc định chọn ngày hôm nay
-    final today = _formatDateIso(DateTime.now());
-    _selectedDates.add(today);
+    if (widget.taskToEdit != null) {
+      final t = widget.taskToEdit!;
+      _titleController.text = t.title;
+      _descController.text = t.description;
+      _selectedDates.addAll(t.executionDates);
+      _repeatDaily = t.repeatDaily;
+      _targetType = t.targetType;
+      _selectedDepartmentId = t.targetDepartmentId;
+      _selectedDepartmentName = t.targetDepartmentName;
+      _selectedMemberIds.addAll(t.assignedUserIds);
+      _requirePhoto = t.requirePhoto;
+      _status = t.status;
+    } else {
+      // Mặc định chọn ngày hôm nay
+      final today = _formatDateIso(DateTime.now());
+      _selectedDates.add(today);
+    }
   }
 
   @override
@@ -211,11 +229,27 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       assignedUids = const [];
       assignedNames = const [];
     } else if (_targetType == TaskTargetType.department) {
-      final deptMembers = allMembers.where((m) =>
-          m.department == _selectedDepartmentId ||
-          m.department == _selectedDepartmentName).toList();
-      assignedUids = deptMembers.map((m) => m.userId).toList();
-      assignedNames = deptMembers.map((m) => m.name).toList();
+      final deptMembers = allMembers.where((m) {
+        if (m.department == null || m.department!.trim().isEmpty) return false;
+        final mDept = m.department!.trim().toLowerCase();
+        final sId = (_selectedDepartmentId ?? '').trim().toLowerCase();
+        final sName = (_selectedDepartmentName ?? '').trim().toLowerCase();
+        return (sId.isNotEmpty && mDept == sId) || (sName.isNotEmpty && mDept == sName);
+      }).toList();
+
+      final combinedIds = <String>{
+        ...deptMembers.map((m) => m.userId),
+        ..._selectedMemberIds,
+      }.toList();
+
+      assignedUids = combinedIds;
+      assignedNames = combinedIds.map((uid) {
+        final m = allMembers.cast<MemberModel?>().firstWhere(
+              (element) => element?.userId == uid,
+              orElse: () => null,
+            );
+        return m?.name ?? uid;
+      }).toList();
     } else {
       final selectedNames = <String>[];
       for (final id in _selectedMemberIds) {
@@ -261,7 +295,31 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
 
     try {
       final repo = ref.read(taskRepositoryProvider);
-      await repo.createTask(task);
+      if (widget.taskToEdit != null) {
+        final updatedTask = AssignedTask(
+          id: widget.taskToEdit!.id,
+          storeId: widget.taskToEdit!.storeId,
+          title: _titleController.text.trim(),
+          description: _descController.text.trim(),
+          createdBy: widget.taskToEdit!.createdBy,
+          createdByName: widget.taskToEdit!.createdByName,
+          createdByRole: widget.taskToEdit!.createdByRole,
+          targetType: _targetType,
+          targetDepartmentId: _targetType == TaskTargetType.department ? _selectedDepartmentId : null,
+          targetDepartmentName: _targetType == TaskTargetType.department ? _selectedDepartmentName : null,
+          assignedUserIds: assignedUids,
+          assignedNames: assignedNames,
+          executionDates: sortedDates,
+          repeatDaily: _repeatDaily,
+          requirePhoto: _requirePhoto,
+          status: _status,
+          createdAt: widget.taskToEdit!.createdAt,
+          updatedAt: DateTime.now(),
+        );
+        await repo.updateTask(updatedTask);
+      } else {
+        await repo.createTask(task);
+      }
 
       // Ép làm mới các provider để giao diện cập nhật ngay lập tức
       ref.invalidate(todayUserTasksProvider);
@@ -278,7 +336,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Đã giao công việc thành công!',
+                    widget.taskToEdit != null
+                        ? 'Đã cập nhật công việc thành công!'
+                        : 'Đã giao công việc thành công!',
                     style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -294,7 +354,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Lỗi tạo công việc: $e';
+          _errorMessage = widget.taskToEdit != null
+              ? 'Lỗi cập nhật công việc: $e'
+              : 'Lỗi tạo công việc: $e';
           _isSubmitting = false;
         });
       }
@@ -345,8 +407,10 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.assignment_add,
+                  child: Icon(
+                    widget.taskToEdit != null
+                        ? Icons.edit_note_rounded
+                        : Icons.assignment_add,
                     color: AppColors.primary,
                     size: 22,
                   ),
@@ -357,7 +421,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Giao việc mới',
+                        widget.taskToEdit != null
+                            ? 'Chỉnh sửa công việc'
+                            : 'Giao việc mới',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -365,7 +431,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                         ),
                       ),
                       Text(
-                        'Chủ & Quản lý phân công công việc',
+                        widget.taskToEdit != null
+                            ? 'Cập nhật nội dung & đối tượng nhận việc'
+                            : 'Chủ & Quản lý phân công công việc',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -624,9 +692,58 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                         ],
                       ),
                     ),
+                    if (widget.taskToEdit != null) ...[
+                      const SizedBox(height: 18),
+                      Text(
+                        'Trạng thái công việc',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          TaskStatus.active,
+                          TaskStatus.completed,
+                          TaskStatus.cancelled,
+                          TaskStatus.archived,
+                        ].map((s) {
+                          final isSelected = _status == s;
+                          return ChoiceChip(
+                            label: Text(
+                              s.label,
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                color: isSelected ? Colors.white : AppColors.textPrimary,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: s == TaskStatus.active
+                                ? AppColors.primary
+                                : (s == TaskStatus.completed
+                                    ? AppColors.success
+                                    : (s == TaskStatus.cancelled
+                                        ? AppColors.danger
+                                        : AppColors.textSecondary)),
+                            backgroundColor: AppColors.surface,
+                            showCheckmark: false,
+                            onSelected: (_) {
+                              setState(() {
+                                _status = s;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
                     const SizedBox(height: 24),
 
-                    // Nút Tạo công việc
+                    // Nút Tạo công việc / Lưu thay đổi
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -654,10 +771,17 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                             : Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.add_task_rounded, size: 20),
+                                  Icon(
+                                    widget.taskToEdit != null
+                                        ? Icons.save_rounded
+                                        : Icons.add_task_rounded,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Giao công việc',
+                                    widget.taskToEdit != null
+                                        ? 'Lưu thay đổi'
+                                        : 'Giao công việc',
                                     style: GoogleFonts.beVietnamPro(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
@@ -1170,10 +1294,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
 
     final deptMembers = selectedDept == null
         ? <MemberModel>[]
-        : members.where((m) =>
-            m.department == selectedDept.id ||
-            m.department == selectedDept.name ||
-            m.department == selectedDept.shortName).toList();
+        : members.where((m) {
+            if (m.department == null || m.department!.trim().isEmpty) return false;
+            final mDept = m.department!.trim().toLowerCase();
+            final dId = selectedDept.id.trim().toLowerCase();
+            final dName = selectedDept.name.trim().toLowerCase();
+            final dShort = selectedDept.shortName.trim().toLowerCase();
+            return mDept == dId || mDept == dName || (dShort.isNotEmpty && mDept == dShort);
+          }).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -1201,10 +1329,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             runSpacing: 8,
             children: departments.map((dept) {
               final isSelected = _selectedDepartmentId == dept.id;
-              final count = members.where((m) =>
-                  m.department == dept.id ||
-                  m.department == dept.name ||
-                  m.department == dept.shortName).length;
+              final count = members.where((m) {
+                if (m.department == null || m.department!.trim().isEmpty) return false;
+                final mDept = m.department!.trim().toLowerCase();
+                final dId = dept.id.trim().toLowerCase();
+                final dName = dept.name.trim().toLowerCase();
+                final dShort = dept.shortName.trim().toLowerCase();
+                return mDept == dId || mDept == dName || (dShort.isNotEmpty && mDept == dShort);
+              }).length;
 
               return ChoiceChip(
                 label: Text('${dept.name} ($count)'),

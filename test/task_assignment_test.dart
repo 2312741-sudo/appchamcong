@@ -18,12 +18,17 @@ class TestTaskRepository extends TaskRepository {
   Future<List<AssignedTask>> getTasksForUserOnDate(
     String storeId,
     String userId,
-    String dateStr,
-  ) async {
+    String dateStr, {
+    String? userDepartment,
+  }) async {
     return mockTasks
         .where((task) =>
             task.storeId == storeId &&
-            task.isApplicableForUserOnDate(userId: userId, dateStr: dateStr))
+            task.isApplicableForUserOnDate(
+              userId: userId,
+              dateStr: dateStr,
+              userDepartment: userDepartment,
+            ))
         .toList();
   }
 
@@ -565,6 +570,25 @@ void main() {
         userDepartment: 'Thu ngân',
       );
       expect(matchesOtherDept, isFalse);
+    });
+
+    test('isApplicableForUserOnDate matches department case-insensitively and with whitespace', () {
+      expect(
+        deptTask.isApplicableForUserOnDate(
+          userId: 'uid_barista_upper',
+          dateStr: '2026-10-12',
+          userDepartment: ' DEPT_PHA_CHE ',
+        ),
+        isTrue,
+      );
+      expect(
+        deptTask.isApplicableForUserOnDate(
+          userId: 'uid_barista_name_trim',
+          dateStr: '2026-10-12',
+          userDepartment: '  pha chế  ',
+        ),
+        isTrue,
+      );
     });
   });
 

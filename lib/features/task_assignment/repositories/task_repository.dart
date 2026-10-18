@@ -84,9 +84,23 @@ class TaskRepository {
   Future<List<AssignedTask>> getTasksForUserOnDate(
     String storeId,
     String userId,
-    String dateStr,
-  ) async {
+    String dateStr, {
+    String? userDepartment,
+  }) async {
     try {
+      String? resolvedDept = userDepartment;
+      if (resolvedDept == null || resolvedDept.trim().isEmpty) {
+        try {
+          final memberDoc = await _firestore
+              ?.collection('stores')
+              .doc(storeId)
+              .collection('members')
+              .doc(userId)
+              .get();
+          resolvedDept = memberDoc?.data()?['department'] as String?;
+        } catch (_) {}
+      }
+
       final snap = await _tasksRef(storeId)
           .where('executionDates', arrayContains: dateStr)
           .get();
@@ -94,7 +108,11 @@ class TaskRepository {
       final tasks = snap.docs
           .map((doc) => AssignedTask.fromJson(doc.data(), doc.id))
           .where((task) =>
-              task.isApplicableForUserOnDate(userId: userId, dateStr: dateStr))
+              task.isApplicableForUserOnDate(
+                userId: userId, 
+                dateStr: dateStr,
+                userDepartment: resolvedDept,
+              ))
           .toList();
       tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return tasks;
@@ -208,9 +226,15 @@ class TaskRepository {
   Future<List<AssignedTask>> getUnfinishedTasksForUserOnDate(
     String storeId,
     String userId,
-    String dateStr,
-  ) async {
-    final tasks = await getTasksForUserOnDate(storeId, userId, dateStr);
+    String dateStr, {
+    String? userDepartment,
+  }) async {
+    final tasks = await getTasksForUserOnDate(
+      storeId,
+      userId,
+      dateStr,
+      userDepartment: userDepartment,
+    );
     final List<AssignedTask> unfinished = [];
 
     for (final task in tasks) {

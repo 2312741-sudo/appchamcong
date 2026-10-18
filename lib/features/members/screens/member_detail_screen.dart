@@ -23,6 +23,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   final _standardHoursCtrl = TextEditingController();
   final _employeeCodeCtrl = TextEditingController();
   DateTime? _joinedAt;
+  String? _selectedDepartmentId;
   bool _hideSchedule = false;
 
   bool _isInit = false;
@@ -43,6 +44,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
     _selectedType = member.employeeType;
     _employeeCodeCtrl.text = member.employeeCode ?? '';
     _joinedAt = member.joinedAt;
+    _selectedDepartmentId = member.department;
     _monthlySalaryCtrl.text = member.baseMonthlySalary.toStringAsFixed(0);
     _hourlyRateCtrl.text = member.baseHourlyRate.toStringAsFixed(0);
     _standardHoursCtrl.text = member.standardHoursPerMonth.toStringAsFixed(0);
@@ -58,6 +60,9 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
       
       // Update role
       await repo.updateMemberRole(storeId, widget.userId, _selectedRole);
+
+      // Update department
+      await repo.updateMemberDepartment(storeId, widget.userId, _selectedDepartmentId);
       
       // Update salary
       double salary = _selectedType == EmployeeType.fulltime
@@ -134,6 +139,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final storeId = ref.watch(currentStoreIdProvider);
+    final store = ref.watch(currentStoreProvider).valueOrNull;
     final membersAsync = ref.watch(storeMembersProvider);
     final currentMember = ref.watch(currentMemberProvider);
     final isOwner = currentMember?.isOwner ?? false;
@@ -234,6 +240,44 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // Department Setup
+                const Text('Bộ phận làm việc', style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String?>(
+                  value: (store?.departments.any((d) => d.id == _selectedDepartmentId || d.name == _selectedDepartmentId) ?? false)
+                      ? store?.departments.firstWhere((d) => d.id == _selectedDepartmentId || d.name == _selectedDepartmentId).id
+                      : null,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('-- Chưa phân bộ phận --'),
+                    ),
+                    if (store != null)
+                      ...store.departments.map(
+                        (dept) => DropdownMenuItem<String?>(
+                          value: dept.id,
+                          child: Text('${dept.name}${dept.shortName.isNotEmpty ? ' (${dept.shortName})' : ''}'),
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _selectedDepartmentId = v);
+                  },
+                ),
+                if (store != null && store.departments.isEmpty) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    '⚠️ Cửa hàng chưa có danh sách bộ phận. Vào Cài đặt cửa hàng để thiết lập (Pha chế, Thu ngân, Bếp...).',
+                    style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12, color: AppColors.warning),
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 // Role Setup
