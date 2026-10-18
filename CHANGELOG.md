@@ -1,8 +1,25 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.1.7 (12/10/2026)
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.1.8 (19/10/2026)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.1.7` (Mobile: `1.1.7+24`, Web: `1.1.7`)
+**Phiên bản hiện tại:** `v1.1.8` (Mobile: `1.1.8+25`, Web: `1.1.8`)
+
+---
+
+## 🚀 BẢN PHÁT HÀNH v1.1.8 (19/10/2026)
+1. **[TÍNH NĂNG MỚI] Chỉnh sửa công việc sau khi giao (Task Editing)**:
+   - Cho phép Chủ quán và Quản lý chỉnh sửa linh hoạt công việc đã giao: Tiêu đề, mô tả, danh sách ngày thực hiện, đổi đối tượng nhận việc (toàn cửa hàng / bộ phận / cá nhân), bật tắt yêu cầu chụp ảnh và chế độ lặp mỗi ngày.
+   - Hộp thoại chỉnh sửa thông minh tự động điền dữ liệu hiện tại và cập nhật đồng bộ tức thời.
+2. **[ĐIỀU HƯỚNG THEO CA] Tự động giao việc theo ca làm việc của từng bộ phận**:
+   - Tích hợp lịch phân ca tuần (`weekScheduleProvider`): Tự động xác định ca làm việc thực tế của nhân viên trong ngày để giao đúng việc theo bộ phận của ca đó (ví dụ: nhân sự bình thường là Pha chế nhưng ca hôm nay xếp Thu ngân sẽ nhận việc Thu ngân).
+3. **[TỐI ƯU GIAO DIỆN] Khắc phục lỗi tràn viền badge trên thẻ công việc (`ShiftTasksCard`)**:
+   - Tách tên người giao và nhóm các badge (`[🔁 Lặp mỗi ngày]`, `[📷 Cần ảnh]`) vào container `Wrap` linh hoạt.
+   - Loại bỏ hoàn toàn hiện tượng badge bị chèn ép đè lấn nút mũi tên `>` trên màn hình hẹp.
+4. **[TRẢI NGHIỆM NGƯỜI DÙNG] Xử lý triệt để hiện tượng chớp trạng thái "Đã xong"**:
+   - Khắc phục lỗi bất đồng bộ (Race Condition) khi chuyển ngày xem việc: không còn bị chớp xanh "2/2 đã xong" trong tích tắc trước khi tải xong dữ liệu.
+   - Tối ưu hóa truy vấn Firestore đa luồng song song với `Future.wait`, tăng tốc độ tải trạng thái gấp 3-4 lần.
+5. **[KIỂM THỬ TỰ ĐỘNG] 29/29 Unit Tests Đạt Chuẩn (100% Pass)**:
+   - Toàn bộ các bộ test về phân quyền, định tuyến, giao việc bộ phận, lặp hàng ngày và kiểm tra ra ca đều vượt qua; `dart analyze` 0 lỗi.
 
 ---
 
