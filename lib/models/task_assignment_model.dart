@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
+import '../core/utils/department_utils.dart';
 import 'member_model.dart';
+import 'schedule_model.dart';
+import 'store_model.dart';
 
 /// Phạm vi giao việc: Cho cá nhân, theo bộ phận hoặc toàn bộ nhân viên cửa hàng
 enum TaskTargetType {
@@ -166,17 +169,38 @@ class AssignedTask extends Equatable {
     required String userId,
     required String dateStr,
     String? userDepartment,
+    ScheduleModel? schedule,
+    List<DepartmentDefinition>? storeDepartments,
+    bool? isDepartmentScheduledToday,
   }) {
     final hasDate = repeatDaily ? true : executionDates.contains(dateStr);
     if (!hasDate) return false;
     if (targetType == TaskTargetType.allStore) return true;
     if (targetType == TaskTargetType.department) {
-      if (userDepartment != null && userDepartment.trim().isNotEmpty) {
-        final uDept = userDepartment.trim().toLowerCase();
-        final tId = (targetDepartmentId ?? '').trim().toLowerCase();
-        final tName = (targetDepartmentName ?? '').trim().toLowerCase();
-        if ((tId.isNotEmpty && uDept == tId) || (tName.isNotEmpty && uDept == tName)) {
-          return true;
+      if (isDepartmentScheduledToday != null) {
+        if (isDepartmentScheduledToday) return true;
+        return assignedUserIds.contains(userId);
+      }
+      if (schedule != null) {
+        final matchesSchedule = DepartmentUtils.isUserInDepartmentOnDate(
+          userId: userId,
+          dateStr: dateStr,
+          targetDeptId: targetDepartmentId,
+          targetDeptName: targetDepartmentName,
+          schedule: schedule,
+          memberDepartment: userDepartment,
+          storeDepartments: storeDepartments,
+        );
+        if (matchesSchedule) return true;
+      } else {
+        if (userDepartment != null && userDepartment.trim().isNotEmpty) {
+          final matches = DepartmentUtils.isDepartmentMatch(
+            candidate: userDepartment,
+            targetDeptId: targetDepartmentId,
+            targetDeptName: targetDepartmentName,
+            storeDepartments: storeDepartments,
+          );
+          if (matches) return true;
         }
       }
       return assignedUserIds.contains(userId);

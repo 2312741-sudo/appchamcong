@@ -1,3 +1,5 @@
+import '../../../models/member_model.dart';
+import '../../../models/schedule_model.dart';
 import '../../../models/store_model.dart';
 
 class DepartmentUtils {
@@ -16,6 +18,190 @@ class DepartmentUtils {
       result = result.replaceAll(withDia[i], noDia[i]);
     }
     return result;
+  }
+
+  /// Calculates the Monday (YYYY-MM-DD) of the week for a given date
+  static String getMondayOfWeek(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      final monday = dt.subtract(Duration(days: dt.weekday - 1));
+      return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  /// Checks whether [candidate] matches the target department by ID or Name
+  static bool isDepartmentMatch({
+    required String? candidate,
+    required String? targetDeptId,
+    required String? targetDeptName,
+    List<DepartmentDefinition>? storeDepartments,
+  }) {
+    if (candidate == null || candidate.trim().isEmpty) return false;
+    final cleanCand = candidate.trim().toLowerCase();
+    final normCand = normalize(candidate);
+
+    final cleanTargetId = (targetDeptId ?? '').trim().toLowerCase();
+    final normTargetId = normalize(targetDeptId);
+
+    final cleanTargetName = (targetDeptName ?? '').trim().toLowerCase();
+    final normTargetName = normalize(targetDeptName);
+
+    // 1. Direct exact or accent-stripped match
+    if (cleanTargetId.isNotEmpty && (cleanCand == cleanTargetId || normCand == normTargetId)) {
+      return true;
+    }
+    if (cleanTargetName.isNotEmpty && (cleanCand == cleanTargetName || normCand == normTargetName)) {
+      return true;
+    }
+
+    // 2. Production special check
+    final isTargetProd = (targetDeptId != null && isProduction(deptId: targetDeptId)) ||
+        (targetDeptName != null && isProduction(deptName: targetDeptName));
+    if (isTargetProd && isProduction(deptId: candidate, deptName: candidate)) {
+      return true;
+    }
+
+    // 3. Resolve candidate via storeDepartments
+    if (storeDepartments != null && storeDepartments.isNotEmpty) {
+      final matchedDept = storeDepartments.where((d) {
+        final dId = d.id.trim().toLowerCase();
+        final dName = d.name.trim().toLowerCase();
+        final dShort = d.shortName.trim().toLowerCase();
+        final normDName = normalize(d.name);
+        return cleanCand == dId || cleanCand == dName || cleanCand == dShort || normCand == normDName;
+      }).firstOrNull;
+
+      if (matchedDept != null) {
+        final mId = matchedDept.id.trim().toLowerCase();
+        final mName = matchedDept.name.trim().toLowerCase();
+        final normMName = normalize(matchedDept.name);
+
+        if (cleanTargetId.isNotEmpty && (mId == cleanTargetId || normMName == normTargetId)) {
+          return true;
+        }
+        if (cleanTargetName.isNotEmpty && (mName == cleanTargetName || normMName == normTargetName || mId == cleanTargetName)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /// Determines whether [userId] is scheduled or assigned to [targetDeptId] / [targetDeptName] on [dateStr].
+  /// [dateStr] format: 'YYYY-MM-DD'
+  static bool isUserInDepartmentOnDate({
+    required String userId,
+    required String dateStr,
+    required String? targetDeptId,
+    required String? targetDeptName,
+    ScheduleModel? schedule,
+    String? memberDepartment,
+    List<DepartmentDefinition>? storeDepartments,
+  }) {
+    if (targetDeptId == null && targetDeptName == null) return false;
+
+    // 1. If schedule is available for this date's week:
+    if (schedule != null) {
+      final userSchedule = schedule.getScheduleForUser(userId);
+      if (userSchedule != null) {
+        DateTime? dt;
+        try {
+          dt = DateTime.parse(dateStr);
+        } catch (_) {}
+
+        if (dt != null) {
+          final weekday = dt.weekday; // 1 = Monday ... 7 = Sunday
+          final dayShifts = userSchedule.shiftForDay(weekday);
+
+          // If user has shifts explicitly scheduled on this day:
+          if (dayShifts.isNotEmpty) {
+            // Check if explicitly off
+            final isAllOff = dayShifts.every((s) => s.trim().toLowerCase() == 'off');
+            if (isAllOff) {
+              return false; // User is off on this workday
+            }
+
+            for (final entry in dayShifts) {
+              final trimmed = entry.trim();
+              if (trimmed == 'off' || trimmed == 'delivery' || trimmed == 'giaohang') {
+                continue;
+              }
+              if (trimmed.contains('|')) {
+                final shiftDeptId = trimmed.split('|')[1];
+                if (isDepartmentMatch(
+                  candidate: shiftDeptId,
+                  targetDeptId: targetDeptId,
+                  targetDeptName: targetDeptName,
+                  storeDepartments: storeDepartments,
+                )) {
+                  return true;
+                }
+              } else {
+                // Shift has no explicit department override -> inherits member's default department
+                if (memberDepartment != null && isDepartmentMatch(
+                  candidate: memberDepartment,
+                  targetDeptId: targetDeptId,
+                  targetDeptName: targetDeptName,
+                  storeDepartments: storeDepartments,
+                )) {
+                  return true;
+                }
+              }
+            }
+            // User has scheduled shifts today, but none matched the department
+            return false;
+          } else {
+            // dayShifts is empty.
+            // If the user has other shifts in the week, they are not scheduled to work on this day
+            if (userSchedule.workingDays > 0) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Fallback if no schedule or user not in schedule:
+    // Check member's static department
+    if (memberDepartment != null && memberDepartment.trim().isNotEmpty) {
+      return isDepartmentMatch(
+        candidate: memberDepartment,
+        targetDeptId: targetDeptId,
+        targetDeptName: targetDeptName,
+        storeDepartments: storeDepartments,
+      );
+    }
+
+    return false;
+  }
+
+  /// Returns list of member IDs who belong or are scheduled in the department on [dateStr].
+  static List<String> getUserIdsInDepartmentOnDate({
+    required String dateStr,
+    required String? targetDeptId,
+    required String? targetDeptName,
+    required List<MemberModel> allMembers,
+    ScheduleModel? schedule,
+    List<DepartmentDefinition>? storeDepartments,
+  }) {
+    final matchedUserIds = <String>[];
+    for (final member in allMembers) {
+      if (isUserInDepartmentOnDate(
+        userId: member.userId,
+        dateStr: dateStr,
+        targetDeptId: targetDeptId,
+        targetDeptName: targetDeptName,
+        schedule: schedule,
+        memberDepartment: member.department,
+        storeDepartments: storeDepartments,
+      )) {
+        matchedUserIds.add(member.userId);
+      }
+    }
+    return matchedUserIds;
   }
 
   /// Determines whether a department definition or ID/name represents Production (Sản xuất / SX)

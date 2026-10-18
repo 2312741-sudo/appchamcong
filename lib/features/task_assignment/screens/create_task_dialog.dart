@@ -1321,7 +1321,31 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Công việc sẽ tự động giao cho nhân sự có ca làm thuộc bộ phận này theo từng ngày (dựa trên Lịch làm việc tuần / Bộ phận của nhân viên).',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 11.5,
+                      color: AppColors.primary,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
 
           // Danh sách Chips các bộ phận
           Wrap(

@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import '../../../models/schedule_model.dart';
+import '../../../models/store_model.dart';
 import '../../../models/task_assignment_model.dart';
 
 /// Repository quản lý giao việc và báo cáo hoàn thành công việc
@@ -67,25 +69,29 @@ class TaskRepository {
     String storeId, {
     String? dateStr,
   }) {
-    Query<Map<String, dynamic>> query = _tasksRef(storeId);
-    if (dateStr != null && dateStr.isNotEmpty) {
-      query = query.where('executionDates', arrayContains: dateStr);
-    }
-    return query.snapshots().map((snap) {
-      final list = snap.docs
+    return _tasksRef(storeId).snapshots().map((snap) {
+      var list = snap.docs
           .map((doc) => AssignedTask.fromJson(doc.data(), doc.id))
+          .where((t) => t.status != TaskStatus.archived)
           .toList();
+      if (dateStr != null && dateStr.isNotEmpty) {
+        list = list
+            .where((t) => t.repeatDaily || t.executionDates.contains(dateStr))
+            .toList();
+      }
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
     });
   }
 
-  /// Lấy các task có executionDates chứa dateStr và thỏa mãn targetType / assignedUserIds
+  /// Lấy các task áp dụng cho user vào ngày dateStr (tự động giải quyết theo lịch làm việc và bộ phận từng ngày)
   Future<List<AssignedTask>> getTasksForUserOnDate(
     String storeId,
     String userId,
     String dateStr, {
     String? userDepartment,
+    ScheduleModel? schedule,
+    List<DepartmentDefinition>? storeDepartments,
   }) async {
     try {
       String? resolvedDept = userDepartment;
@@ -101,17 +107,49 @@ class TaskRepository {
         } catch (_) {}
       }
 
-      final snap = await _tasksRef(storeId)
-          .where('executionDates', arrayContains: dateStr)
-          .get();
+      ScheduleModel? resolvedSchedule = schedule;
+      if (resolvedSchedule == null) {
+        try {
+          final dt = DateTime.parse(dateStr);
+          final monday = dt.subtract(Duration(days: dt.weekday - 1));
+          final weekStart =
+              '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+          final schedDoc = await _firestore
+              ?.collection('stores')
+              .doc(storeId)
+              .collection('schedules')
+              .doc(weekStart)
+              .get();
+          if (schedDoc != null && schedDoc.exists && schedDoc.data() != null) {
+            resolvedSchedule = ScheduleModel.fromFirestore(schedDoc);
+          }
+        } catch (_) {}
+      }
+
+      List<DepartmentDefinition>? resolvedDepts = storeDepartments;
+      if (resolvedDepts == null) {
+        try {
+          final storeDoc =
+              await _firestore?.collection('stores').doc(storeId).get();
+          if (storeDoc != null && storeDoc.exists && storeDoc.data() != null) {
+            final store = StoreModel.fromJson(storeDoc.data()!, storeDoc.id);
+            resolvedDepts = store.departments;
+          }
+        } catch (_) {}
+      }
+
+      final snap = await _tasksRef(storeId).get();
 
       final tasks = snap.docs
           .map((doc) => AssignedTask.fromJson(doc.data(), doc.id))
           .where((task) =>
+              task.status == TaskStatus.active &&
               task.isApplicableForUserOnDate(
-                userId: userId, 
+                userId: userId,
                 dateStr: dateStr,
                 userDepartment: resolvedDept,
+                schedule: resolvedSchedule,
+                storeDepartments: resolvedDepts,
               ))
           .toList();
       tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -228,12 +266,16 @@ class TaskRepository {
     String userId,
     String dateStr, {
     String? userDepartment,
+    ScheduleModel? schedule,
+    List<DepartmentDefinition>? storeDepartments,
   }) async {
     final tasks = await getTasksForUserOnDate(
       storeId,
       userId,
       dateStr,
       userDepartment: userDepartment,
+      schedule: schedule,
+      storeDepartments: storeDepartments,
     );
     final List<AssignedTask> unfinished = [];
 

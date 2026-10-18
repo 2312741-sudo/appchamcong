@@ -911,7 +911,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                         task.isAllStore
                             ? 'Toàn bộ cửa hàng'
                             : (task.isDepartment
-                                ? 'Bộ phận ${task.targetDepartmentName ?? 'Bộ phận'} (${task.assignedNames.isNotEmpty ? task.assignedNames.length : task.assignedUserIds.length} người)'
+                                ? 'Bộ phận ${task.targetDepartmentName ?? 'Bộ phận'} (Tự động theo ca/ngày)'
                                 : (task.assignedNames.isNotEmpty
                                     ? '${task.assignedNames.length} người (${task.assignedNames.take(2).join(', ')}${task.assignedNames.length > 2 ? '...' : ''})'
                                     : '${task.assignedUserIds.length} người')),

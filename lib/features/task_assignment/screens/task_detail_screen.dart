@@ -5,11 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/department_utils.dart';
 import '../../../core/widgets/avatar_widget.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/role_badge.dart';
 import '../../../models/member_model.dart';
 import '../../../models/task_assignment_model.dart';
+import '../../schedule/providers/schedule_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
 import 'create_task_dialog.dart';
@@ -1336,10 +1338,26 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
 
     if (task.isDepartment) {
-      final deptMembers = activeMembers.where((m) =>
-          m.department == task.targetDepartmentId ||
-          m.department == task.targetDepartmentName ||
-          task.assignedUserIds.contains(m.userId)).toList();
+      final workDate = _selectedWorkDate ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final weekStart = DepartmentUtils.getMondayOfWeek(workDate);
+      final schedule = ref.watch(weekScheduleProvider(weekStart)).valueOrNull;
+      final store = ref.watch(currentStoreProvider).valueOrNull;
+
+      final deptMemberIds = DepartmentUtils.getUserIdsInDepartmentOnDate(
+        dateStr: workDate,
+        targetDeptId: task.targetDepartmentId,
+        targetDeptName: task.targetDepartmentName,
+        allMembers: activeMembers,
+        schedule: schedule,
+        storeDepartments: store?.departments,
+      );
+
+      final combinedIds = <String>{
+        ...deptMemberIds,
+        ...task.assignedUserIds,
+      };
+
+      final deptMembers = activeMembers.where((m) => combinedIds.contains(m.userId)).toList();
       if (deptMembers.isNotEmpty) return deptMembers;
     }
 

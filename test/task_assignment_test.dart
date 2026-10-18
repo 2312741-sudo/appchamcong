@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cham_cong_tram/core/utils/department_utils.dart';
 import 'package:cham_cong_tram/models/member_model.dart';
+import 'package:cham_cong_tram/models/schedule_model.dart';
+import 'package:cham_cong_tram/models/store_model.dart';
 import 'package:cham_cong_tram/models/task_assignment_model.dart';
 import 'package:cham_cong_tram/features/task_assignment/repositories/task_repository.dart';
 
@@ -20,6 +23,8 @@ class TestTaskRepository extends TaskRepository {
     String userId,
     String dateStr, {
     String? userDepartment,
+    ScheduleModel? schedule,
+    List<DepartmentDefinition>? storeDepartments,
   }) async {
     return mockTasks
         .where((task) =>
@@ -28,6 +33,8 @@ class TestTaskRepository extends TaskRepository {
               userId: userId,
               dateStr: dateStr,
               userDepartment: userDepartment,
+              schedule: schedule,
+              storeDepartments: storeDepartments,
             ))
         .toList();
   }
@@ -633,6 +640,174 @@ void main() {
         ),
         isTrue,
       );
+    });
+  });
+
+  group('8. Dynamic Daily Department Task Assignment with Schedule Integration Tests', () {
+    // 2026-10-19 is a Monday (weekday 1)
+    // 2026-10-20 is a Tuesday (weekday 2)
+    // 2026-10-21 is a Wednesday (weekday 3)
+    const mondayStr = '2026-10-19';
+    const tuesdayStr = '2026-10-20';
+    const wednesdayStr = '2026-10-21';
+
+    final deptPhaCheTask = AssignedTask(
+      id: 'task_barista_routine',
+      storeId: 'store_alpha',
+      title: 'Vệ sinh máy pha cà phê',
+      description: 'Backflush họng pha và ngâm thuốc tẩy cặn',
+      createdBy: 'uid_manager',
+      createdByName: 'Quản Lý',
+      createdByRole: UserRole.manager1,
+      targetType: TaskTargetType.department,
+      targetDepartmentId: 'dept_pha_che',
+      targetDepartmentName: 'Pha chế',
+      executionDates: const [mondayStr, tuesdayStr, wednesdayStr],
+      repeatDaily: false,
+      requirePhoto: true,
+      status: TaskStatus.active,
+      createdAt: DateTime(2026, 10, 19, 6, 0),
+    );
+
+    // Mock store departments
+    final storeDepts = [
+      const DepartmentDefinition(id: 'dept_pha_che', name: 'Pha chế', shortName: 'PC'),
+      const DepartmentDefinition(id: 'dept_thu_ngan', name: 'Thu ngân', shortName: 'TN'),
+    ];
+
+    // Mock Weekly Schedule for week 2026-10-19:
+    // User A: Monday = ['morning|dept_pha_che'], Tuesday = ['morning|dept_thu_ngan'], Wednesday = ['off']
+    // User B: Monday = ['morning|dept_thu_ngan'], Tuesday = ['morning|dept_pha_che'], Wednesday = []
+    final mockSchedule = ScheduleModel(
+      id: '2026-10-19',
+      storeId: 'store_alpha',
+      weekStart: '2026-10-19',
+      shifts: {
+        'user_a': const DaySchedule(
+          monday: ['morning|dept_pha_che'],
+          tuesday: ['morning|dept_thu_ngan'],
+          wednesday: ['off'],
+        ),
+        'user_b': const DaySchedule(
+          monday: ['morning|dept_thu_ngan'],
+          tuesday: ['morning|dept_pha_che'],
+          wednesday: [],
+        ),
+      },
+    );
+
+    test('User A receives Pha Chế task on Monday because scheduled shift is Pha Chế', () {
+      expect(
+        deptPhaCheTask.isApplicableForUserOnDate(
+          userId: 'user_a',
+          dateStr: mondayStr,
+          schedule: mockSchedule,
+          storeDepartments: storeDepts,
+        ),
+        isTrue,
+      );
+    });
+
+    test('User A does NOT receive Pha Chế task on Tuesday because scheduled shift is Thu Ngân', () {
+      expect(
+        deptPhaCheTask.isApplicableForUserOnDate(
+          userId: 'user_a',
+          dateStr: tuesdayStr,
+          schedule: mockSchedule,
+          storeDepartments: storeDepts,
+        ),
+        isFalse,
+      );
+    });
+
+    test('User B receives Pha Chế task on Tuesday because scheduled shift is Pha Chế', () {
+      expect(
+        deptPhaCheTask.isApplicableForUserOnDate(
+          userId: 'user_b',
+          dateStr: tuesdayStr,
+          schedule: mockSchedule,
+          storeDepartments: storeDepts,
+        ),
+        isTrue,
+      );
+    });
+
+    test('User B does NOT receive Pha Chế task on Monday because scheduled shift is Thu Ngân', () {
+      expect(
+        deptPhaCheTask.isApplicableForUserOnDate(
+          userId: 'user_b',
+          dateStr: mondayStr,
+          schedule: mockSchedule,
+          storeDepartments: storeDepts,
+        ),
+        isFalse,
+      );
+    });
+
+    test('User A does NOT receive task on Wednesday because scheduled shift is off', () {
+      expect(
+        deptPhaCheTask.isApplicableForUserOnDate(
+          userId: 'user_a',
+          dateStr: wednesdayStr,
+          schedule: mockSchedule,
+          storeDepartments: storeDepts,
+        ),
+        isFalse,
+      );
+    });
+
+    test('DepartmentUtils.getUserIdsInDepartmentOnDate resolves correct staff for each day', () {
+      final members = [
+        MemberModel(
+          userId: 'user_a',
+          name: 'Nguyễn Văn A',
+          role: UserRole.employee,
+          status: MemberStatus.active,
+          employeeType: EmployeeType.fulltime,
+          joinedAt: DateTime(2026, 1, 1),
+        ),
+        MemberModel(
+          userId: 'user_b',
+          name: 'Trần Thị B',
+          role: UserRole.employee,
+          status: MemberStatus.active,
+          employeeType: EmployeeType.fulltime,
+          joinedAt: DateTime(2026, 1, 1),
+        ),
+      ];
+
+      // Monday: User A is Pha Chế
+      final mondayPhaCheStaff = DepartmentUtils.getUserIdsInDepartmentOnDate(
+        dateStr: mondayStr,
+        targetDeptId: 'dept_pha_che',
+        targetDeptName: 'Pha chế',
+        allMembers: members,
+        schedule: mockSchedule,
+        storeDepartments: storeDepts,
+      );
+      expect(mondayPhaCheStaff, equals(['user_a']));
+
+      // Tuesday: User B is Pha Chế
+      final tuesdayPhaCheStaff = DepartmentUtils.getUserIdsInDepartmentOnDate(
+        dateStr: tuesdayStr,
+        targetDeptId: 'dept_pha_che',
+        targetDeptName: 'Pha chế',
+        allMembers: members,
+        schedule: mockSchedule,
+        storeDepartments: storeDepts,
+      );
+      expect(tuesdayPhaCheStaff, equals(['user_b']));
+
+      // Wednesday: Neither is Pha Chế
+      final wednesdayPhaCheStaff = DepartmentUtils.getUserIdsInDepartmentOnDate(
+        dateStr: wednesdayStr,
+        targetDeptId: 'dept_pha_che',
+        targetDeptName: 'Pha chế',
+        allMembers: members,
+        schedule: mockSchedule,
+        storeDepartments: storeDepts,
+      );
+      expect(wednesdayPhaCheStaff, isEmpty);
     });
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/department_utils.dart';
 import '../../../models/member_model.dart';
 import '../../../models/task_assignment_model.dart';
+import '../../schedule/providers/schedule_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/task_repository.dart';
 
@@ -42,7 +44,7 @@ final singleTaskProvider =
   return repo.watchTask(args.storeId, args.taskId);
 });
 
-/// Provider lấy các task áp dụng cho user trong ngày làm việc (Real-time Stream)
+/// Provider lấy các task áp dụng cho user trong ngày làm việc (Real-time Stream, tự động nhận việc theo ca/bộ phận từng ngày)
 final todayUserTasksProvider =
     StreamProvider.family<List<AssignedTask>, UserTaskParams>((ref, args) {
   if (args.storeId.isEmpty || args.userId.isEmpty) return Stream.value([]);
@@ -56,6 +58,10 @@ final todayUserTasksProvider =
   final userDept = memberFromList?.department ?? 
       ((currentMember?.userId == args.userId) ? currentMember?.department : null);
 
+  final weekStart = DepartmentUtils.getMondayOfWeek(args.dateStr);
+  final schedule = ref.watch(weekScheduleProvider(weekStart)).valueOrNull;
+  final store = ref.watch(currentStoreProvider).valueOrNull;
+
   return repo.watchTasksForStore(args.storeId).map((allTasks) {
     return allTasks.where((task) {
       return task.status == TaskStatus.active &&
@@ -63,6 +69,8 @@ final todayUserTasksProvider =
             userId: args.userId,
             dateStr: args.dateStr,
             userDepartment: userDept,
+            schedule: schedule,
+            storeDepartments: store?.departments,
           );
     }).toList();
   });
