@@ -161,15 +161,20 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
           return _buildEmptyCard(dateTitle: dateTitle, isToday: isToday);
         }
 
-        final unfinishedTasks = unfinishedAsync.valueOrNull ?? [];
+        final isStatusLoading =
+            unfinishedAsync.isLoading && !unfinishedAsync.hasValue;
+        final unfinishedTasks =
+            unfinishedAsync.valueOrNull ?? (isStatusLoading ? tasks : []);
         final unfinishedIds = unfinishedTasks.map((t) => t.id).toSet();
 
         final totalCount = tasks.length;
         final unfinishedCount = unfinishedTasks.length;
-        final completedCount =
-            (totalCount - unfinishedCount).clamp(0, totalCount);
-        final progress = totalCount > 0 ? (completedCount / totalCount) : 1.0;
-        final isAllDone = completedCount == totalCount;
+        final completedCount = isStatusLoading
+            ? 0
+            : (totalCount - unfinishedCount).clamp(0, totalCount);
+        final progress =
+            totalCount > 0 ? (completedCount / totalCount) : 0.0;
+        final isAllDone = !isStatusLoading && (completedCount == totalCount);
 
         return Container(
           padding: const EdgeInsets.all(18),
@@ -266,15 +271,32 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                             : AppColors.warning.withValues(alpha: 0.3),
                       ),
                     ),
-                    child: Text(
-                      '$completedCount/$totalCount xong',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'BeVietnamPro',
-                        color:
-                            isAllDone ? AppColors.success : AppColors.warning,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isStatusLoading) ...[
+                          const SizedBox(
+                            width: 9,
+                            height: 9,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                        ],
+                        Text(
+                          '$completedCount/$totalCount xong',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'BeVietnamPro',
+                            color: isAllDone
+                                ? AppColors.success
+                                : AppColors.warning,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -368,7 +390,8 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                     const Divider(color: AppColors.divider, height: 14),
                 itemBuilder: (ctx, index) {
                   final AssignedTask task = tasks[index];
-                  final isDone = !unfinishedIds.contains(task.id);
+                  final isDone =
+                      !isStatusLoading && !unfinishedIds.contains(task.id);
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(12),
@@ -424,80 +447,83 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    if (task.createdByName.isNotEmpty) ...[
-                                      Text(
-                                        'Giao bởi: ${task.createdByName}',
-                                        style: const TextStyle(
-                                          fontSize: 11.5,
-                                          color: AppColors.textSecondary,
-                                          fontFamily: 'BeVietnamPro',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                    ],
-                                    if (task.repeatDaily) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 5, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary
-                                              .withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.repeat_rounded,
-                                                size: 10,
-                                                color: AppColors.primary),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              'Lặp mỗi ngày',
-                                              style: TextStyle(
-                                                fontSize: 9.5,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppColors.primary,
-                                                fontFamily: 'BeVietnamPro',
+                                if (task.createdByName.isNotEmpty)
+                                  Text(
+                                    'Giao bởi: ${task.createdByName}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: AppColors.textSecondary,
+                                      fontFamily: 'BeVietnamPro',
+                                    ),
+                                  ),
+                                if (task.repeatDaily || task.requirePhoto) ...[
+                                  const SizedBox(height: 3),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      if (task.repeatDaily)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 5, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.1),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.repeat_rounded,
+                                                  size: 10,
+                                                  color: AppColors.primary),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'Lặp mỗi ngày',
+                                                style: TextStyle(
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.primary,
+                                                  fontFamily: 'BeVietnamPro',
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                    ],
-                                    if (task.requirePhoto)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFF3E0),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.camera_alt_rounded,
-                                                size: 10,
-                                                color: Color(0xFFE65100)),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              'Cần ảnh',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFFE65100),
-                                                fontFamily: 'BeVietnamPro',
+                                      if (task.requirePhoto)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFF3E0),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.camera_alt_rounded,
+                                                  size: 10,
+                                                  color: Color(0xFFE65100)),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'Cần ảnh',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFFE65100),
+                                                  fontFamily: 'BeVietnamPro',
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                  ],
-                                ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),

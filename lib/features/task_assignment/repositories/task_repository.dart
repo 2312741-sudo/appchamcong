@@ -277,20 +277,23 @@ class TaskRepository {
       schedule: schedule,
       storeDepartments: storeDepartments,
     );
-    final List<AssignedTask> unfinished = [];
+    if (tasks.isEmpty) return [];
 
-    for (final task in tasks) {
-      if (task.status == TaskStatus.cancelled ||
-          task.status == TaskStatus.archived) {
-        continue;
-      }
-      final submission =
-          await getUserSubmission(storeId, task.id, userId, dateStr);
-      if (submission == null || !submission.isCompleted) {
-        unfinished.add(task);
-      }
-    }
+    final results = await Future.wait(
+      tasks.map((task) async {
+        if (task.status == TaskStatus.cancelled ||
+            task.status == TaskStatus.archived) {
+          return null;
+        }
+        final submission =
+            await getUserSubmission(storeId, task.id, userId, dateStr);
+        if (submission == null || !submission.isCompleted) {
+          return task;
+        }
+        return null;
+      }),
+    );
 
-    return unfinished;
+    return results.whereType<AssignedTask>().toList();
   }
 }

@@ -80,27 +80,33 @@ final todayUserTasksProvider =
 final unfinishedUserTasksProvider =
     FutureProvider.family<List<AssignedTask>, UserTaskParams>((ref, args) async {
   if (args.storeId.isEmpty || args.userId.isEmpty) return [];
-  // Lắng nghe real-time từ todayUserTasksProvider để khi có task mới được giao thì tự động re-compute ngay!
-  final tasksAsync = ref.watch(todayUserTasksProvider(args));
-  final tasks = tasksAsync.valueOrNull ?? [];
+  // Chờ danh sách task thực tế từ todayUserTasksProvider thay vì lấy valueOrNull có thể null dẫn đến empty list giả
+  final tasks = await ref.watch(todayUserTasksProvider(args).future);
   if (tasks.isEmpty) return [];
 
   final repo = ref.watch(taskRepositoryProvider);
-  final List<AssignedTask> unfinished = [];
 
-  for (final task in tasks) {
-    if (task.status == TaskStatus.cancelled ||
-        task.status == TaskStatus.archived) {
-      continue;
-    }
-    final submission =
-        await repo.getUserSubmission(args.storeId, task.id, args.userId, args.dateStr);
-    if (submission == null || !submission.isCompleted) {
-      unfinished.add(task);
-    }
-  }
+  // Kiểm tra đồng thời tất cả các task bằng Future.wait
+  final results = await Future.wait(
+    tasks.map((task) async {
+      if (task.status == TaskStatus.cancelled ||
+          task.status == TaskStatus.archived) {
+        return null;
+      }
+      final submission = await repo.getUserSubmission(
+        args.storeId,
+        task.id,
+        args.userId,
+        args.dateStr,
+      );
+      if (submission == null || !submission.isCompleted) {
+        return task;
+      }
+      return null;
+    }),
+  );
 
-  return unfinished;
+  return results.whereType<AssignedTask>().toList();
 });
 
 /// Stream danh sách báo cáo tiến độ/kết quả của một task trong ngày làm việc
