@@ -593,6 +593,35 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
+              ] else if (task.repeatDaysOfWeek.isNotEmpty) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.event_repeat_rounded,
+                        size: 13,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Lặp thứ ${task.repeatDaysOfWeek.map((d) => d == 7 ? 'CN' : 'T${d + 1}').join(', ')} hàng tuần',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
               ],
               if (task.requirePhoto)
                 Container(
@@ -732,7 +761,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   task.isAllStore
                       ? 'Toàn bộ cửa hàng'
                       : (task.isDepartment
-                          ? 'Bộ phận ${task.targetDepartmentName ?? 'Bộ phận'} (${task.assignedNames.isNotEmpty ? task.assignedNames.length : task.assignedUserIds.length} người)'
+                          ? 'Bộ phận ${task.targetDepartmentNames.isNotEmpty ? task.targetDepartmentNames.join(', ') : (task.targetDepartmentName ?? 'Bộ phận')} (${task.assignedNames.isNotEmpty ? task.assignedNames.length : task.assignedUserIds.length} người)'
                           : (task.assignedNames.isNotEmpty
                               ? task.assignedNames.join(', ')
                               : '${task.assignedUserIds.length} người')),
@@ -1347,6 +1376,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         dateStr: workDate,
         targetDeptId: task.targetDepartmentId,
         targetDeptName: task.targetDepartmentName,
+        targetDeptIds: task.targetDepartmentIds,
+        targetDeptNames: task.targetDepartmentNames,
         allMembers: activeMembers,
         schedule: schedule,
         storeDepartments: store?.departments,

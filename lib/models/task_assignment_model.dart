@@ -133,11 +133,15 @@ class AssignedTask extends Equatable {
   final TaskTargetType targetType;
   final String? targetDepartmentId;
   final String? targetDepartmentName;
+  final List<String> targetDepartmentIds;
+  final List<String> targetDepartmentNames;
   final List<String> assignedUserIds;
   final List<String> assignedNames;
   /// Danh sách ngày thực hiện định dạng YYYY-MM-DD
   final List<String> executionDates;
   final bool repeatDaily;
+  /// Danh sách các thứ trong tuần lặp lại (1 = Thứ 2, 2 = Thứ 3, ..., 7 = Chủ Nhật)
+  final List<int> repeatDaysOfWeek;
   final bool requirePhoto;
   final TaskStatus status;
   final DateTime createdAt;
@@ -154,10 +158,13 @@ class AssignedTask extends Equatable {
     required this.targetType,
     this.targetDepartmentId,
     this.targetDepartmentName,
+    this.targetDepartmentIds = const [],
+    this.targetDepartmentNames = const [],
     this.assignedUserIds = const [],
     this.assignedNames = const [],
     this.executionDates = const [],
     this.repeatDaily = false,
+    this.repeatDaysOfWeek = const [],
     this.requirePhoto = false,
     this.status = TaskStatus.active,
     required this.createdAt,
@@ -173,8 +180,21 @@ class AssignedTask extends Equatable {
     List<DepartmentDefinition>? storeDepartments,
     bool? isDepartmentScheduledToday,
   }) {
-    final hasDate = repeatDaily ? true : executionDates.contains(dateStr);
+    bool hasDate = false;
+    if (repeatDaily) {
+      hasDate = true;
+    } else if (repeatDaysOfWeek.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(dateStr);
+        hasDate = repeatDaysOfWeek.contains(dt.weekday);
+      } catch (_) {
+        hasDate = false;
+      }
+    } else {
+      hasDate = executionDates.contains(dateStr);
+    }
     if (!hasDate) return false;
+
     if (targetType == TaskTargetType.allStore) return true;
     if (targetType == TaskTargetType.department) {
       if (isDepartmentScheduledToday != null) {
@@ -187,6 +207,8 @@ class AssignedTask extends Equatable {
           dateStr: dateStr,
           targetDeptId: targetDepartmentId,
           targetDeptName: targetDepartmentName,
+          targetDeptIds: targetDepartmentIds,
+          targetDeptNames: targetDepartmentNames,
           schedule: schedule,
           memberDepartment: userDepartment,
           storeDepartments: storeDepartments,
@@ -194,13 +216,35 @@ class AssignedTask extends Equatable {
         if (matchesSchedule) return true;
       } else {
         if (userDepartment != null && userDepartment.trim().isNotEmpty) {
-          final matches = DepartmentUtils.isDepartmentMatch(
-            candidate: userDepartment,
-            targetDeptId: targetDepartmentId,
-            targetDeptName: targetDepartmentName,
-            storeDepartments: storeDepartments,
-          );
-          if (matches) return true;
+          final allTargetIds = {
+            ...targetDepartmentIds,
+            if (targetDepartmentId != null && targetDepartmentId!.isNotEmpty) targetDepartmentId!,
+          };
+          final allTargetNames = {
+            ...targetDepartmentNames,
+            if (targetDepartmentName != null && targetDepartmentName!.isNotEmpty) targetDepartmentName!,
+          };
+
+          for (final tId in allTargetIds) {
+            if (DepartmentUtils.isDepartmentMatch(
+              candidate: userDepartment,
+              targetDeptId: tId,
+              targetDeptName: null,
+              storeDepartments: storeDepartments,
+            )) {
+              return true;
+            }
+          }
+          for (final tName in allTargetNames) {
+            if (DepartmentUtils.isDepartmentMatch(
+              candidate: userDepartment,
+              targetDeptId: null,
+              targetDeptName: tName,
+              storeDepartments: storeDepartments,
+            )) {
+              return true;
+            }
+          }
         }
       }
       return assignedUserIds.contains(userId);
@@ -218,6 +262,28 @@ class AssignedTask extends Equatable {
 
   factory AssignedTask.fromJson(Map<String, dynamic> json, String id) {
     final effectiveId = id.isNotEmpty ? id : (json['id'] as String? ?? '');
+    final rawDeptIds = (json['targetDepartmentIds'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        (json['targetDepartmentId'] != null
+            ? [json['targetDepartmentId'].toString()]
+            : (json['departmentId'] != null ? [json['departmentId'].toString()] : const <String>[]));
+
+    final rawDeptNames = (json['targetDepartmentNames'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        (json['targetDepartmentName'] != null
+            ? [json['targetDepartmentName'].toString()]
+            : (json['departmentName'] != null ? [json['departmentName'].toString()] : const <String>[]));
+
+    final singleDeptId = json['targetDepartmentId'] as String? ??
+        json['departmentId'] as String? ??
+        (rawDeptIds.isNotEmpty ? rawDeptIds.first : null);
+
+    final singleDeptName = json['targetDepartmentName'] as String? ??
+        json['departmentName'] as String? ??
+        (rawDeptNames.isNotEmpty ? rawDeptNames.first : null);
+
     return AssignedTask(
       id: effectiveId,
       storeId: json['storeId'] as String? ?? '',
@@ -227,8 +293,10 @@ class AssignedTask extends Equatable {
       createdByName: json['createdByName'] as String? ?? '',
       createdByRole: UserRoleExtension.fromString(json['createdByRole'] as String?),
       targetType: TaskTargetTypeExtension.fromString(json['targetType'] as String?),
-      targetDepartmentId: json['targetDepartmentId'] as String? ?? json['departmentId'] as String?,
-      targetDepartmentName: json['targetDepartmentName'] as String? ?? json['departmentName'] as String?,
+      targetDepartmentId: singleDeptId,
+      targetDepartmentName: singleDeptName,
+      targetDepartmentIds: rawDeptIds,
+      targetDepartmentNames: rawDeptNames,
       assignedUserIds: (json['assignedUserIds'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -242,6 +310,11 @@ class AssignedTask extends Equatable {
               .toList() ??
           const [],
       repeatDaily: json['repeatDaily'] as bool? ?? false,
+      repeatDaysOfWeek: (json['repeatDaysOfWeek'] as List<dynamic>?)
+              ?.map((e) => int.tryParse(e.toString()) ?? 0)
+              .where((d) => d >= 1 && d <= 7)
+              .toList() ??
+          const [],
       requirePhoto: json['requirePhoto'] as bool? ?? false,
       status: TaskStatusExtension.fromString(json['status'] as String?),
       createdAt: _parseDateTime(json['createdAt']),
@@ -266,10 +339,13 @@ class AssignedTask extends Equatable {
       'targetType': targetType.value,
       if (targetDepartmentId != null) 'targetDepartmentId': targetDepartmentId,
       if (targetDepartmentName != null) 'targetDepartmentName': targetDepartmentName,
+      'targetDepartmentIds': targetDepartmentIds,
+      'targetDepartmentNames': targetDepartmentNames,
       'assignedUserIds': assignedUserIds,
       'assignedNames': assignedNames,
       'executionDates': executionDates,
       'repeatDaily': repeatDaily,
+      'repeatDaysOfWeek': repeatDaysOfWeek,
       'requirePhoto': requirePhoto,
       'status': status.value,
       'createdAt': useTimestamp ? Timestamp.fromDate(createdAt) : createdAt.toIso8601String(),
@@ -289,10 +365,13 @@ class AssignedTask extends Equatable {
     TaskTargetType? targetType,
     String? targetDepartmentId,
     String? targetDepartmentName,
+    List<String>? targetDepartmentIds,
+    List<String>? targetDepartmentNames,
     List<String>? assignedUserIds,
     List<String>? assignedNames,
     List<String>? executionDates,
     bool? repeatDaily,
+    List<int>? repeatDaysOfWeek,
     bool? requirePhoto,
     TaskStatus? status,
     DateTime? createdAt,
@@ -309,10 +388,13 @@ class AssignedTask extends Equatable {
       targetType: targetType ?? this.targetType,
       targetDepartmentId: targetDepartmentId ?? this.targetDepartmentId,
       targetDepartmentName: targetDepartmentName ?? this.targetDepartmentName,
+      targetDepartmentIds: targetDepartmentIds ?? this.targetDepartmentIds,
+      targetDepartmentNames: targetDepartmentNames ?? this.targetDepartmentNames,
       assignedUserIds: assignedUserIds ?? this.assignedUserIds,
       assignedNames: assignedNames ?? this.assignedNames,
       executionDates: executionDates ?? this.executionDates,
       repeatDaily: repeatDaily ?? this.repeatDaily,
+      repeatDaysOfWeek: repeatDaysOfWeek ?? this.repeatDaysOfWeek,
       requirePhoto: requirePhoto ?? this.requirePhoto,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -332,10 +414,13 @@ class AssignedTask extends Equatable {
         targetType,
         targetDepartmentId,
         targetDepartmentName,
+        targetDepartmentIds,
+        targetDepartmentNames,
         assignedUserIds,
         assignedNames,
         executionDates,
         repeatDaily,
+        repeatDaysOfWeek,
         requirePhoto,
         status,
         createdAt,

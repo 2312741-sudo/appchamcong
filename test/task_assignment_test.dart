@@ -810,4 +810,130 @@ void main() {
       expect(wednesdayPhaCheStaff, isEmpty);
     });
   });
+
+  group('9. Multi-Department Assignment Tests', () {
+    final multiDeptTask = AssignedTask(
+      id: 'task_multi_dept',
+      storeId: 'store_1',
+      title: 'Vệ sinh quầy Bar & Thu ngân',
+      description: 'Làm sạch khu vực chung',
+      createdBy: 'uid_admin',
+      createdByName: 'Admin',
+      createdByRole: UserRole.owner,
+      targetType: TaskTargetType.department,
+      targetDepartmentIds: const ['dept_pha_che', 'dept_thu_ngan'],
+      targetDepartmentNames: const ['Pha chế', 'Thu ngân'],
+      executionDates: const ['2026-10-19'],
+      createdAt: DateTime.now(),
+    );
+
+    test('multi-department task serialization & deserialization', () {
+      final json = multiDeptTask.toJson();
+      expect(json['targetDepartmentIds'], equals(['dept_pha_che', 'dept_thu_ngan']));
+      expect(json['targetDepartmentNames'], equals(['Pha chế', 'Thu ngân']));
+
+      final parsed = AssignedTask.fromJson(json, multiDeptTask.id);
+      expect(parsed.targetDepartmentIds, equals(['dept_pha_che', 'dept_thu_ngan']));
+      expect(parsed.targetDepartmentNames, equals(['Pha chế', 'Thu ngân']));
+    });
+
+    test('isApplicableForUserOnDate matches user belonging to ANY target department', () {
+      // User with 'dept_pha_che'
+      expect(
+        multiDeptTask.isApplicableForUserOnDate(
+          userId: 'user_pha_che',
+          dateStr: '2026-10-19',
+          userDepartment: 'dept_pha_che',
+        ),
+        isTrue,
+      );
+
+      // User with 'dept_thu_ngan'
+      expect(
+        multiDeptTask.isApplicableForUserOnDate(
+          userId: 'user_thu_ngan',
+          dateStr: '2026-10-19',
+          userDepartment: 'dept_thu_ngan',
+        ),
+        isTrue,
+      );
+
+      // User with 'dept_bep' (not in target)
+      expect(
+        multiDeptTask.isApplicableForUserOnDate(
+          userId: 'user_bep',
+          dateStr: '2026-10-19',
+          userDepartment: 'dept_bep',
+        ),
+        isFalse,
+      );
+    });
+  });
+
+  group('10. Weekly Day-of-Week Recurrence (repeatDaysOfWeek) Tests', () {
+    // 2026-10-19 is Monday (weekday 1)
+    // 2026-10-20 is Tuesday (weekday 2)
+    // 2026-10-21 is Wednesday (weekday 3)
+    // 2026-10-25 is Sunday (weekday 7)
+    final mwfTask = AssignedTask(
+      id: 'task_mwf',
+      storeId: 'store_1',
+      title: 'Họp giao ban T2, T4, T6',
+      description: 'Lặp lại mỗi Thứ 2, Thứ 4, Thứ 6 hàng tuần',
+      createdBy: 'uid_admin',
+      createdByName: 'Admin',
+      createdByRole: UserRole.owner,
+      targetType: TaskTargetType.allStore,
+      repeatDaily: false,
+      repeatDaysOfWeek: const [1, 3, 5], // T2, T4, T6
+      createdAt: DateTime.now(),
+    );
+
+    test('repeatDaysOfWeek serialization & deserialization', () {
+      final json = mwfTask.toJson();
+      expect(json['repeatDaysOfWeek'], equals([1, 3, 5]));
+
+      final parsed = AssignedTask.fromJson(json, mwfTask.id);
+      expect(parsed.repeatDaysOfWeek, equals([1, 3, 5]));
+    });
+
+    test('matches only configured days of week regardless of executionDates', () {
+      // Monday 2026-10-19 (weekday 1) -> MATCH
+      expect(
+        mwfTask.isApplicableForUserOnDate(
+          userId: 'any_user',
+          dateStr: '2026-10-19',
+        ),
+        isTrue,
+      );
+
+      // Tuesday 2026-10-20 (weekday 2) -> NO MATCH
+      expect(
+        mwfTask.isApplicableForUserOnDate(
+          userId: 'any_user',
+          dateStr: '2026-10-20',
+        ),
+        isFalse,
+      );
+
+      // Wednesday 2026-10-21 (weekday 3) -> MATCH
+      expect(
+        mwfTask.isApplicableForUserOnDate(
+          userId: 'any_user',
+          dateStr: '2026-10-21',
+        ),
+        isTrue,
+      );
+
+      // Sunday 2026-10-25 (weekday 7) -> NO MATCH
+      expect(
+        mwfTask.isApplicableForUserOnDate(
+          userId: 'any_user',
+          dateStr: '2026-10-25',
+        ),
+        isFalse,
+      );
+    });
+  });
 }
+

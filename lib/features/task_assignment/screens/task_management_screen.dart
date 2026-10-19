@@ -696,6 +696,35 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                         ),
                       ),
                       const SizedBox(width: 6),
+                    ] else if (task.repeatDaysOfWeek.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.event_repeat_rounded,
+                              size: 13,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Thứ ${task.repeatDaysOfWeek.map((d) => d == 7 ? 'CN' : 'T${d + 1}').join(', ')}',
+                              style: GoogleFonts.beVietnamPro(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                     ],
                     if (task.requirePhoto)
                       Container(
@@ -911,7 +940,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                         task.isAllStore
                             ? 'Toàn bộ cửa hàng'
                             : (task.isDepartment
-                                ? 'Bộ phận ${task.targetDepartmentName ?? 'Bộ phận'} (Tự động theo ca/ngày)'
+                                ? 'Bộ phận ${task.targetDepartmentNames.isNotEmpty ? task.targetDepartmentNames.join(', ') : (task.targetDepartmentName ?? 'Bộ phận')} (Tự động theo ca/ngày)'
                                 : (task.assignedNames.isNotEmpty
                                     ? '${task.assignedNames.length} người (${task.assignedNames.take(2).join(', ')}${task.assignedNames.length > 2 ? '...' : ''})'
                                     : '${task.assignedUserIds.length} người')),
@@ -944,11 +973,13 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                       child: Text(
                         task.repeatDaily
                             ? 'Lặp lại mỗi ngày'
-                            : (task.executionDates.isNotEmpty
-                                ? task.executionDates
-                                    .map((d) => _formatDateShortDisplay(d))
-                                    .join(', ')
-                                : 'Chưa đặt ngày'),
+                            : (task.repeatDaysOfWeek.isNotEmpty
+                                ? 'Lặp thứ ${task.repeatDaysOfWeek.map((d) => d == 7 ? 'CN' : 'T${d + 1}').join(', ')} hàng tuần'
+                                : (task.executionDates.isNotEmpty
+                                    ? task.executionDates
+                                        .map((d) => _formatDateShortDisplay(d))
+                                        .join(', ')
+                                    : 'Chưa đặt ngày')),
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,

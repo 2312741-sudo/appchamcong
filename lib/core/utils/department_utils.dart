@@ -90,18 +90,55 @@ class DepartmentUtils {
     return false;
   }
 
-  /// Determines whether [userId] is scheduled or assigned to [targetDeptId] / [targetDeptName] on [dateStr].
+  /// Determines whether [userId] is scheduled or assigned to target departments on [dateStr].
   /// [dateStr] format: 'YYYY-MM-DD'
   static bool isUserInDepartmentOnDate({
     required String userId,
     required String dateStr,
-    required String? targetDeptId,
-    required String? targetDeptName,
+    String? targetDeptId,
+    String? targetDeptName,
+    List<String>? targetDeptIds,
+    List<String>? targetDeptNames,
     ScheduleModel? schedule,
     String? memberDepartment,
     List<DepartmentDefinition>? storeDepartments,
   }) {
-    if (targetDeptId == null && targetDeptName == null) return false;
+    final allTargetIds = {
+      if (targetDeptIds != null) ...targetDeptIds,
+      if (targetDeptId != null && targetDeptId.isNotEmpty) targetDeptId,
+    }.toList();
+
+    final allTargetNames = {
+      if (targetDeptNames != null) ...targetDeptNames,
+      if (targetDeptName != null && targetDeptName.isNotEmpty) targetDeptName,
+    }.toList();
+
+    if (allTargetIds.isEmpty && allTargetNames.isEmpty) return false;
+
+    bool matchesAny(String? candidate) {
+      if (candidate == null || candidate.trim().isEmpty) return false;
+      for (final tId in allTargetIds) {
+        if (isDepartmentMatch(
+          candidate: candidate,
+          targetDeptId: tId,
+          targetDeptName: null,
+          storeDepartments: storeDepartments,
+        )) {
+          return true;
+        }
+      }
+      for (final tName in allTargetNames) {
+        if (isDepartmentMatch(
+          candidate: candidate,
+          targetDeptId: null,
+          targetDeptName: tName,
+          storeDepartments: storeDepartments,
+        )) {
+          return true;
+        }
+      }
+      return false;
+    }
 
     // 1. If schedule is available for this date's week:
     if (schedule != null) {
@@ -131,22 +168,12 @@ class DepartmentUtils {
               }
               if (trimmed.contains('|')) {
                 final shiftDeptId = trimmed.split('|')[1];
-                if (isDepartmentMatch(
-                  candidate: shiftDeptId,
-                  targetDeptId: targetDeptId,
-                  targetDeptName: targetDeptName,
-                  storeDepartments: storeDepartments,
-                )) {
+                if (matchesAny(shiftDeptId)) {
                   return true;
                 }
               } else {
                 // Shift has no explicit department override -> inherits member's default department
-                if (memberDepartment != null && isDepartmentMatch(
-                  candidate: memberDepartment,
-                  targetDeptId: targetDeptId,
-                  targetDeptName: targetDeptName,
-                  storeDepartments: storeDepartments,
-                )) {
+                if (memberDepartment != null && matchesAny(memberDepartment)) {
                   return true;
                 }
               }
@@ -167,12 +194,7 @@ class DepartmentUtils {
     // 2. Fallback if no schedule or user not in schedule:
     // Check member's static department
     if (memberDepartment != null && memberDepartment.trim().isNotEmpty) {
-      return isDepartmentMatch(
-        candidate: memberDepartment,
-        targetDeptId: targetDeptId,
-        targetDeptName: targetDeptName,
-        storeDepartments: storeDepartments,
-      );
+      return matchesAny(memberDepartment);
     }
 
     return false;
@@ -181,8 +203,10 @@ class DepartmentUtils {
   /// Returns list of member IDs who belong or are scheduled in the department on [dateStr].
   static List<String> getUserIdsInDepartmentOnDate({
     required String dateStr,
-    required String? targetDeptId,
-    required String? targetDeptName,
+    String? targetDeptId,
+    String? targetDeptName,
+    List<String>? targetDeptIds,
+    List<String>? targetDeptNames,
     required List<MemberModel> allMembers,
     ScheduleModel? schedule,
     List<DepartmentDefinition>? storeDepartments,
@@ -194,6 +218,8 @@ class DepartmentUtils {
         dateStr: dateStr,
         targetDeptId: targetDeptId,
         targetDeptName: targetDeptName,
+        targetDeptIds: targetDeptIds,
+        targetDeptNames: targetDeptNames,
         schedule: schedule,
         memberDepartment: member.department,
         storeDepartments: storeDepartments,

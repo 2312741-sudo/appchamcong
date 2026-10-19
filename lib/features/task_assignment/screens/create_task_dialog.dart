@@ -42,15 +42,15 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   // Danh sách các ngày thực hiện được chọn (YYYY-MM-DD)
   final Set<String> _selectedDates = {};
 
-  // Lặp mỗi ngày
-  bool _repeatDaily = false;
+  // Chế độ lặp lại: 0: Ngày cụ thể, 1: Lặp mỗi ngày, 2: Lặp theo thứ hàng tuần
+  int _repeatMode = 0;
+  final Set<int> _selectedDaysOfWeek = {}; // 1 = T2 ... 7 = CN
 
   // Đối tượng nhận việc
   TaskTargetType _targetType = TaskTargetType.allStore;
 
-  // Bộ phận được chọn khi targetType == department
-  String? _selectedDepartmentId;
-  String? _selectedDepartmentName;
+  // Bộ phận được chọn khi targetType == department (hỗ trợ chọn nhiều bộ phận)
+  final Set<String> _selectedDepartmentIds = {};
 
   // Danh sách ID thành viên được chọn khi targetType == individual
   final Set<String> _selectedMemberIds = {};
@@ -72,10 +72,20 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       _titleController.text = t.title;
       _descController.text = t.description;
       _selectedDates.addAll(t.executionDates);
-      _repeatDaily = t.repeatDaily;
+      _selectedDaysOfWeek.addAll(t.repeatDaysOfWeek);
+      if (t.repeatDaily) {
+        _repeatMode = 1;
+      } else if (t.repeatDaysOfWeek.isNotEmpty) {
+        _repeatMode = 2;
+      } else {
+        _repeatMode = 0;
+      }
       _targetType = t.targetType;
-      _selectedDepartmentId = t.targetDepartmentId;
-      _selectedDepartmentName = t.targetDepartmentName;
+      if (t.targetDepartmentIds.isNotEmpty) {
+        _selectedDepartmentIds.addAll(t.targetDepartmentIds);
+      } else if (t.targetDepartmentId != null && t.targetDepartmentId!.isNotEmpty) {
+        _selectedDepartmentIds.add(t.targetDepartmentId!);
+      }
       _selectedMemberIds.addAll(t.assignedUserIds);
       _requirePhoto = t.requirePhoto;
       _status = t.status;
@@ -197,10 +207,26 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       return;
     }
 
-    if (_targetType == TaskTargetType.department &&
-        (_selectedDepartmentId == null || _selectedDepartmentId!.isEmpty)) {
+    if (_targetType == TaskTargetType.department && _selectedDepartmentIds.isEmpty) {
       setState(() {
-        _errorMessage = 'Vui lòng chọn một bộ phận nhận việc!';
+        _errorMessage = 'Vui lòng chọn ít nhất một bộ phận nhận việc!';
+      });
+      return;
+    }
+
+    final isRepeatDaily = _repeatMode == 1;
+    final isRepeatDaysOfWeek = _repeatMode == 2;
+    final daysOfWeekList = isRepeatDaysOfWeek ? (_selectedDaysOfWeek.toList()..sort()) : <int>[];
+
+    if (_repeatMode == 0 && _selectedDates.isEmpty) {
+      setState(() {
+        _errorMessage = 'Vui lòng chọn ít nhất 1 ngày thực hiện!';
+      });
+      return;
+    }
+    if (isRepeatDaysOfWeek && daysOfWeekList.isEmpty) {
+      setState(() {
+        _errorMessage = 'Vui lòng chọn ít nhất một thứ trong tuần để lặp lại!';
       });
       return;
     }
@@ -220,6 +246,18 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     final creatorName = currentMember?.name ?? currentUser?.name ?? 'Quản lý';
     final creatorRole = currentMember?.role ?? UserRole.manager1;
 
+    final currentStore = ref.read(currentStoreProvider).valueOrNull;
+    final departments = currentStore?.departments ?? const <DepartmentDefinition>[];
+
+    final selectedDeptNames = <String>[];
+    for (final dId in _selectedDepartmentIds) {
+      final d = departments.cast<DepartmentDefinition?>().firstWhere(
+        (element) => element?.id == dId,
+        orElse: () => null,
+      );
+      if (d != null) selectedDeptNames.add(d.name);
+    }
+
     // Lấy thành viên được giao việc
     final allMembers = ref.read(activeMembersProvider);
     final List<String> assignedUids;
@@ -232,9 +270,17 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       final deptMembers = allMembers.where((m) {
         if (m.department == null || m.department!.trim().isEmpty) return false;
         final mDept = m.department!.trim().toLowerCase();
-        final sId = (_selectedDepartmentId ?? '').trim().toLowerCase();
-        final sName = (_selectedDepartmentName ?? '').trim().toLowerCase();
-        return (sId.isNotEmpty && mDept == sId) || (sName.isNotEmpty && mDept == sName);
+        return _selectedDepartmentIds.any((dId) {
+          final d = departments.cast<DepartmentDefinition?>().firstWhere(
+            (element) => element?.id == dId,
+            orElse: () => null,
+          );
+          if (d == null) return false;
+          final sId = d.id.trim().toLowerCase();
+          final sName = d.name.trim().toLowerCase();
+          final sShort = d.shortName.trim().toLowerCase();
+          return mDept == sId || mDept == sName || (sShort.isNotEmpty && mDept == sShort);
+        });
       }).toList();
 
       final combinedIds = <String>{
@@ -267,7 +313,23 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       assignedNames = selectedNames;
     }
 
-    final sortedDates = _selectedDates.toList()..sort();
+    final sortedDates = <String>[];
+    if (isRepeatDaysOfWeek) {
+      final currNow = DateTime.now();
+      for (int i = 0; i < 60; i++) {
+        final dt = currNow.add(Duration(days: i));
+        if (daysOfWeekList.contains(dt.weekday)) {
+          sortedDates.add(_formatDateIso(dt));
+        }
+      }
+    } else if (isRepeatDaily) {
+      final currNow = DateTime.now();
+      for (int i = 0; i < 60; i++) {
+        sortedDates.add(_formatDateIso(currNow.add(Duration(days: i))));
+      }
+    } else {
+      sortedDates.addAll(_selectedDates.toList()..sort());
+    }
 
     final task = AssignedTask(
       id: '',
@@ -278,12 +340,15 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       createdByName: creatorName,
       createdByRole: creatorRole,
       targetType: _targetType,
-      targetDepartmentId: _targetType == TaskTargetType.department ? _selectedDepartmentId : null,
-      targetDepartmentName: _targetType == TaskTargetType.department ? _selectedDepartmentName : null,
+      targetDepartmentId: _targetType == TaskTargetType.department && _selectedDepartmentIds.isNotEmpty ? _selectedDepartmentIds.first : null,
+      targetDepartmentName: _targetType == TaskTargetType.department && selectedDeptNames.isNotEmpty ? selectedDeptNames.first : null,
+      targetDepartmentIds: _targetType == TaskTargetType.department ? _selectedDepartmentIds.toList() : const [],
+      targetDepartmentNames: _targetType == TaskTargetType.department ? selectedDeptNames : const [],
       assignedUserIds: assignedUids,
       assignedNames: assignedNames,
       executionDates: sortedDates,
-      repeatDaily: _repeatDaily,
+      repeatDaily: isRepeatDaily,
+      repeatDaysOfWeek: daysOfWeekList,
       requirePhoto: _requirePhoto,
       status: TaskStatus.active,
       createdAt: DateTime.now(),
@@ -305,12 +370,15 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
           createdByName: widget.taskToEdit!.createdByName,
           createdByRole: widget.taskToEdit!.createdByRole,
           targetType: _targetType,
-          targetDepartmentId: _targetType == TaskTargetType.department ? _selectedDepartmentId : null,
-          targetDepartmentName: _targetType == TaskTargetType.department ? _selectedDepartmentName : null,
+          targetDepartmentId: _targetType == TaskTargetType.department && _selectedDepartmentIds.isNotEmpty ? _selectedDepartmentIds.first : null,
+          targetDepartmentName: _targetType == TaskTargetType.department && selectedDeptNames.isNotEmpty ? selectedDeptNames.first : null,
+          targetDepartmentIds: _targetType == TaskTargetType.department ? _selectedDepartmentIds.toList() : const [],
+          targetDepartmentNames: _targetType == TaskTargetType.department ? selectedDeptNames : const [],
           assignedUserIds: assignedUids,
           assignedNames: assignedNames,
           executionDates: sortedDates,
-          repeatDaily: _repeatDaily,
+          repeatDaily: isRepeatDaily,
+          repeatDaysOfWeek: daysOfWeekList,
           requirePhoto: _requirePhoto,
           status: _status,
           createdAt: widget.taskToEdit!.createdAt,
@@ -802,7 +870,40 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
   );
 }
 
-  /// Section chọn ngày thực hiện linh hoạt & lặp mỗi ngày
+  Widget _buildPresetChip(String label, List<int> days) {
+    final isMatching = days.length == _selectedDaysOfWeek.length &&
+        days.every((d) => _selectedDaysOfWeek.contains(d));
+    return ActionChip(
+      label: Text(
+        label,
+        style: GoogleFonts.beVietnamPro(
+          fontSize: 11,
+          fontWeight: isMatching ? FontWeight.w600 : FontWeight.normal,
+          color: isMatching ? AppColors.primary : AppColors.textSecondary,
+        ),
+      ),
+      backgroundColor: isMatching
+          ? AppColors.primary.withValues(alpha: 0.1)
+          : AppColors.cardSurface,
+      side: BorderSide(
+        color: isMatching ? AppColors.primary : AppColors.border,
+      ),
+      onPressed: () {
+        setState(() {
+          _selectedDaysOfWeek.clear();
+          _selectedDaysOfWeek.addAll(days);
+          _errorMessage = null;
+        });
+      },
+    );
+  }
+
+  String _formatDaysOfWeekNames(Set<int> days) {
+    final sorted = days.toList()..sort();
+    return sorted.map((d) => d == 7 ? 'Chủ Nhật' : 'Thứ $d').join(', ');
+  }
+
+  /// Section chọn ngày thực hiện linh hoạt, lặp mỗi ngày hoặc lặp theo thứ hàng tuần
   Widget _buildExecutionDatesSection() {
     final now = DateTime.now();
     final today = _formatDateIso(now);
@@ -818,110 +919,82 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Switch Lặp mỗi ngày
+        Text(
+          'Thời gian thực hiện *',
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // 3 chế độ: Ngày cụ thể, Lặp mỗi ngày, Lặp theo thứ hàng tuần
         Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: _repeatDaily
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : AppColors.surface,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _repeatDaily
-                  ? AppColors.primary.withValues(alpha: 0.4)
-                  : AppColors.border.withValues(alpha: 0.7),
+              color: AppColors.border.withValues(alpha: 0.8),
             ),
           ),
+          padding: const EdgeInsets.all(4),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: (_repeatDaily ? AppColors.primary : AppColors.textDisabled)
-                      .withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.repeat_rounded,
-                  color: _repeatDaily ? AppColors.primary : AppColors.textSecondary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Lặp mỗi ngày',
-                          style: GoogleFonts.beVietnamPro(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (_repeatDaily) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'BẬT',
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    Text(
-                      _repeatDaily
-                          ? 'Tự động áp dụng cho các ca làm việc mỗi ngày'
-                          : 'Giao việc cho các ngày cụ thể được chọn bên dưới',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 11.5,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+                child: _buildSegmentButton(
+                  title: 'Ngày cụ thể',
+                  icon: Icons.event_rounded,
+                  isSelected: _repeatMode == 0,
+                  onTap: () {
+                    setState(() {
+                      _repeatMode = 0;
+                      if (_selectedDates.isEmpty) {
+                        _selectedDates.add(_formatDateIso(DateTime.now()));
+                      }
+                      _errorMessage = null;
+                    });
+                  },
                 ),
               ),
-              Switch(
-                value: _repeatDaily,
-                activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
-                activeThumbColor: AppColors.primary,
-                onChanged: (val) {
-                  setState(() {
-                    _repeatDaily = val;
-                    if (_repeatDaily) {
-                      _selectedDates.clear();
-                      final currNow = DateTime.now();
-                      for (int i = 0; i < 60; i++) {
-                        _selectedDates.add(_formatDateIso(currNow.add(Duration(days: i))));
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildSegmentButton(
+                  title: 'Lặp mỗi ngày',
+                  icon: Icons.repeat_rounded,
+                  isSelected: _repeatMode == 1,
+                  onTap: () {
+                    setState(() {
+                      _repeatMode = 1;
+                      _errorMessage = null;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: _buildSegmentButton(
+                  title: 'Lặp theo thứ',
+                  icon: Icons.event_repeat_rounded,
+                  isSelected: _repeatMode == 2,
+                  onTap: () {
+                    setState(() {
+                      _repeatMode = 2;
+                      if (_selectedDaysOfWeek.isEmpty) {
+                        _selectedDaysOfWeek.add(DateTime.now().weekday);
                       }
-                    } else {
-                      _selectedDates.clear();
-                      _selectedDates.add(_formatDateIso(DateTime.now()));
-                    }
-                    _errorMessage = null;
-                  });
-                },
+                      _errorMessage = null;
+                    });
+                  },
+                ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 12),
 
-        if (_repeatDaily) ...[
+        // Hiển thị nội dung theo từng chế độ:
+        if (_repeatMode == 1) ...[
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -947,6 +1020,141 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                       color: AppColors.primary,
                       fontWeight: FontWeight.w500,
                     ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else if (_repeatMode == 2) ...[
+          // Chế độ lặp lại theo thứ hàng tuần
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Chọn các thứ trong tuần lặp lại:',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '(${_selectedDaysOfWeek.length}/7 thứ)',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11.5,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // 7 nút thứ T2 -> CN
+                Row(
+                  children: [
+                    for (int day = 1; day <= 7; day++) ...[
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                if (_selectedDaysOfWeek.contains(day)) {
+                                  _selectedDaysOfWeek.remove(day);
+                                } else {
+                                  _selectedDaysOfWeek.add(day);
+                                }
+                                _errorMessage = null;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: _selectedDaysOfWeek.contains(day)
+                                    ? AppColors.primary
+                                    : AppColors.cardSurface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _selectedDaysOfWeek.contains(day)
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                                  width: _selectedDaysOfWeek.contains(day) ? 1.5 : 1,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                day == 7 ? 'CN' : 'T$day',
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 12.5,
+                                  fontWeight: _selectedDaysOfWeek.contains(day)
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _selectedDaysOfWeek.contains(day)
+                                      ? Colors.white
+                                      : AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Nút chọn nhanh (Presets)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildPresetChip('T2, T4, T6', [1, 3, 5]),
+                    _buildPresetChip('T3, T5, T7', [2, 4, 6]),
+                    _buildPresetChip('Cuối tuần (T7, CN)', [6, 7]),
+                    _buildPresetChip('T2 - T6', [1, 2, 3, 4, 5]),
+                    _buildPresetChip('Cả tuần', [1, 2, 3, 4, 5, 6, 7]),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Thông tin tóm tắt
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline_rounded,
+                          size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _selectedDaysOfWeek.isEmpty
+                              ? 'Vui lòng chọn ít nhất một thứ để lặp lại'
+                              : 'Tự động lặp lại vào: ${_formatDaysOfWeekNames(_selectedDaysOfWeek)} hàng tuần.',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1203,9 +1411,8 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                   onTap: () {
                     setState(() {
                       _targetType = TaskTargetType.department;
-                      if (_selectedDepartmentId == null && departments.isNotEmpty) {
-                        _selectedDepartmentId = departments.first.id;
-                        _selectedDepartmentName = departments.first.name;
+                      if (_selectedDepartmentIds.isEmpty && departments.isNotEmpty) {
+                        _selectedDepartmentIds.add(departments.first.id);
                       }
                       _errorMessage = null;
                     });
@@ -1288,20 +1495,22 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       );
     }
 
-    final selectedDept = departments
-        .cast<DepartmentDefinition?>()
-        .firstWhere((d) => d?.id == _selectedDepartmentId, orElse: () => null);
+    final selectedDepts = departments
+        .where((d) => _selectedDepartmentIds.contains(d.id))
+        .toList();
 
-    final deptMembers = selectedDept == null
-        ? <MemberModel>[]
-        : members.where((m) {
-            if (m.department == null || m.department!.trim().isEmpty) return false;
-            final mDept = m.department!.trim().toLowerCase();
-            final dId = selectedDept.id.trim().toLowerCase();
-            final dName = selectedDept.name.trim().toLowerCase();
-            final dShort = selectedDept.shortName.trim().toLowerCase();
-            return mDept == dId || mDept == dName || (dShort.isNotEmpty && mDept == dShort);
-          }).toList();
+    final deptMembers = members.where((m) {
+      if (m.department == null || m.department!.trim().isEmpty) return false;
+      final mDept = m.department!.trim().toLowerCase();
+      return _selectedDepartmentIds.any((dId) {
+        final d = departments.cast<DepartmentDefinition?>().firstWhere((element) => element?.id == dId, orElse: () => null);
+        if (d == null) return false;
+        final dIdLower = d.id.trim().toLowerCase();
+        final dNameLower = d.name.trim().toLowerCase();
+        final dShortLower = d.shortName.trim().toLowerCase();
+        return mDept == dIdLower || mDept == dNameLower || (dShortLower.isNotEmpty && mDept == dShortLower);
+      });
+    }).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -1313,13 +1522,45 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Chọn bộ phận nhận việc:',
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Chọn các bộ phận nhận việc:',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              if (departments.length > 1)
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (_selectedDepartmentIds.length == departments.length) {
+                        _selectedDepartmentIds.clear();
+                      } else {
+                        _selectedDepartmentIds.clear();
+                        _selectedDepartmentIds.addAll(departments.map((d) => d.id));
+                      }
+                      _errorMessage = null;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      _selectedDepartmentIds.length == departments.length
+                          ? 'Bỏ chọn tất cả'
+                          : 'Chọn tất cả',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 6),
           Container(
@@ -1334,7 +1575,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Công việc sẽ tự động giao cho nhân sự có ca làm thuộc bộ phận này theo từng ngày (dựa trên Lịch làm việc tuần / Bộ phận của nhân viên).',
+                    'Công việc sẽ tự động giao cho nhân sự có ca làm thuộc các bộ phận được chọn theo từng ngày (dựa trên Lịch làm việc tuần / Bộ phận của nhân viên).',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 11.5,
                       color: AppColors.primary,
@@ -1347,12 +1588,12 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
           ),
           const SizedBox(height: 10),
 
-          // Danh sách Chips các bộ phận
+          // Danh sách FilterChips các bộ phận (cho phép chọn nhiều bộ phận)
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: departments.map((dept) {
-              final isSelected = _selectedDepartmentId == dept.id;
+              final isSelected = _selectedDepartmentIds.contains(dept.id);
               final count = members.where((m) {
                 if (m.department == null || m.department!.trim().isEmpty) return false;
                 final mDept = m.department!.trim().toLowerCase();
@@ -1362,11 +1603,13 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 return mDept == dId || mDept == dName || (dShort.isNotEmpty && mDept == dShort);
               }).length;
 
-              return ChoiceChip(
+              return FilterChip(
                 label: Text('${dept.name} ($count)'),
                 selected: isSelected,
                 selectedColor: AppColors.primary,
                 backgroundColor: AppColors.cardSurface,
+                showCheckmark: isSelected,
+                checkmarkColor: Colors.white,
                 labelStyle: GoogleFonts.beVietnamPro(
                   fontSize: 12.5,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -1378,11 +1621,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 onSelected: (selected) {
                   setState(() {
                     if (selected) {
-                      _selectedDepartmentId = dept.id;
-                      _selectedDepartmentName = dept.name;
+                      _selectedDepartmentIds.add(dept.id);
                     } else {
-                      _selectedDepartmentId = null;
-                      _selectedDepartmentName = null;
+                      _selectedDepartmentIds.remove(dept.id);
                     }
                     _errorMessage = null;
                   });
@@ -1391,7 +1632,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             }).toList(),
           ),
 
-          if (selectedDept != null) ...[
+          if (_selectedDepartmentIds.isNotEmpty) ...[
             const SizedBox(height: 12),
             const Divider(height: 1, color: AppColors.divider),
             const SizedBox(height: 10),
@@ -1399,12 +1640,15 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               children: [
                 const Icon(Icons.people_outline_rounded, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
-                Text(
-                  'Thành viên thuộc ${selectedDept.name} (${deptMembers.length}):',
-                  style: GoogleFonts.beVietnamPro(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                Expanded(
+                  child: Text(
+                    'Thành viên thuộc ${selectedDepts.map((d) => d.name).join(', ')} (${deptMembers.length}):',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -1414,7 +1658,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
-                  'Chưa có nhân viên nào được gán vào bộ phận "${selectedDept.name}". Công việc sẽ tự động áp dụng khi có nhân viên thuộc bộ phận này.',
+                  'Chưa có nhân viên nào được gán vào các bộ phận đã chọn. Công việc sẽ tự động áp dụng khi có nhân viên có ca làm ở các bộ phận này.',
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 11.5,
                     color: AppColors.textSecondary,
