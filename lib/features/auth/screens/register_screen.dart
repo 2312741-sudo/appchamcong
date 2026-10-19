@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_notifier.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
@@ -285,85 +286,67 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 20),
 
                   // ── Social Buttons ────────────────────────────────────
-                  Row(
-                    children: [
-                      // Google Sign In Button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: authState.isLoading ? null : _handleGoogleSignIn,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            backgroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFFE0E0E0)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'G',
-                                    style: TextStyle(
-                                      color: const Color(0xFF4285F4),
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
-                                      fontFamily: 'BeVietnamPro',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Google',
-                                style: TextStyle(
-                                  color: Color(0xFF333333),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
+                  // Official Sign in with Apple button (Apple HIG & Design Resources Compliant)
+                  SignInWithAppleButton(
+                    onPressed: authState.isLoading ? () {} : _handleAppleSignIn,
+                    text: Localizations.maybeLocaleOf(context)?.languageCode == 'vi'
+                        ? 'Đăng ký bằng Apple'
+                        : 'Sign up with Apple',
+                    height: 48,
+                    style: SignInWithAppleButtonStyle.black,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Google Sign In Button
+                  SizedBox(
+                    height: 48,
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: authState.isLoading ? null : _handleGoogleSignIn,
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFFE0E0E0)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // Apple Sign In Button
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: authState.isLoading ? null : _handleAppleSignIn,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
                             ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.apple, size: 22, color: Colors.white),
-                              SizedBox(width: 6),
-                              Text(
-                                'Apple',
+                            child: const Center(
+                              child: Text(
+                                'G',
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  color: Color(0xFF4285F4),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'BeVietnamPro',
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Text(
+                            Localizations.maybeLocaleOf(context)?.languageCode == 'vi'
+                                ? 'Tiếp tục với Google'
+                                : 'Continue with Google',
+                            style: const TextStyle(
+                              color: Color(0xFF333333),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
 
                   const SizedBox(height: 24),
