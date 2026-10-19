@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_notifier.dart';
+import '../widgets/sign_in_with_google_button.dart';
 import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
@@ -517,54 +518,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Google Sign In Button
-                  SizedBox(
+                  // Google Sign In Button (Synchronized with Apple button)
+                  SignInWithGoogleButton(
+                    onPressed: authState.isLoading ? null : _handleGoogleSignIn,
+                    text: Localizations.maybeLocaleOf(context)?.languageCode == 'vi'
+                        ? 'Đăng nhập bằng Google'
+                        : 'Sign in with Google',
                     height: 48,
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: authState.isLoading ? null : _handleGoogleSignIn,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        side: const BorderSide(color: Color(0xFFE0E0E0)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'G',
-                                style: TextStyle(
-                                  color: Color(0xFF4285F4),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'BeVietnamPro',
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            Localizations.maybeLocaleOf(context)?.languageCode == 'vi'
-                                ? 'Tiếp tục với Google'
-                                : 'Continue with Google',
-                            style: const TextStyle(
-                              color: Color(0xFF333333),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
 
                   const SizedBox(height: 24),
