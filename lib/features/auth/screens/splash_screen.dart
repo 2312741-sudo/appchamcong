@@ -56,7 +56,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // 1. Check current auth state
       final authUser = FirebaseAuth.instance.currentUser;
       if (authUser == null) {
-        _navigateTo(AppRoutes.welcome);
+        _navigateTo(AppRoutes.login);
         return;
       }
 
@@ -188,7 +188,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     } catch (e) {
       debugPrint('SplashScreen auth error: $e');
       if (mounted && !_hasNavigated) {
-        _navigateTo(AppRoutes.welcome);
+        _navigateTo(AppRoutes.login);
       }
     }
   }

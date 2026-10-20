@@ -6,6 +6,7 @@ import '../../../models/member_model.dart';
 import '../../../app/router.dart';
 import '../../../core/widgets/notification_bell_icon.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/providers/auth_notifier.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
 
@@ -47,8 +48,21 @@ class _PendingApprovalScreenState
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(backgroundColor: AppColors.surface,
-        actions: const [NotificationBellIcon(iconColor: AppColors.primary)]),
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        automaticallyImplyLeading: false,
+        actions: [
+          const NotificationBellIcon(iconColor: AppColors.primary),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: AppColors.primary),
+            tooltip: 'Đăng xuất',
+            onPressed: () async {
+              await ref.read(authNotifierProvider.notifier).signOut();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(

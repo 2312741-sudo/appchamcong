@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../app/router.dart';
+import '../../auth/providers/auth_notifier.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
 
@@ -84,6 +86,16 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            tooltip: 'Đăng xuất',
+            onPressed: () async {
+              await ref.read(authNotifierProvider.notifier).signOut();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
+          ),
+        ],
         elevation: 0,
       ),
       body: SafeArea(
@@ -280,6 +292,28 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
                       side: const BorderSide(color: AppColors.primary, width: 1.5),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Logout / Switch Account Button
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      await ref.read(authNotifierProvider.notifier).signOut();
+                      if (context.mounted) context.go(AppRoutes.login);
+                    },
+                    icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.textSecondary),
+                    label: const Text(
+                      'Đăng xuất / Đăng nhập tài khoản khác',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        fontFamily: 'BeVietnamPro',
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
