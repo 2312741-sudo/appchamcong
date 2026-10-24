@@ -1,113 +1,149 @@
-# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG) — v1.1.8 (19/10/2026)
+# 📋 NHẬT KÝ THAY ĐỔI CHI TIẾT (CHANGELOG)
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.1.8` (Mobile: `1.1.8+25`, Web: `1.1.8`)
+**Phiên bản hiện tại:** `v1.1.9` (Mobile: `1.1.9+29`, Web: `1.1.9`)
 
 ---
 
-## 🚀 BẢN PHÁT HÀNH v1.1.8 (19/10/2026)
-1. **[TÍNH NĂNG MỚI] Chỉnh sửa công việc sau khi giao (Task Editing)**:
-   - Cho phép Chủ quán và Quản lý chỉnh sửa linh hoạt công việc đã giao: Tiêu đề, mô tả, danh sách ngày thực hiện, đổi đối tượng nhận việc (toàn cửa hàng / bộ phận / cá nhân), bật tắt yêu cầu chụp ảnh và chế độ lặp mỗi ngày.
-   - Hộp thoại chỉnh sửa thông minh tự động điền dữ liệu hiện tại và cập nhật đồng bộ tức thời.
-2. **[ĐIỀU HƯỚNG THEO CA] Tự động giao việc theo ca làm việc của từng bộ phận**:
-   - Tích hợp lịch phân ca tuần (`weekScheduleProvider`): Tự động xác định ca làm việc thực tế của nhân viên trong ngày để giao đúng việc theo bộ phận của ca đó (ví dụ: nhân sự bình thường là Pha chế nhưng ca hôm nay xếp Thu ngân sẽ nhận việc Thu ngân).
-3. **[TỐI ƯU GIAO DIỆN] Khắc phục lỗi tràn viền badge trên thẻ công việc (`ShiftTasksCard`)**:
-   - Tách tên người giao và nhóm các badge (`[🔁 Lặp mỗi ngày]`, `[📷 Cần ảnh]`) vào container `Wrap` linh hoạt.
-   - Loại bỏ hoàn toàn hiện tượng badge bị chèn ép đè lấn nút mũi tên `>` trên màn hình hẹp.
-4. **[TRẢI NGHIỆM NGƯỜI DÙNG] Xử lý triệt để hiện tượng chớp trạng thái "Đã xong"**:
-   - Khắc phục lỗi bất đồng bộ (Race Condition) khi chuyển ngày xem việc: không còn bị chớp xanh "2/2 đã xong" trong tích tắc trước khi tải xong dữ liệu.
-   - Tối ưu hóa truy vấn Firestore đa luồng song song với `Future.wait`, tăng tốc độ tải trạng thái gấp 3-4 lần.
-5. **[KIỂM THỬ TỰ ĐỘNG] 29/29 Unit Tests Đạt Chuẩn (100% Pass)**:
-   - Toàn bộ các bộ test về phân quyền, định tuyến, giao việc bộ phận, lặp hàng ngày và kiểm tra ra ca đều vượt qua; `dart analyze` 0 lỗi.
+## 📅 NGÀY 25/10/2026: NEO CÔNG VIỆC THEO CA QUA ĐÊM, GIAO VIỆC ĐA BỘ PHẬN & LẶP THEO THỨ (v1.1.9)
+
+### 1. [TÍNH NĂNG MỚI] Neo Công Việc Theo Ca Làm Việc Đang Mở (Overnight Shift Task Support)
+- **Giải quyết triệt để vấn đề ca qua đêm:** Khắc phục lỗi công việc tự động reset sang ngày hôm sau khi đồng hồ điểm qua 12h đêm (00:00).
+- **Cơ chế neo ca trực:** Hệ thống tự động kiểm tra ca chấm công đang mở (`activeAttendance` có `checkOut == null`). Danh sách công việc của ca đêm được giữ nguyên vẹn cho đến khi nhân sự thực hiện **Ra ca (Out ca)**.
+- **Nhận diện trực quan:** Thẻ công việc hiển thị rõ ràng nhãn `🌙 Ca hiện tại (dd/MM) • Qua đêm` cùng banner thông báo trạng thái ca trực.
+- **Nút điều hướng thông minh:** Bổ sung nút `⚡ Về ca hiện tại (dd/MM)` giúp nhân sự quay trở lại danh sách việc của ca đang làm chỉ với 1 chạm sau khi duyệt xem ngày khác.
+- **Báo cáo đồng bộ:** Màn hình `TaskReportScreen` tự động gắn kết quả và hình ảnh minh chứng vào đúng ngày của ca làm việc đang mở.
+
+### 2. [TÍNH NĂNG MỚI] Giao Việc Cho Nhiều Bộ Phận Cùng Lúc (Multi-Department Assignment)
+- **Hỗ trợ chọn đa bộ phận:** Phân hệ tạo/sửa công việc cho phép chọn cùng lúc nhiều bộ phận (`targetDepartmentIds`). Nhân sự thuộc bất kỳ bộ phận nào trong danh sách đều tự động nhận đúng việc.
+- **Đồng bộ đa nền tảng:** Áp dụng trên cả ứng dụng Flutter và Web Next.js.
+
+### 3. [TÍNH NĂNG MỚI] Lặp Lại Công Việc Theo Thứ Hàng Tuần (Weekly Day-of-Week Recurrence)
+- **Lập lịch theo thứ linh hoạt:** Hỗ trợ thiết lập công việc lặp lại định kỳ vào các thứ mong muốn trong tuần (`repeatDaysOfWeek`: T2 đến Chủ nhật).
+- **Tự động áp dụng theo ngày:** Hệ thống tự động so khớp thứ của ngày làm việc với cấu hình lặp mà không cần tạo lặp thủ công.
+
+### 4. [BẢO MẬT & LUỒNG ĐIỀU HƯỚNG] Vào Thẳng Màn Hình Đăng Nhập & Đăng Xuất Toàn Diện (Guideline 2.1)
+- **Khởi động an toàn:** Sửa luồng khởi động app khi chưa đăng nhập (`authUser == null`) vào thẳng 100% `LoginScreen`, hiển thị sẵn trường Email và Mật khẩu.
+- **Khóa Router:** `publicScreens` chỉ cho phép `login` và `register`. Ngăn chặn việc lọt vào màn hình tham gia cửa hàng khi chưa đăng nhập.
+- **Đăng xuất mọi nơi:** Bổ sung nút Đăng xuất trên toàn bộ các màn hình onboarding (`welcome`, `joinStore`, `createStore`, `pendingApproval`).
+
+### 5. [THIẾT KẾ & ĐỒNG BỘ NỀN TẢNG] (Guideline 4 - Design)
+- **Nút đăng nhập Apple & Google:** Chuẩn hóa kiểu dáng, typography và artwork theo Apple Human Interface Guidelines.
+- **Web Portal:** Nâng cấp tab Việc của tôi tự động neo theo ca mở, thêm banner ca qua đêm và đồng bộ giao việc đa bộ phận.
+- **Kiểm thử tự động:** 33/33 Unit tests tự động đạt 100% PASS. `dart analyze` sạch 0 lỗi. Web Next.js biên dịch hoàn tất 21/21 static pages.
 
 ---
 
-## 🚀 BẢN PHÁT HÀNH v1.1.7 (12/10/2026)
-1. **[TÍNH NĂNG MỚI] Giao việc theo bộ phận**:
-   - Bổ sung `TaskTargetType.department` cho phép giao việc cho từng bộ phận (Pha chế, Thu ngân, Bếp, Phục vụ...).
-   - Nhân viên khi vào ca sẽ tự động nhận đúng việc thuộc bộ phận của mình.
-   - Thêm badge `🏢 Bộ phận: [Tên bộ phận]` nhận diện rõ ràng.
-2. **[BẢO MẬT XÁC THỰC] Khóa chọn từ thư viện ảnh**:
-   - Gỡ bỏ hoàn toàn nút chọn ảnh từ album/thư viện.
-   - Bắt buộc chụp ảnh trực tiếp từ camera tại thời điểm hoàn thành để đảm bảo minh chứng thời gian thực.
-3. **[TÍNH NĂNG MỚI] Tùy chọn Lặp mỗi ngày**:
-   - Thêm Switch "Lặp mỗi ngày" tự động kích hoạt công việc mỗi ngày mà không cần tạo lại.
-   - Lập lịch tự động 60 ngày liên tục, tối ưu hiển thị dạng `🔁 Lặp mỗi ngày`.
-4. **[KIỂM THỬ TỰ ĐỘNG]**:
-   - Đạt 22/22 unit tests về Giao việc, `dart analyze` 0 lỗi.
+## 📅 NGÀY 19/10/2026: CHỈNH SỬA VIỆC ĐÃ GIAO, PHÂN VIỆC THEO CA ĐỘNG & TỐI ƯU TRẢI NGHIỆM (v1.1.8)
+
+### 1. [TÍNH NĂNG MỚI] Chỉnh Sửa Công Việc Đã Giao (Edit Assigned Tasks)
+- Cho phép Quản lý và Chủ quán cập nhật linh hoạt tiêu đề, mô tả, danh sách ngày, đối tượng nhận việc, yêu cầu chụp ảnh và chế độ lặp mà không cần xóa tạo lại.
+
+### 2. [TÍNH NĂNG MỚI] Phân Việc Theo Ca Làm Việc Động (Dynamic Shift-Based Tasks)
+- Tích hợp sâu với lịch làm việc tuần: Tự động phân tích lịch trực thực tế của nhân sự trong ngày để giao đúng việc theo bộ phận ca trực.
+
+### 3. [TỐI ƯU GIAO DIỆN & TRẢI NGHIỆM]
+- Bố cục thẻ việc co giãn thông minh, loại bỏ hoàn toàn hiện tượng tràn viền hay che khuất nút điều hướng.
+- Cơ chế chống chớp trạng thái "Đã xong" (Anti-flicker) khi chuyển ngày với xử lý bất đồng bộ đa luồng song song.
 
 ---
 
-## 🚀 BẢN PHÁT HÀNH v1.1.6 (11/10/2026)
-1. **[TỐI ƯU RA CA] Không còn ép buộc chặn ca**:
-   - Nhân sự có thể ra ca (out ca) bình thường ngay cả khi còn công việc được giao chưa hoàn thành.
-   - Bảng nhắc nhở lịch sự với thời gian làm việc ca hiện tại và nút **"Xác nhận ra ca (Hoàn thành sau)"** để kết thúc ca tức thì (1 chạm).
-2. **[ĐIỀU HƯỚNG NGÀY THÔNG MINH] Thanh chuyển ngày trên Dashboard (`ShiftTasksCard`)**:
-   - Hỗ trợ chuyển đổi nhanh ngày `<` (Hôm qua), `>` (Ngày mai) hoặc mở Lịch chọn ngày bất kỳ.
-   - Nút tiện ích "Về hôm nay" giúp quay lại ngày hiện tại.
-   - Nhân viên có thể nộp báo cáo và đính kèm ảnh minh chứng mọi lúc (kể cả sau ca hoặc hôm sau).
-3. **[SỬA LỖI GIAO DIỆN & PHÍM]**:
-   - Sửa triệt để lỗi chồng đè chữ giữa tên người giao, nhãn "Cần ảnh chụp" và nút "Báo cáo".
-   - Khắc phục lỗi không ẩn được bàn phím ảo bằng thao tác chạm ngoài hoặc cuộn màn hình (`onDrag`).
-4. **[KIỂM THỬ TỰ ĐỘNG]**:
-   - Đạt 171/171 Unit & Widget tests (Pass 100%).
+## 📅 NGÀY 12/10/2026: NÂNG CẤP GIAO VIỆC THEO BỘ PHẬN, CHỤP ẢNH TRỰC TIẾP & LẶP MỖI NGÀY (v1.1.7)
+
+### 1. [TÍNH NĂNG MỚI] Giao Việc Theo Bộ Phận (Department Task Assignment)
+- **Hỗ trợ phân chia theo bộ phận:** Bổ sung loại đối tượng `TaskTargetType.department`. Cấp quản lý (Chủ quán, Quản lý 1, Quản lý 2) có thể giao việc cho từng bộ phận riêng biệt (ví dụ: Pha chế, Thu ngân, Bếp, Phục vụ...).
+- **Giao diện tạo việc trực quan:** Hộp thoại tạo việc hiển thị danh sách bộ phận của cửa hàng, kèm thống kê số lượng nhân sự trực thuộc và avatar đại diện.
+- **Tự động nhận việc chính xác:** Khi nhân viên vào ca, hệ thống tự động kiểm tra `userDepartment` và lọc đúng các nhiệm vụ được giao cho bộ phận của nhân viên đó.
+- **Hiển thị huy hiệu:** Gắn badge `🏢 Bộ phận: [Tên bộ phận]` trên thẻ công việc ngoài ca, màn hình chi tiết và danh sách quản lý.
+
+### 2. [BẢO MẬT & MINH CHỨNG] Khóa Chọn Từ Thư Viện, Bắt Buộc Chụp Ảnh Trực Tiếp (Camera-Only Verification)
+- **Khóa hoàn toàn thư viện:** Gỡ bỏ nút chọn ảnh từ album/thư viện (`ImageSource.gallery`) khi nộp báo cáo hoàn thành công việc.
+- **Xác thực thời gian thực:** Bắt buộc chụp ảnh trực tiếp từ camera (`ImageSource.camera`) tại thời điểm hoàn thành để đảm bảo tính trung thực và ngăn chặn sử dụng ảnh cũ.
+- **Banner cảnh báo bảo mật:** Bổ sung thanh thông báo xác thực cam kết minh chứng rõ ràng trên cả Mobile App và Web Portal.
+
+### 3. [TÍNH NĂNG MỚI] Chế Độ Công Việc Lặp Mỗi Ngày (Daily Recurring Tasks)
+- **Switch 1 chạm "Lặp mỗi ngày":** Cho phép tạo các công việc lặp lại định kỳ mỗi ngày (`repeatDaily: true`).
+- **Tự động lập lịch 60 ngày:** Khi bật lặp mỗi ngày, hệ thống tự động sinh 60 ngày liên tục vào `executionDates` để duy trì tương thích 100% với truy vấn `arrayContains` của Firestore và logic kiểm tra hoàn thành khi ra ca.
+- **Tối ưu hiển thị:** Thẻ công việc hiển thị gọn gàng nhãn `🔁 Lặp mỗi ngày` / `Lịch thực hiện: 🔁 Tự động lặp lại mỗi ngày` thay vì dàn trải danh sách ngày.
+
+### 4. [ĐỒNG BỘ WEB DASHBOARD]
+- Đồng bộ toàn diện trên Web Next.js (`cham_cong_web`):
+  - Form tạo việc bổ sung tùy chọn radio "Theo bộ phận" & dropdown danh sách bộ phận.
+  - Switch bật/tắt "Lặp mỗi ngày" tự động lập lịch.
+  - Form báo cáo bổ sung thuộc tính `capture="environment"` mở trực tiếp camera.
+  - Trang `/dashboard/tasks` và modal báo cáo lọc nhân viên theo bộ phận chuẩn xác.
+
+### 5. [KIỂM THỬ TỰ ĐỘNG & ĐỘ ỔN ĐỊNH]
+- **Flutter:** Bổ sung test Group 6 (Department matching) và Group 7 (repeatDaily recurrence). Toàn bộ **22/22 tests PASS 100%**, `dart analyze` sạch 0 lỗi.
+- **Web Next.js:** `npm run build` biên dịch thành công 100% toàn bộ static routes, không có lỗi TypeScript (`npx tsc --noEmit`).
 
 ---
 
-## 🚀 BẢN PHÁT HÀNH v1.1.5 (09/10/2026)
-1. **[TÍNH NĂNG MỚI] Giao việc & Báo cáo công việc trong ca (Shift Tasks)**:
-   - Chủ quán, Quản lý 1 và Quản lý 2 có thể giao việc cho từng nhân sự hoặc toàn cửa hàng.
-   - Cho phép chọn nhiều ngày thực hiện linh hoạt trong tương lai.
-   - Báo cáo văn bản tự do kèm hình ảnh minh chứng (Camera / Thư viện ảnh).
-   - Tự động đồng bộ thời gian thực (Real-time) trên mobile và Web Dashboard.
+## 📅 NGÀY 11/10/2026: NÂNG CẤP RA CA LINH HOẠT & ĐIỀU HƯỚNG CÔNG VIỆC THÔNG MINH (v1.1.6)
+
+### 1. [TỐI ƯU TRẢI NGHIỆM] Cơ Chế Ra Ca Không Bị Chặn (Non-blocking Check-out)
+- **Bỏ cơ chế ép buộc:** Thay thế việc bắt buộc phải làm xong toàn bộ việc được giao mới được out ca. Nhân sự có thể ra ca bình thường bất cứ lúc nào.
+- **Bảng nhắc việc 1 chạm:** Khi bấm Chấm ra, nếu còn việc chưa hoàn thành, app hiển thị modal nhắc việc lịch sự kèm tóm tắt thời gian ca làm việc và nút **"Xác nhận ra ca (Hoàn thành sau)"** để out ca tức thì.
+- **Tùy chọn hoàn thành tại chỗ:** Nếu muốn nộp báo cáo trước khi về, nhân viên có thể bấm "Báo cáo" ngay trên từng thẻ công việc.
+
+### 2. [TÍNH NĂNG MỚI] Thanh Điều Hướng Ngày Thông Minh Trên Dashboard (`ShiftTasksCard`)
+- **Chuyển ngày linh hoạt:** Thêm nút `<` (ngày trước / hôm qua) và `>` (ngày sau / ngày mai) giúp nhân viên nhanh chóng xem lại các công việc được giao của những ngày trước.
+- **Lịch chọn ngày tùy ý:** Dropdown lịch cho phép mở và chọn bất kỳ ngày nào trong quá khứ hoặc tương lai.
+- **Nút tiện ích "Về hôm nay":** Nhanh chóng quay trở lại ngày hiện tại chỉ với một chạm.
+- **Báo cáo bù mọi lúc:** Nhân viên có thể nộp báo cáo, đính kèm ảnh minh chứng và bấm "Hoàn thành công việc" vào bất kỳ thời điểm nào (kể cả sau ca, tại nhà hoặc hôm sau).
+
+### 3. [SỬA LỖI GIAO DIỆN & PHÍM]
+- **Khắc phục lỗi đè chữ trên thẻ việc:** Sắp xếp phân cấp dọc giữa tiêu đề, thông tin người giao (có text-overflow ellipsis) và nhãn "Cần ảnh chụp", loại bỏ hoàn toàn hiện tượng tràn chữ đè lên nút "Báo cáo".
+- **Khắc phục lỗi không ẩn được bàn phím:** Triển khai `GestureDetector` toàn cục tại gốc ứng dụng và thuộc tính cuộn ẩn phím `keyboardDismissBehavior: onDrag` trên toàn bộ các màn hình nhập liệu.
+
+### 4. [ĐỒNG BỘ WEB DASHBOARD]
+- Cập nhật trang `/dashboard/checkin` trên Web với modal cảnh báo đi kèm nút "Xác nhận ra ca (Hoàn thành sau)", đồng bộ tính năng không chặn ra ca và tab "Việc của tôi trong ca" tại `/dashboard/tasks`.
 
 ---
 
-## 🚀 BẢN PHÁT HÀNH v1.0.8 (11/09/2026)
-1. **[TỐI ƯU HỆ THỐNG] Đồng bộ phân quyền Store & Dashboard Routing**:
-   - Khắc phục triệt để xung đột vai trò giữa các cửa hàng khác nhau (Owner vs Manager vs Employee).
-   - Bảo toàn phân quyền rõ ràng của thành viên, ngăn chặn việc ép quyền Chủ cửa hàng sai lệch.
-   - Xử lý mượt mà chuyển đổi cửa hàng (store switching) và bắt lỗi lifecycle context.
-2. **[SỬA LỖI & HIỆU NĂNG] Cải tiến thông báo & Firebase FCM**:
-   - Sửa lỗi không tải được thông báo, phục hồi ghi nhận trực tiếp Firestore và cơ chế fallback đăng ký FCM token.
-   - Đồng bộ rules bảo mật Firestore mới nhất.
-3. **[KIỂM THỬ TỰ ĐỘNG] 136/136 Unit Tests vượt qua 100%**:
-   - Kiểm thử toàn diện các luồng phân quyền, routing dashboard, chia sẻ dữ liệu và logic chấm công.
+## 📅 NGÀY 09/10/2026: NÂNG CẤP HỆ THỐNG GIAO VIỆC & BÁO CÁO CÔNG VIỆC TRONG CA (v1.1.5)
 
----
+### 1. [TÍNH NĂNG MỚI] Giao Việc & Lập Lịch Ngày Linh Hoạt (Task Assignment)
+- **Phân quyền giao việc:** Chủ cửa hàng (`owner`), Quản lý 1 (`manager1`) và Quản lý 2 (`manager2`) có toàn quyền tạo và giao việc.
+- **Đối tượng nhận việc:**
+  - Hỗ trợ giao cho **Toàn bộ cửa hàng** (`allStore`) hoặc **Chỉ định danh sách cá nhân / nhóm** cụ thể.
+  - Cả Chủ, QL1, QL2 và Nhân viên đều có thể nhận việc và nộp báo cáo.
+- **Lập lịch ngày tùy ý:**
+  - Cho phép chọn nhiều ngày trong tương lai (Hôm nay, Ngày mai, CN, T2, T3, T4, T5, T6, T7 hoặc DatePicker tùy chọn).
+  - Tự động hiển thị và nhắc nhở công việc khi đến đúng ngày làm việc.
 
-## 🚀 BẢN PHÁT HÀNH v1.0.7 (06/09/2026)
-1. **[NÂNG CẤP KIẾN TRÚC] Xác thực Wi-Fi qua BSSID (MAC Address Access Point)**:
-   - Loại bỏ hoàn toàn sự phụ thuộc vào IP Public (`api.ipify.org`, `icanhazip.com`).
-   - Nhân viên chấm công không còn bị gián đoạn khi nhà mạng đổi IP động hoặc khởi động lại modem router.
-   - Hỗ trợ đầy đủ hệ thống nhiều điểm phát Access Point: Dual-band 2.4GHz / 5GHz, mạng Mesh, router phụ.
-   - Cơ chế tương thích ngược (backward compatibility) 100% với dữ liệu cửa hàng cũ trên Firestore.
-2. **[TÍNH NĂNG MỚI] Thiết lập Đa Vị trí GPS cho Cửa hàng**:
-   - Cho phép một cửa hàng cấu hình lên đến **5 vị trí GPS** khác nhau (Cổng chính, Bãi xe, Kho hàng, Cổng phụ,...).
-   - Tùy chỉnh đặt tên riêng biệt và bán kính cho phép (radius) độc lập cho từng vị trí.
-   - Tự động phát hiện vị trí gần nhất và tính khoảng cách chính xác khi nhân viên chấm công.
-3. **[NÂNG CẤP UI/UX] Quản lý Cài đặt Cửa hàng Một Chạm**:
-   - Nút "Lấy Wi-Fi hiện tại" tự động quét và điền SSID & BSSID tức thì.
-   - Nút "Lấy tọa độ hiện tại" hỗ trợ điền nhanh GPS cho từng điểm của cửa hàng.
-   - Cảnh báo trực quan cho các Wi-Fi đời cũ chưa cập nhật BSSID.
-4. **[ĐỒNG BỘ WEB DASHBOARD] Hỗ trợ BSSID & Đa vị trí GPS trên Web**:
-   - Web Dashboard (`cham_cong_web`) quản lý cấu hình BSSID và 5 vị trí GPS đồng bộ hoàn hảo với Mobile App.
-5. **[KIỂM THỬ & CHẤT LƯỢNG] Đạt 110/110 Automated Unit Tests**:
-   - Bổ sung bộ unit test toàn diện cho tính năng BSSID và Multi-location GPS, chạy `flutter test` thành công 100%.
-   - Sửa triệt để các lỗi liên kết CocoaPods, tương thích hoàn toàn với iOS mới nhất.
+### 2. [TÍNH NĂNG MỚI] Báo Cáo Tiến Độ & Minh Chứng Hình Ảnh Trong Ca (Task Reporting)
+- **Soạn thảo báo cáo tự do:** Nhân sự có thể nhập văn bản báo cáo tiến độ, kết quả công việc mọi lúc trong ca (không phải checklist cứng nhắc).
+- **Đính kèm hình ảnh minh chứng:**
+  - Hỗ trợ chụp trực tiếp từ Camera hoặc chọn từ Thư viện ảnh.
+  - Tự động upload lên Firebase Storage với đường dẫn phân cấp: `stores/{storeId}/task_reports/{date}/{taskId}/{userId}_{timestamp}.jpg`.
+  - Hỗ trợ xem ảnh phóng to toàn màn hình (InteractiveViewer / Lightbox).
+- **Lưu nháp & Hoàn thành tức thì:**
+  - Cho phép lưu nháp nhiều lần trong suốt ca làm việc.
+  - Nhân sự chỉ cần bấm **"Hoàn thành công việc"** là được ghi nhận ngay lập tức mà không cần chờ duyệt.
+  - Tự động kiểm tra điều kiện bắt buộc chụp ảnh nếu công việc có cờ `requirePhoto`.
 
----
+### 3. [TÍNH NĂNG MỚI] Cổng Ràng Buộc Ra Ca (Checkout Gatekeeper)
+- **Kiểm soát trước khi out ca:** Khi người dùng bấm nút **"Chấm ra / Kết thúc ca"**, hệ thống tự động quét toàn bộ các công việc được giao trong ngày của nhân sự đó qua hàm `getUnfinishedTasksForUserOnDate`.
+- **Chặn ra ca khi còn việc dở dang:** Nếu còn việc chưa hoàn thành, hệ thống chặn không cho out ca và hiển thị thông báo/modal cảnh báo chi tiết kèm danh sách việc cần hoàn thành và phím tắt làm việc nhanh.
+- **Mở khóa tức thì:** Ngay sau khi hoàn thành công việc cuối cùng, cổng chặn tự động mở để nhân viên tiếp tục quy trình ra ca bình thường.
 
-## 🚀 BẢN PHÁT HÀNH v1.0.6 (31/08/2026 - 01/09/2026)
-1. **[TÍNH NĂNG MỚI] Màn hình Thông tin ứng dụng (`AboutAppScreen`)**: Cung cấp phiên bản, build number động (`package_info_plus`), điều khoản sử dụng, chính sách bảo mật và nút kiểm tra cập nhật.
-2. **[TÍNH NĂNG MỚI] Dịch vụ Cập nhật Ứng dụng (`AppUpdateService`)**: Cơ chế tự động kiểm tra và bắt buộc cập nhật khi có phiên bản mới từ App Store / Play Store.
-3. **[NÂNG CẤP UI/UX] Box "Nhân viên đang làm" & Màn hình Chi tiết**: Mở rộng hiển thị 8 nhân sự, nút "Xem tất cả" mở màn hình chuyên biệt `/active-staff` lọc theo bộ phận.
-4. **[SỬA LỖI CỐT LÕI] Chuẩn hóa Múi giờ Việt Nam (UTC+7)**: Sửa dứt điểm lỗi lệch 7 tiếng trong Bảng lương (`SalaryDetailScreen`), đảm bảo hiển thị giờ vào/ra ca chính xác 100%.
-5. **[ĐIỀU TRA HỆ THỐNG] Xác minh Auto-Checkout 00:00**: Xác nhận không có tự động out ca ngầm; mọi ca 00:00:00 đều do quản lý chỉnh sửa thủ công và hiển thị nhầm UTC.
-6. **[TỐI ƯU THÔNG BÁO] Rà soát & Tối ưu FCM Push Notifications**: Đảm bảo phân phối thông báo nhắc việc và ca trực ổn định.
+### 4. [TỐI ƯU HIỆU NĂNG] Đồng Bộ Dữ Liệu Thời Gian Thực (Real-time Reactivity)
+- **Khắc phục triệt để lỗi Box công việc không cập nhật:**
+  - Chuyển đổi `todayUserTasksProvider` và `unfinishedUserTasksProvider` từ `FutureProvider.family` sang `StreamProvider.family` lắng nghe trực tiếp snapshot Firestore.
+  - Hộp công việc trên Dashboard của mọi vai trò cập nhật ngay tức thì khi có việc mới được giao mà không cần thoát app ra vào lại.
 
----
+### 5. [ĐỒNG BỘ WEB] Triển Khai Toàn Diện Trên Web Dashboard (Next.js)
+- Xây dựng trang `/dashboard/tasks` trên Web Dashboard:
+  - Tab 1: **"Giao việc & Quản lý"** dành cho Chủ và Quản lý với đầy đủ bộ lọc theo ngày, trạng thái, tạo việc mới và xem chi tiết báo cáo của từng nhân sự kèm ảnh phóng to.
+  - Tab 2: **"Việc của tôi trong ca"** dành cho tất cả các vai trò để nhập báo cáo, tải ảnh và bấm hoàn thành công việc.
+- Tích hợp cổng chặn ra ca tại `/dashboard/checkin` trên Web.
+
+### 6. [BẢO MẬT & KIỂM THỬ]
+- Bổ sung Section 4.8 trong `firestore.rules` và quy tắc lưu trữ trong `storage.rules`, triển khai an toàn lên Firebase production.
+- Đạt **171/171 Flutter unit tests passed**, `dart analyze` không có cảnh báo.
+- Biên dịch Next.js thành công 100% với 21/21 static routes được tối ưu hóa.
 
 ---
 
@@ -132,40 +168,6 @@
 ---
 
 ## 📅 NGÀY 25/08/2026: BẢN VÁ LỖI HỆ THỐNG & ĐIỀU CHỈNH PHÂN QUYỀN (v1.0.4-patch)
-
-### 0. [FIX CỐT LÕI] Chuẩn Hóa Ngày Làm Việc (Workday) = Ngày In Ca & Báo Cáo Checklist SX Ca Đêm
-- **Vấn đề phát hiện:** Nhân viên vào ca lúc 18h00 ngày 25 (ngày 25 không có ca SX), ra ca lúc 00h20 ngày 26 (ngày 26 có ca SX). Khi ra ca bị hệ thống bắt nộp checklist do lấy nhầm lịch ngày 26 và fallback theo bộ phận gốc của nhân viên.
-- **Giải pháp triệt để:**
-  - **Cố định Ngày làm việc:** Lấy thời điểm Check-in (theo giờ Việt Nam UTC+7) làm gốc 100% để xác định `workdayDate` và ngày trong tuần (`weekday`). Bất kể ra ca lúc 00h20, 01h00 hay 03h00 sáng hôm sau, ngày làm việc vẫn cố định là ngày In ca.
-  - **Kiểm tra lịch chính xác:** Chỉ tra cứu lịch tuần của ngày In ca (ngày 25). Nếu ngày 25 không có ca SX $\rightarrow$ Cho phép ra ca ngay, **tuyệt đối không đòi checklist** dù ngày 26 có ca SX.
-  - **Duy trì đòi checklist sau 24h đến 3h sáng:** Nếu ngày In ca có ca SX, nhân viên ra ca sau 24h00 (00h20, 01h00, 02h59 sáng hôm sau) **vẫn bắt buộc phải nộp checklist** cho ca ngày 25; chỉ sau 03h00 sáng hôm sau mới tự động thông qua.
-  - **Khắc phục Fallback `DepartmentUtils`:** Không tự động fallback về bộ phận gốc nếu ngày In ca đã có lịch xác định không có ca SX hoặc không xếp ca SX.
-
-### 0.1 [NÂNG CẤP MỚI] Khắc Phục 4 Vấn Đề Vừa Phát Sinh (Avatar, FCM Logout, Back Button, Web Perf)
-- **Vấn đề 1 (Avatar Trắng/Xám trên Mobile):**
-  - Cập nhật `storage.rules` cho phép `allow read: if true;` đối với `avatars/{fileName}`, giúp các HTTP client như `CachedNetworkImage` và thẻ `<img>` đọc ảnh mượt mà không bị 403 Forbidden.
-  - Đồng bộ `AvatarWidget` với fallback chữ cái đầu tên trên nền màu thương hiệu vào Drawer (`store_drawer.dart`) và các dashboard; tự động fallback sang `photoURL` từ Firebase Auth nếu `avatarUrl` trong Firestore chưa kịp đồng bộ.
-- **Vấn đề 2 (Đè Tài Khoản Thông Báo & Lặp Thông Báo):**
-  - **Khi Đăng xuất:** Thêm `clearTokenForUser(uid)` tự động xóa field `fcmToken` khỏi Firestore `/users/{uid}`, gọi `deleteToken()` trên thiết bị và hủy toàn bộ stream subscriptions trước khi hoàn tất đăng xuất.
-  - **Khi Đăng nhập:** Thêm cơ chế **Deduplication** tự động quét và xóa token cũ của các tài khoản khác trên cùng thiết bị này, đảm bảo mỗi device token chỉ gắn với 1 tài khoản đang hoạt động duy nhất.
-- **Vấn đề 3 (Nút Quay Về Màn Hình Thông Báo Bị Trùng Màu):**
-  - Bổ sung `leading: IconButton(icon: Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1A1A1A)))` và `iconTheme: IconThemeData(color: Color(0xFF1A1A1A))` trong `notifications_screen.dart`, tạo độ tương phản rõ ràng và bấm dễ dàng trên AppBar nền trắng.
-- **Vấn đề 4 (Web Load Chậm Khi F5 & Xoay Lâu Khi Lưu Lịch):**
-  - **Tối ưu F5:** Chuyển `getUserStoresData` sang đọc 1 lần duy nhất từ document `/users/{uid}` và tải danh sách cửa hàng song song (`Promise.all`). Bỏ query nặng `collectionGroup` khi đã có sẵn `storeIds`. Giới hạn `watchNotifications` ở `limit(50)` mới nhất.
-  - **Tối ưu Lưu Lịch:** Thay thế hàm `window.alert()` chặn luồng (blocking) bằng thông báo Toast nổi (`toastMessage`) tự động đóng sau 3 giây, tắt trạng thái xoay loading ngay khi Firestore ghi thành công.
-
-### 0.2 [FIX TRIỆT ĐỂ] Sửa Lỗi Phải Bấm Đăng Xuất 2 Lần (Mobile & Web)
-- **Nguyên nhân cốt lõi phát hiện:**
-  1. **GoRouter Redirect Lag:** Trước đây Router đọc `ref.read(authStateChangesProvider)` (StreamProvider bất đồng bộ) thay vì `FirebaseAuth.instance.currentUser` (trạng thái tức thời). Khi gọi `context.go('/login')` lúc StreamProvider chưa kịp phát ra `null`, GoRouter tưởng người dùng vẫn còn đăng nhập trên trang auth và lập tức redirect ngược về `/splash` -> Dashboard.
-  2. **Xung đột `ref.listen` trong các Dashboard:** Khi `signOut()` gọi `_invalidateAllUserData()`, các bộ lắng nghe `ref.listen` trên `currentMemberProvider` và `storeMembersProvider` bị kích hoạt và tự động gọi `context.go(...)` đè lên luồng đăng xuất.
-  3. **Google Sign-In Token:** `AuthRepository.signOut()` chưa gọi `GoogleSignIn().signOut()`.
-- **Giải pháp triệt để:**
-  - Cập nhật `router.dart`: Kiểm tra trực tiếp `FirebaseAuth.instance.currentUser != null` (đồng bộ 100%).
-  - Chặn đứng toàn bộ `ref.listen` trong `owner_dashboard.dart`, `manager_dashboard.dart`, `employee_dashboard.dart` bằng điều kiện `if (FirebaseAuth.instance.currentUser == null) return;`.
-  - Tích hợp `GoogleSignIn().signOut()` vào `AuthRepository.signOut()`.
-  - Đảm bảo gọi `await signOut()` hoàn tất trước khi chuyển trang trên tất cả các màn hình và Drawer.
-
-
 
 ### 1. [RBAC] Khóa Quyền Xem & Sửa Bảng Chấm Công Đối Với Quản Lý 2 (`manager2`)
 - **Vấn đề phát hiện:** Trước đây Quản lý 2 vẫn có thể xem danh sách bảng công toàn bộ nhân viên và mở modal chỉnh sửa giờ vào/ra của nhân sự khác.
