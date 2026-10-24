@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/task_assignment_model.dart';
 import '../../../models/member_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../attendance/providers/attendance_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
 
@@ -46,8 +47,17 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
     _reportController = TextEditingController();
 
     final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
-    _workDateStr = widget.workDate ??
+    final defaultDate =
         '${vnNow.year}-${vnNow.month.toString().padLeft(2, '0')}-${vnNow.day.toString().padLeft(2, '0')}';
+
+    String resolvedDate = widget.workDate ?? defaultDate;
+    if (widget.workDate == null) {
+      final activeAtt = ref.read(todayAttendanceProvider).valueOrNull;
+      if (activeAtt != null && activeAtt.checkOut == null && activeAtt.date.isNotEmpty) {
+        resolvedDate = activeAtt.date;
+      }
+    }
+    _workDateStr = resolvedDate;
 
     if (widget.initialSubmission != null) {
       _applySubmission(widget.initialSubmission!);

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/task_assignment_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../attendance/providers/attendance_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
 import '../screens/task_report_screen.dart';
@@ -33,7 +34,8 @@ class ShiftTasksCard extends ConsumerStatefulWidget {
 }
 
 class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
-  late DateTime _selectedDate;
+  DateTime? _selectedDate;
+  bool _userManuallyChangedDate = false;
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
   void didUpdateWidget(covariant ShiftTasksCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.dateStr != oldWidget.dateStr && widget.dateStr != null) {
+      _userManuallyChangedDate = false;
       _initDate();
     }
   }
@@ -64,28 +67,35 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
   }
 
   void _previousDay() {
+    _userManuallyChangedDate = true;
     setState(() {
-      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+      _selectedDate = (_selectedDate ?? DateTime.now()).subtract(const Duration(days: 1));
     });
   }
 
   void _nextDay() {
+    _userManuallyChangedDate = true;
     setState(() {
-      _selectedDate = _selectedDate.add(const Duration(days: 1));
+      _selectedDate = (_selectedDate ?? DateTime.now()).add(const Duration(days: 1));
     });
   }
 
-  void _goToToday() {
-    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+  void _goToCurrentShiftOrToday({DateTime? activeShiftDate}) {
+    _userManuallyChangedDate = false;
     setState(() {
-      _selectedDate = DateTime(vnNow.year, vnNow.month, vnNow.day);
+      if (activeShiftDate != null) {
+        _selectedDate = activeShiftDate;
+      } else {
+        final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+        _selectedDate = DateTime(vnNow.year, vnNow.month, vnNow.day);
+      }
     });
   }
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 90)),
       lastDate: DateTime.now().add(const Duration(days: 90)),
       locale: const Locale('vi', 'VN'),
@@ -103,20 +113,31 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
       },
     );
     if (picked != null && mounted) {
+      _userManuallyChangedDate = true;
       setState(() => _selectedDate = picked);
     }
   }
 
-  String _formatDateTitle(DateTime dt) {
-    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
-    final today = DateTime(vnNow.year, vnNow.month, vnNow.day);
+  String _formatDateTitle(
+    DateTime dt, {
+    bool isSelectedActiveShift = false,
+    bool isOvernightShift = false,
+    required DateTime calendarToday,
+  }) {
     final target = DateTime(dt.year, dt.month, dt.day);
 
-    if (target == today) {
+    if (isSelectedActiveShift) {
+      if (isOvernightShift) {
+        return 'Ca hiện tại (${DateFormat('dd/MM').format(dt)}) 🌙';
+      }
+      return 'Ca hiện tại (${DateFormat('dd/MM').format(dt)})';
+    }
+
+    if (target == calendarToday) {
       return 'Hôm nay (${DateFormat('dd/MM').format(dt)})';
-    } else if (target == today.subtract(const Duration(days: 1))) {
+    } else if (target == calendarToday.subtract(const Duration(days: 1))) {
       return 'Hôm qua (${DateFormat('dd/MM').format(dt)})';
-    } else if (target == today.add(const Duration(days: 1))) {
+    } else if (target == calendarToday.add(const Duration(days: 1))) {
       return 'Ngày mai (${DateFormat('dd/MM').format(dt)})';
     } else {
       return DateFormat('dd/MM/yyyy').format(dt);
@@ -134,8 +155,47 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
       return const SizedBox.shrink();
     }
 
+    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
+    final calendarToday = DateTime(vnNow.year, vnNow.month, vnNow.day);
+    final todayStr =
+        '${calendarToday.year}-${calendarToday.month.toString().padLeft(2, '0')}-${calendarToday.day.toString().padLeft(2, '0')}';
+
+    // ── XÁC ĐỊNH CA LÀM VIỆC ĐANG HOẠT ĐỘNG (ACTIVE SHIFT) ──
+    // Kiểm tra xem nhân viên có đang trong ca (chưa bấm Ra ca / checkOut == null) hay không
+    final activeAttList = ref.watch(activeAttendancesProvider).valueOrNull ?? [];
+    final activeAttOfUser = activeAttList.where((a) => a.userId == effectiveUserId && a.checkOut == null).firstOrNull;
+    final myActiveAtt = ref.watch(todayAttendanceProvider).valueOrNull;
+    final resolvedActiveAtt = activeAttOfUser ?? ((myActiveAtt != null && myActiveAtt.userId == effectiveUserId && myActiveAtt.checkOut == null) ? myActiveAtt : null);
+
+    final isInShift = resolvedActiveAtt != null && resolvedActiveAtt.checkOut == null;
+    DateTime? activeShiftDate;
+    String? activeShiftDateStr;
+    if (isInShift && resolvedActiveAtt.date.isNotEmpty) {
+      try {
+        activeShiftDate = DateTime.parse(resolvedActiveAtt.date);
+        activeShiftDateStr = resolvedActiveAtt.date;
+      } catch (_) {}
+    }
+
+    // Nếu không truyền dateStr cố định và người dùng chưa chủ động bấm nút đổi ngày:
+    // Tự động neo công việc vào ngày của ca làm việc hiện tại (cho đến khi out ca)
+    if (widget.dateStr != null) {
+      try {
+        _selectedDate = DateTime.parse(widget.dateStr!);
+      } catch (_) {
+        _selectedDate = calendarToday;
+      }
+    } else if (!_userManuallyChangedDate) {
+      if (isInShift && activeShiftDate != null) {
+        _selectedDate = activeShiftDate;
+      } else {
+        _selectedDate = calendarToday;
+      }
+    }
+    _selectedDate ??= (isInShift && activeShiftDate != null) ? activeShiftDate : calendarToday;
+
     final effectiveDateStr =
-        '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+        '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
 
     final params = (
       storeId: effectiveStoreId,
@@ -143,12 +203,17 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
       dateStr: effectiveDateStr,
     );
 
-    final vnNow = DateTime.now().toUtc().add(const Duration(hours: 7));
-    final today = DateTime(vnNow.year, vnNow.month, vnNow.day);
-    final target =
-        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    final isToday = target == today;
-    final dateTitle = _formatDateTitle(_selectedDate);
+    final target = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day);
+    final isToday = target == calendarToday;
+    final isSelectedActiveShift = isInShift && activeShiftDate != null && target == activeShiftDate;
+    final isOvernightShift = isInShift && activeShiftDateStr != null && activeShiftDateStr != todayStr;
+
+    final dateTitle = _formatDateTitle(
+      _selectedDate!,
+      isSelectedActiveShift: isSelectedActiveShift,
+      isOvernightShift: isOvernightShift,
+      calendarToday: calendarToday,
+    );
 
     final tasksAsync = ref.watch(todayUserTasksProvider(params));
     final unfinishedAsync = ref.watch(unfinishedUserTasksProvider(params));
@@ -158,7 +223,13 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
       error: (_, __) => const SizedBox.shrink(),
       data: (tasks) {
         if (tasks.isEmpty) {
-          return _buildEmptyCard(dateTitle: dateTitle, isToday: isToday);
+          return _buildEmptyCard(
+            dateTitle: dateTitle,
+            isToday: isToday,
+            isSelectedActiveShift: isSelectedActiveShift,
+            isInShift: isInShift,
+            activeShiftDate: activeShiftDate,
+          );
         }
 
         final isStatusLoading =
@@ -301,6 +372,61 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                   ),
                 ],
               ),
+
+              if (isOvernightShift && isSelectedActiveShift) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBFDBFE)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.nightlight_round, size: 13, color: Color(0xFF2563EB)),
+                      SizedBox(width: 5),
+                      Text(
+                        'Ca làm việc qua đêm • Việc thuộc ca hiển thị cho đến khi ra ca',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E40AF),
+                          fontFamily: 'BeVietnamPro',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (isInShift && isSelectedActiveShift) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.fiber_manual_record_rounded, size: 10, color: Color(0xFF16A34A)),
+                      SizedBox(width: 5),
+                      Text(
+                        'Đang trong ca làm việc',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF166534),
+                          fontFamily: 'BeVietnamPro',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 10),
 
               // Date navigation row (< Hôm nay >)
@@ -341,13 +467,40 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                       ),
                     ],
                   ),
-                  if (!isToday)
+                  if (isInShift && !isSelectedActiveShift)
                     InkWell(
-                      onTap: _goToToday,
+                      onTap: () => _goToCurrentShiftOrToday(activeShiftDate: activeShiftDate),
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.flash_on_rounded, size: 12, color: AppColors.primary),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Về ca hiện tại (${activeShiftDate != null ? DateFormat('dd/MM').format(activeShiftDate) : ''})',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                                fontFamily: 'BeVietnamPro',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else if (!isInShift && !isToday)
+                    InkWell(
+                      onTap: () => _goToCurrentShiftOrToday(),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -546,7 +699,22 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
     );
   }
 
-  Widget _buildEmptyCard({required String dateTitle, required bool isToday}) {
+  Widget _buildEmptyCard({
+    required String dateTitle,
+    required bool isToday,
+    bool isSelectedActiveShift = false,
+    bool isInShift = false,
+    DateTime? activeShiftDate,
+  }) {
+    String emptyMessage;
+    if (isSelectedActiveShift) {
+      emptyMessage = 'Ca làm việc này bạn không có công việc được phân công';
+    } else if (isToday) {
+      emptyMessage = 'Hôm nay bạn không có công việc được phân công';
+    } else {
+      emptyMessage = 'Không có công việc được phân công vào ngày này';
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -656,19 +824,32 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                isToday
-                    ? 'Hôm nay bạn không có công việc được phân công'
-                    : 'Không có công việc được phân công vào ngày này',
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  color: AppColors.textSecondary,
-                  fontFamily: 'BeVietnamPro',
+              Expanded(
+                child: Text(
+                  emptyMessage,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppColors.textSecondary,
+                    fontFamily: 'BeVietnamPro',
+                  ),
                 ),
               ),
-              if (!isToday)
+              if (isInShift && !isSelectedActiveShift)
                 InkWell(
-                  onTap: _goToToday,
+                  onTap: () => _goToCurrentShiftOrToday(activeShiftDate: activeShiftDate),
+                  child: Text(
+                    'Về ca hiện tại (${activeShiftDate != null ? DateFormat('dd/MM').format(activeShiftDate) : ''})',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      fontFamily: 'BeVietnamPro',
+                    ),
+                  ),
+                )
+              else if (!isInShift && !isToday)
+                InkWell(
+                  onTap: () => _goToCurrentShiftOrToday(),
                   child: const Text(
                     'Về hôm nay',
                     style: TextStyle(
