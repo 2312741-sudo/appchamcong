@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../../models/schedule_model.dart';
 import '../../features/store/screens/shift_settings_screen.dart';
+import '../../features/supply_order/supply_reminder_service.dart';
 
 class ShiftReminderItem {
   final int notifId;
@@ -242,5 +243,7 @@ class ShiftReminderService {
     try {
       await _notificationsPlugin?.cancelAll();
     } catch (_) {}
+    // cancelAll xóa cả nhắc đặt hàng → cho phép đồng bộ lại ở lần dựng dashboard sau
+    SupplyReminderService.instance.reset();
   }
 }

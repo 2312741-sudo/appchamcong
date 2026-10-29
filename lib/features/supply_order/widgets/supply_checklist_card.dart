@@ -8,6 +8,8 @@ import '../../schedule/providers/schedule_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/supply_order_provider.dart';
 import '../repositories/supply_order_repository.dart';
+import '../supply_reminder_service.dart';
+import '../../attendance/providers/attendance_provider.dart';
 import '../screens/supply_order_screen.dart';
 
 /// Thẻ trên Dashboard: hàng cần soạn hôm nay (tích "Đã soạn") + lối tắt đặt hàng ngày mai.
@@ -29,6 +31,21 @@ class SupplyChecklistCard extends ConsumerWidget {
     final tomorrowCount = tomorrowOrder?.lines.length ?? 0;
     final settings = ref.watch(supplySettingsProvider).valueOrNull;
     final assigned = (settings?.preparerDepartmentIds.isNotEmpty ?? false) && ref.watch(isSupplyPreparerProvider(today));
+
+    // Nhắc đặt hàng trước giờ chốt: đang trong ca + phiếu ngày mai còn trống
+    final active = ref.watch(todayAttendanceProvider).valueOrNull;
+    if (settings != null && tomorrowOrder != null) {
+      final onShift = active != null && active.checkOut == null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SupplyReminderService.instance.sync(
+          cutoff: settings.cutoffTime,
+          onShift: onShift,
+          tomorrowEmpty: tomorrowOrder.isEmpty,
+        );
+      });
+    }
+    final cutoffText = SupplyDateUtils.cutoffLabel(tomorrow, settings?.cutoffTime);
+    final orderLocked = SupplyDateUtils.isOrderLocked(tomorrow, settings?.cutoffTime);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -95,6 +112,11 @@ class SupplyChecklistCard extends ConsumerWidget {
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary)),
           ),
         ),
+        if (cutoffText != null) ...[
+          const SizedBox(height: 6),
+          Text(orderLocked ? 'Đã chốt đặt hàng ngày mai ($cutoffText)' : 'Chốt đặt hàng lúc $cutoffText',
+              style: GoogleFonts.beVietnamPro(fontSize: 12, color: orderLocked ? AppColors.danger : AppColors.textSecondary)),
+        ],
       ]),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cham_cong_tram/core/utils/supply_date_utils.dart';
 import 'package:cham_cong_tram/models/supply_order_model.dart';
+import 'package:cham_cong_tram/features/supply_order/supply_export.dart';
+import 'package:cham_cong_tram/features/supply_order/supply_reminder_service.dart';
 
 void main() {
   group('SupplyDateUtils (giờ Việt Nam)', () {
@@ -87,6 +89,35 @@ void main() {
       expect(s.preparerDepartmentIds, ['lobby']);
       expect(SupplySettings.fromJson(null).cutoffTime, isNull);
       expect(SupplySettings.fromJson({'cutoffTime': 'abc'}).cutoffTime, isNull);
+    });
+  });
+
+  group('Nhắc đặt hàng trước giờ chốt', () {
+    test('chốt 21:00 → nhắc 20:30 giờ VN hôm nay', () {
+      final now = DateTime.utc(2026, 10, 29, 5, 0); // 12:00 VN
+      expect(SupplyReminderService.reminderTime('21:00', now), DateTime.utc(2026, 10, 29, 13, 30));
+    });
+    test('đã qua giờ nhắc / không có giờ chốt → null', () {
+      expect(SupplyReminderService.reminderTime('21:00', DateTime.utc(2026, 10, 29, 13, 31)), isNull);
+      expect(SupplyReminderService.reminderTime(null, DateTime.utc(2026, 10, 29, 5)), isNull);
+    });
+  });
+
+  group('Xuất Excel', () {
+    test('mỗi món của mỗi phiếu một dòng, có người đặt và trạng thái soạn', () {
+      final o = SupplyOrder.fromJson('2026-10-30', {
+        'lines': {
+          'ly': {
+            'name': 'Ly 500ml', 'unit': 'cây', 'group': 'Bao bì', 'qty': 3,
+            'contributors': [{'uid': 'a', 'name': 'An', 'qty': 3, 'at': 1}],
+            'prepared': true, 'preparedByName': 'Chi', 'preparedAt': DateTime.utc(2026, 10, 30, 1, 5).millisecondsSinceEpoch,
+          },
+        },
+      });
+      final rows = SupplyExport.rows([o]);
+      expect(rows.length, 1);
+      expect(rows.first, ['30/10/2026', 'Bao bì', 'Ly 500ml', 'cây', 3.0, 'An', '', 'Đã soạn', 'Chi', '08:05 30/10']);
+      expect(SupplyExport.headers.length, rows.first.length);
     });
   });
 }

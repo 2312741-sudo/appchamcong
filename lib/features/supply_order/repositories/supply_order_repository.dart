@@ -72,6 +72,17 @@ class SupplyOrderRepository {
         .map((snap) => snap.docs.map((d) => SupplyOrder.fromJson(d.id, d.data())).toList());
   }
 
+  /// Phiếu trong khoảng ngày [from]..[to] (yyyy-MM-dd, gồm cả 2 đầu) — xuất Excel
+  Future<List<SupplyOrder>> getOrdersInRange(String storeId, String from, String to) async {
+    final snap = await _ordersRef(storeId)
+        .where('date', isGreaterThanOrEqualTo: from)
+        .where('date', isLessThanOrEqualTo: to)
+        .get();
+    final list = snap.docs.map((d) => SupplyOrder.fromJson(d.id, d.data())).where((o) => !o.isEmpty).toList();
+    list.sort((a, b) => a.date.compareTo(b.date));
+    return list;
+  }
+
   /// Thêm [qty] một mặt hàng vào phiếu ngày [date]. Nhiều người cùng thêm: số lượng CỘNG DỒN
   /// (FieldValue.increment) và ghi lại từng người đặt (arrayUnion) — không ghi đè nhau.
   Future<void> addToOrder(
