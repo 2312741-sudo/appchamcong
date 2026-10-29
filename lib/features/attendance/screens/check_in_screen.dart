@@ -20,6 +20,7 @@ import '../../schedule/providers/schedule_provider.dart';
 import '../../task_assignment/providers/task_provider.dart';
 import '../../task_assignment/screens/task_report_screen.dart';
 import '../../../models/task_assignment_model.dart';
+import '../../supply_order/widgets/supply_checklist_card.dart';
 
 // File-local provider (private) to avoid name collision with the global
 // todayAttendanceProvider in attendance_provider.dart (which has a different signature).
@@ -255,6 +256,8 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
 
       await repo.checkIn(store.id, userId, _selectedMethod);
       _showSuccess('Chấm công thành công!');
+      // Người soạn hàng hôm nay (bộ phận được chọn trong Cài đặt đặt & soạn hàng) → hỏi soạn ngay
+      if (mounted) await promptSupplyPrepAfterCheckIn(context, ref);
     } catch (e) {
       _showError(e.toString().replaceFirst('Exception: ', ''));
     } finally {

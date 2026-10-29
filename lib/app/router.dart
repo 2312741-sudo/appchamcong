@@ -16,6 +16,7 @@ import '../features/store/screens/store_settings_screen.dart';
 import '../features/store/screens/shift_settings_screen.dart';
 import '../features/store/screens/qr_display_screen.dart';
 import '../features/production/screens/production_tasks_screen.dart';
+import '../features/supply_order/screens/supply_order_screen.dart';
 import '../features/attendance/screens/check_in_screen.dart';
 import '../features/attendance/screens/active_staff_screen.dart';
 import '../features/attendance/screens/attendance_history_screen.dart';
@@ -84,6 +85,7 @@ class AppRoutes {
   static const String taskReport = '/task-report';
   static const String taskManagement = '/task-management';
   static const String taskDetail = '/task-detail';
+  static const String supplyOrder = '/supply-order';
 }
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -324,6 +326,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.shiftSettings,
         name: 'shift-settings',
         builder: (context, state) => const ShiftSettingsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.supplyOrder,
+        name: 'supply-order',
+        builder: (context, state) => SupplyOrderScreen(initialDate: state.uri.queryParameters['date']),
       ),
       GoRoute(
         path: AppRoutes.productionTasks,

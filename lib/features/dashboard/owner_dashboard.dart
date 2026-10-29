@@ -20,6 +20,7 @@ import '../../features/schedule/providers/schedule_provider.dart';
 import '../../features/members/screens/members_list_screen.dart';
 import '../../features/attendance/screens/attendance_table_screen.dart';
 import '../../features/task_assignment/widgets/shift_tasks_card.dart';
+import '../../features/supply_order/widgets/supply_checklist_card.dart';
 
 import '../../core/services/app_update_service.dart';
 
@@ -517,6 +518,14 @@ class _OwnerHomeTab extends ConsumerWidget {
               storeId: store.id,
               userId: userId,
             ),
+          ),
+        ),
+
+        // Đặt hàng ngày mai & soạn hàng khi vào ca
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: SupplyChecklistCard(),
           ),
         ),
 

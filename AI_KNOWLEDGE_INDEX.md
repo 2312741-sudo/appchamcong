@@ -253,3 +253,21 @@ Hệ thống phân cấp chặt chẽ thành **4 vai trò độc lập** (`AppPe
 
 ---
 *Tài liệu được cập nhật tự động và đồng bộ định kỳ theo tiến trình phát triển hệ thống Chấm Công Trạm.*
+
+---
+
+## 8. ĐẶT HÀNG NGÀY MAI & SOẠN HÀNG KHI VÀO CA (`supply_order`)
+
+- **Mục đích**: hôm trước đặt hàng hóa / bao bì cho ngày hôm sau; hôm sau người vào ca kiểm từng món và tích **"Đã soạn"**.
+- **Firestore**:
+  - `/stores/{storeId}/supply_items/{itemId}` — danh mục hàng (`name`, `unit`, `group`, `order`, `active`). Sửa: Chủ, QL1, QL2.
+  - `/stores/{storeId}/supply_orders/{yyyy-MM-dd}` — MỘT phiếu cho mỗi ngày nhận hàng (ngày theo giờ VN). `lines.{itemId}` = `{name, unit, group, qty, note, contributors[{uid,name,qty,at}], prepared, preparedBy, preparedByName, preparedAt}`.
+  - Nhiều người cùng đặt một phiếu: số lượng cộng dồn bằng `FieldValue.increment`, người đặt ghi bằng `arrayUnion` → không ghi đè nhau. Thêm hàng vào dòng đã soạn → dòng trở về "chưa soạn".
+- **Phân quyền**: mọi vai trò đặt hàng & tích "Đã soạn"; QL2 ngang Chủ/QL1 ở chức năng này (sửa danh mục, xóa phiếu).
+- **Đặt hàng**: danh sách hàng được thiết lập sẵn (tên món + đơn vị); người đặt chỉ nhập số lượng / trọng lượng (chấp nhận số thập phân `2,5`) ở tab "Đặt hàng" rồi bấm gửi một lần (`addManyToOrder`). Tab "Soạn hàng": tích "Đã soạn" từng món.
+- **Giao diện**: thẻ `SupplyChecklistCard` trên cả 3 dashboard (hôm nay cần soạn X/Y + lối tắt đặt hàng ngày mai), màn `SupplyOrderScreen` (`/supply-order?date=yyyy-MM-dd`), `SupplyItemsScreen` (danh mục), `SupplyHistoryScreen` (lịch sử), mục "Đặt & soạn hàng" trong menu cửa hàng.
+- **Cài đặt** (`/stores/{storeId}/supply_settings/config`, Chủ/QL1/QL2 sửa — màn `SupplySettingsScreen`):
+  - `cutoffTime` "HH:mm": giờ chốt đặt hàng; phiếu ngày D khóa từ giờ này của ngày D−1 (giờ VN). Sau chốt chỉ Chủ/QL1/QL2 thêm/sửa (khóa ở giao diện).
+  - `preparerDepartmentIds`: bộ phận (vd. "Phục vụ lobby") — người được xếp lịch ở bộ phận này trong ngày là NGƯỜI SOẠN HÀNG: thẻ nhắc trên dashboard, hỏi "Soạn hàng ngay?" sau khi chấm công vào (`promptSupplyPrepAfterCheckIn`), được tích "Đã soạn". Rỗng = ai cũng soạn được.
+  - Nhắc đặt hàng: thông báo HỆ THỐNG hẹn giờ trên máy (`SupplyReminderService`, hiện ngoài app kể cả khi app tắt) lúc giờ chốt − 30 phút, cho người đang trong ca khi phiếu ngày mai còn trống; bấm mở `/supply-order?date=`. Android cần 2 receiver của flutter_local_notifications trong AndroidManifest (đã thêm) — thiếu thì mọi thông báo hẹn giờ (cả nhắc ca) không nổ; chưa có quyền "Báo thức chính xác" thì tự lùi về báo gần đúng (`scheduleLocalNotification`).
+- **Ngày**: `core/utils/supply_date_utils.dart` (UTC+7, `cutoffDeadline` / `isOrderLocked`). Test: `test/supply_order_test.dart`.

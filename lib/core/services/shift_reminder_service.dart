@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'local_notification_scheduler.dart';
 import '../../models/schedule_model.dart';
 import '../../features/store/screens/shift_settings_screen.dart';
+import '../../features/supply_order/supply_reminder_service.dart';
 
 class ShiftReminderItem {
   final int notifId;
@@ -203,12 +205,13 @@ class ShiftReminderService {
       try {
         final tzReminderTime = tz.TZDateTime.from(item.reminderTime, tz.local);
 
-        await _notificationsPlugin!.zonedSchedule(
-          item.notifId,
-          item.title,
-          item.body,
-          tzReminderTime,
-          const NotificationDetails(
+        await scheduleLocalNotification(
+          _notificationsPlugin!,
+          id: item.notifId,
+          title: item.title,
+          body: item.body,
+          at: tzReminderTime,
+          details: const NotificationDetails(
             android: AndroidNotificationDetails(
               'shift_reminders',
               'Nhắc nhở ca làm',
@@ -222,9 +225,6 @@ class ShiftReminderService {
               presentBanner: true,
             ),
           ),
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
           payload: item.payload,
         );
         scheduledCount++;
@@ -242,5 +242,7 @@ class ShiftReminderService {
     try {
       await _notificationsPlugin?.cancelAll();
     } catch (_) {}
+    // cancelAll xóa cả nhắc đặt hàng → cho phép đồng bộ lại ở lần dựng dashboard sau
+    SupplyReminderService.instance.reset();
   }
 }
