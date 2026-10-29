@@ -469,7 +469,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                         const Icon(LucideIcons.circleCheck,
                             color: AppColors.success, size: 16),
                         const SizedBox(width: 8),
-                        Text(
+                        Flexible(child: Text(
                           'Vị trí: $_locationLabel',
                           style: const TextStyle(
                             fontFamily: 'BeVietnamPro',
@@ -477,7 +477,9 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                             color: AppColors.success,
                             fontWeight: FontWeight.w600,
                           ),
-                        ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )),
                       ],
                     ),
                   ),

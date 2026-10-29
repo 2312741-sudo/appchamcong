@@ -498,7 +498,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
               const Icon(LucideIcons.calendar,
                   size: 15, color: AppColors.textSecondary),
               const SizedBox(width: 6),
-              Text(
+              Flexible(child: Text(
                 'Ngày thực hiện: $_workDateStr',
                 style: const TextStyle(
                   fontSize: 12.5,
@@ -506,7 +506,9 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                   fontFamily: 'BeVietnamPro',
                   fontWeight: FontWeight.w500,
                 ),
-              ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )),
             ],
           ),
           if (_isCompleted && _completedAt != null) ...[
@@ -516,7 +518,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                 const Icon(LucideIcons.circleCheck,
                     size: 15, color: AppColors.success),
                 const SizedBox(width: 6),
-                Text(
+                Flexible(child: Text(
                   'Hoàn thành lúc: ${DateFormat('HH:mm - dd/MM/yyyy').format(_completedAt!.toLocal())}',
                   style: const TextStyle(
                     fontSize: 12.5,
@@ -524,7 +526,9 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                     fontFamily: 'BeVietnamPro',
                     fontWeight: FontWeight.w600,
                   ),
-                ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )),
               ],
             ),
           ],
@@ -557,7 +561,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                       : AppColors.textSecondary,
                 ),
                 const SizedBox(width: 6),
-                Text(
+                Flexible(child: Text(
                   widget.task.requirePhoto
                       ? 'Yêu cầu có ảnh minh chứng'
                       : 'Không bắt buộc ảnh',
@@ -569,7 +573,9 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                         ? const Color(0xFFE65100)
                         : AppColors.textSecondary,
                   ),
-                ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )),
               ],
             ),
           ),
@@ -872,14 +878,14 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                     ),
                   ),
                   SizedBox(width: 12),
-                  Text(
+                  Flexible(child: Text(
                     'Đang tải ảnh lên hệ thống...',
                     style: TextStyle(
                       fontSize: 13,
                       fontFamily: 'BeVietnamPro',
                       color: AppColors.textSecondary,
                     ),
-                  ),
+                  )),
                 ],
               ),
             ),

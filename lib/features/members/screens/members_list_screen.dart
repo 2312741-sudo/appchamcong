@@ -210,7 +210,11 @@ class MembersListScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  // Wrap: nhiều nhãn (vai trò, bộ phận, loại NV) tự xuống dòng trên màn hẹp
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -230,7 +234,6 @@ class MembersListScreen extends ConsumerWidget {
                         ),
                       ),
                       if (member.department != null && member.department!.isNotEmpty) ...[
-                        const SizedBox(width: 6),
                         Builder(
                           builder: (context) {
                             final dept = store?.departments.cast<DepartmentDefinition?>().firstWhere(
@@ -252,13 +255,17 @@ class MembersListScreen extends ConsumerWidget {
                                   const Icon(LucideIcons.building,
                                       size: 11, color: Color(0xFF0369A1)),
                                   const SizedBox(width: 3),
-                                  Text(
-                                    deptName,
-                                    style: const TextStyle(
-                                      fontFamily: 'BeVietnamPro',
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF0369A1),
+                                  Flexible(
+                                    child: Text(
+                                      deptName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: 'BeVietnamPro',
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0369A1),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -268,7 +275,6 @@ class MembersListScreen extends ConsumerWidget {
                         ),
                       ],
                       if (member.isLegacyManager) ...[
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -288,7 +294,6 @@ class MembersListScreen extends ConsumerWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(width: 8),
                       Text(
                         member.employeeType.shortLabel,
                         style: const TextStyle(
@@ -296,6 +301,8 @@ class MembersListScreen extends ConsumerWidget {
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

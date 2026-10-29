@@ -1134,14 +1134,16 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
                                           size: 16,
                                           color: AppColors.textSecondary),
                                       const SizedBox(width: 6),
-                                      Text(
+                                      Flexible(child: Text(
                                         'IP nội bộ: $_detectedLocalIp',
                                         style: const TextStyle(
                                           fontFamily: 'BeVietnamPro',
                                           fontSize: 11,
                                           color: AppColors.textSecondary,
                                         ),
-                                      ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      )),
                                     ],
                                   ),
                                 ],

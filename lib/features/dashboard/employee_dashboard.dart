@@ -239,7 +239,7 @@ class _HomeTab extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        Row(
+                        Flexible(child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const NotificationBellIcon(
@@ -248,7 +248,7 @@ class _HomeTab extends ConsumerWidget {
                             ),
                             if (store != null) ...[
                               const SizedBox(width: 8),
-                              GestureDetector(
+                              Flexible(child: GestureDetector(
                                 onTap: () => Scaffold.of(context).openDrawer(),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -261,16 +261,16 @@ class _HomeTab extends ConsumerWidget {
                                     children: [
                                       const Icon(LucideIcons.store, color: Colors.white, size: 14),
                                       const SizedBox(width: 6),
-                                      Text(store.name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro')),
+                                      Flexible(child: Text(store.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'))),
                                       const SizedBox(width: 4),
                                       const Icon(LucideIcons.chevronDown, color: Colors.white, size: 16),
                                     ],
                                   ),
                                 ),
-                              ),
+                              )),
                             ],
                           ],
-                        ),
+                        )),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -309,21 +309,28 @@ class _HomeTab extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(LucideIcons.building2, size: 14, color: AppColors.info),
-                        const SizedBox(width: 6),
-                        Text(
-                          member!.department!,
-                          style: const TextStyle(color: AppColors.info, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
-                        ),
-                      ],
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(LucideIcons.building2, size: 14, color: AppColors.info),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              member!.department!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: AppColors.info, fontSize: 13, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro'),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

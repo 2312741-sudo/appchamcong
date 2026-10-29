@@ -617,14 +617,17 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.beVietnamPro(
-            color: isBold ? AppColors.neutral : const Color(0xFF4B5563),
-            fontSize: fontSize,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+        Flexible(
+          child: Text(
+            label,
+            style: GoogleFonts.beVietnamPro(
+              color: isBold ? AppColors.neutral : const Color(0xFF4B5563),
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           value,
           style: GoogleFonts.beVietnamPro(
@@ -641,7 +644,8 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary)),
+        Flexible(child: Text(label, style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary))),
+        const SizedBox(width: 8),
         Text(value, style: GoogleFonts.beVietnamPro(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.neutral)),
       ],
     );
@@ -940,10 +944,12 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
             children: [
               const Icon(LucideIcons.calendarCheck, color: Color(0xFF70B843), size: 24),
               const SizedBox(width: 8),
-              Text(
+              Flexible(child: Text(
                 'Ngày $day/$month/$year',
                 style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 17),
-              ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )),
             ],
           ),
           content: Column(
@@ -954,7 +960,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Tổng giờ làm:', style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary, fontSize: 13)),
-                  Text('${hours.toStringAsFixed(1)} giờ', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.neutral)),
+                  Flexible(child: Text('${hours.toStringAsFixed(1)} giờ', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.neutral), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -962,7 +968,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Tiền công ngày:', style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary, fontSize: 13)),
-                  Text(_formatCurrency(earnings), style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 15, color: const Color(0xFF0066CC))),
+                  Flexible(child: Text(_formatCurrency(earnings), style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 15, color: const Color(0xFF0066CC)), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -979,10 +985,12 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                     children: [
                       const Icon(LucideIcons.clock, size: 14, color: AppColors.primary),
                       const SizedBox(width: 6),
-                      Text(
+                      Flexible(child: Text(
                         '$inTime - $outTime (${a.totalHours.toStringAsFixed(1)}h)',
                         style: GoogleFonts.beVietnamPro(fontSize: 12.5, color: AppColors.neutral),
-                      ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )),
                       if (a.isEdited)
                         Text(' (Đã sửa)', style: GoogleFonts.beVietnamPro(fontSize: 11, color: AppColors.accent)),
                     ],

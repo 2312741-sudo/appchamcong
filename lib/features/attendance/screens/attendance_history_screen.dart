@@ -218,14 +218,16 @@ class _AttendanceHistoryScreenState
                               size: 20, color: AppColors.neutral),
                         ),
                       ),
-                      Text(
+                      Flexible(child: Text(
                         'Tháng ${_selectedMonth.month.toString().padLeft(2, '0')}/${_selectedMonth.year}',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppColors.neutral,
                         ),
-                      ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )),
                       InkWell(
                         onTap: _nextMonth,
                         borderRadius: BorderRadius.circular(8),

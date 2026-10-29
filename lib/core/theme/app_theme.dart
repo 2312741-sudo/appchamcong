@@ -122,7 +122,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          // Chiều cao do minimumSize (52) quyết định; đệm dọc vừa phải để nút bị ép thấp (46–50) không cắt chữ
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
           textStyle: GoogleFonts.beVietnamPro(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -139,7 +140,8 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          // Chiều cao do minimumSize (52) quyết định; đệm dọc vừa phải để nút bị ép thấp (46–50) không cắt chữ
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
           textStyle: GoogleFonts.beVietnamPro(
             fontSize: 16,
             fontWeight: FontWeight.w600,

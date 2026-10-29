@@ -306,14 +306,16 @@ class _NotificationCard extends StatelessWidget {
                       children: [
                         Icon(LucideIcons.clock, size: 12, color: Colors.grey.shade500),
                         const SizedBox(width: 4),
-                        Text(
+                        Flexible(child: Text(
                           _formatTime(notification.createdAt),
                           style: GoogleFonts.beVietnamPro(
                             fontSize: 11.5,
                             color: Colors.grey.shade500,
                             fontWeight: FontWeight.w500,
                           ),
-                        ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )),
                         if (notification.routePath != null && notification.routePath!.isNotEmpty) ...[
                           const Spacer(),
                           Row(

@@ -10,8 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/real_fonts.dart';
+
 /// Thẻ "Công việc được giao" không được tràn chữ trên màn hẹp (ca qua đêm, tên việc dài)
 void main() {
+  setUpAll(loadRealFonts);
   String ymd(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   final vn = DateTime.now().toUtc().add(const Duration(hours: 7));
   final yesterday = ymd(DateTime(vn.year, vn.month, vn.day - 1));

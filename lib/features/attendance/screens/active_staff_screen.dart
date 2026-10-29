@@ -226,7 +226,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
+                    Flexible(child: Text(
                       'Đang làm việc: ${filteredAtts.length} / ${atts.length} nhân viên',
                       style: const TextStyle(
                         fontSize: 13,
@@ -234,7 +234,9 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                         fontFamily: 'BeVietnamPro',
                         color: Color(0xFF555555),
                       ),
-                    ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )),
                   ],
                 ),
               ),
@@ -370,7 +372,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                       const SizedBox(width: 12),
                                       Icon(LucideIcons.timer, size: 14, color: Colors.grey.shade600),
                                       const SizedBox(width: 4),
-                                      Text(
+                                      Flexible(child: Text(
                                         'Đã làm: $workedDuration',
                                         style: const TextStyle(
                                           color: AppColors.success,
@@ -378,7 +380,9 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                           fontWeight: FontWeight.w700,
                                           fontFamily: 'BeVietnamPro',
                                         ),
-                                      ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      )),
                                     ],
                                   ),
 
@@ -409,7 +413,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                                   color: Color(0xFFE65100),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                Text(
+                                                Flexible(child: Text(
                                                   lateWarning,
                                                   style: const TextStyle(
                                                     color: Color(0xFFE65100),
@@ -417,7 +421,9 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                                     fontWeight: FontWeight.w700,
                                                     fontFamily: 'BeVietnamPro',
                                                   ),
-                                                ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                )),
                                               ],
                                             ),
                                           ),
@@ -438,7 +444,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                                 color: Colors.grey.shade700,
                                               ),
                                               const SizedBox(width: 4),
-                                              Text(
+                                              Flexible(child: Text(
                                                 att.checkInMethod.label,
                                                 style: TextStyle(
                                                   color: Colors.grey.shade700,
@@ -446,7 +452,9 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                                   fontWeight: FontWeight.w500,
                                                   fontFamily: 'BeVietnamPro',
                                                 ),
-                                              ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              )),
                                             ],
                                           ),
                                         ),

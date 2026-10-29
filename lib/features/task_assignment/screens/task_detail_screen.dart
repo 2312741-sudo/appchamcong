@@ -160,11 +160,13 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                 : null,
                           ),
                           const SizedBox(width: 20),
-                          Text(
+                          Flexible(child: Text(
                             '${currentIndex + 1} / ${allUrls.length}',
                             style: GoogleFonts.beVietnamPro(
                                 color: Colors.white, fontSize: 14),
-                          ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )),
                           const SizedBox(width: 20),
                           IconButton(
                             icon: const Icon(LucideIcons.chevronRight,
@@ -560,8 +562,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Badges row
-          Row(
+          // Badges row (Wrap: nhiều nhãn tự xuống dòng thay vì tràn)
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 6,
             children: [
               _buildStatusBadge(task.status),
               const SizedBox(width: 8),
@@ -611,14 +615,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                         color: AppColors.primary,
                       ),
                       const SizedBox(width: 4),
-                      Text(
+                      Flexible(child: Text(
                         'Lặp thứ ${task.repeatDaysOfWeek.map((d) => d == 7 ? 'CN' : 'T${d + 1}').join(', ')} hàng tuần',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: AppColors.primary,
                         ),
-                      ),
+                      )),
                     ],
                   ),
                 ),
@@ -706,12 +710,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              Text(
-                task.createdByName.isNotEmpty ? task.createdByName : 'Quản lý',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+              Flexible(
+                child: Text(
+                  task.createdByName.isNotEmpty ? task.createdByName : 'Quản lý',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
               const SizedBox(width: 6),
@@ -941,13 +949,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       const Icon(LucideIcons.circleCheck,
                           size: 16, color: AppColors.success),
                       const SizedBox(width: 6),
-                      Text(
+                      Flexible(child: Text(
                         'Đã hoàn thành: ',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
-                      ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )),
                       Text(
                         '$completedCount',
                         style: GoogleFonts.beVietnamPro(
@@ -974,13 +984,15 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       const Icon(LucideIcons.clock,
                           size: 16, color: Colors.orange),
                       const SizedBox(width: 6),
-                      Text(
+                      Flexible(child: Text(
                         'Chưa nộp: ',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
-                      ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )),
                       Text(
                         '$pendingCount',
                         style: GoogleFonts.beVietnamPro(
@@ -1006,16 +1018,19 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     required int completedCount,
     required int pendingCount,
   }) {
-    return Row(
+    // Wrap: màn hẹp thì bộ lọc tự xuống dòng dưới tiêu đề
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        Expanded(
-          child: Text(
-            'Danh sách nhân sự ($totalCount)',
-            style: GoogleFonts.beVietnamPro(
-              fontSize: 14.5,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+        Text(
+          'Danh sách nhân sự ($totalCount)',
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 14.5,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
           ),
         ),
         // Filter tabs
@@ -1468,14 +1483,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         children: [
           Icon(icon, size: 14, color: fg),
           const SizedBox(width: 4),
-          Text(
+          Flexible(child: Text(
             label,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11.5,
               fontWeight: FontWeight.bold,
               color: fg,
             ),
-          ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )),
         ],
       ),
     );

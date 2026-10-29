@@ -293,14 +293,16 @@ class _MonthCalendarBody extends StatelessWidget {
                   icon: const Icon(LucideIcons.chevronLeft, color: Colors.white, size: 28),
                   onPressed: onPrevMonth,
                 ),
-                Text(
+                Flexible(child: Text(
                   'Tháng ${month.month}/${month.year}',
                   style: const TextStyle(
                       fontFamily: 'BeVietnamPro',
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: Colors.white),
-                ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )),
                 IconButton(
                   icon: Icon(LucideIcons.chevronRight,
                       color: canGoNext ? Colors.white : Colors.white38,

@@ -416,14 +416,14 @@ class _ScheduleManagerScreenState
                         children: [
                           const Icon(LucideIcons.moon, color: Colors.grey, size: 24),
                           const SizedBox(width: 10),
-                          Text(
+                          Flexible(child: Text(
                             'Không có ca làm trong ngày này',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: Colors.grey[600],
                             ),
-                          ),
+                          )),
                         ],
                       ),
                     )
@@ -1240,22 +1240,26 @@ class _ScheduleManagerScreenState
                           },
                           child: Column(
                             children: [
-                              Text(
+                              Flexible(child: Text(
                                 _dayNames[dayIndex],
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w700,
                                   color: _palette.accent,
                                 ),
-                              ),
-                              Text(
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )),
+                              Flexible(child: Text(
                                 dateLabel,
                                 style: GoogleFonts.beVietnamPro(
                                   fontSize: 8.5,
                                   fontWeight: FontWeight.w500,
                                   color: AppColors.textSecondary,
                                 ),
-                              ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )),
                               const SizedBox(height: 4),
                               _DayShiftCell(
                                 shifts: shift,

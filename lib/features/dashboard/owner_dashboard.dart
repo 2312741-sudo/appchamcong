@@ -479,7 +479,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                                           children: [
                                             const Icon(LucideIcons.triangleAlert, size: 11, color: Color(0xFFE65100)),
                                             const SizedBox(width: 3),
-                                            Text(
+                                            Flexible(child: Text(
                                               lateWarning,
                                               style: const TextStyle(
                                                 color: Color(0xFFE65100),
@@ -487,7 +487,9 @@ class _OwnerHomeTab extends ConsumerWidget {
                                                 fontWeight: FontWeight.w700,
                                                 fontFamily: 'BeVietnamPro',
                                               ),
-                                            ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            )),
                                           ],
                                         ),
                                       ),

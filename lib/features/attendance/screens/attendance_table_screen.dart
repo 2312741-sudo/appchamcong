@@ -240,14 +240,16 @@ class AttendanceTableScreen extends ConsumerWidget {
                     const Icon(LucideIcons.pointer,
                         size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
-                    const Text(
-                      'Chọn nhân viên để xem bảng công tháng',
-                      style: TextStyle(
-                          fontFamily: 'BeVietnamPro',
-                          fontSize: 13,
-                          color: AppColors.textSecondary),
+                    const Expanded(
+                      child: Text(
+                        'Chọn nhân viên để xem bảng công tháng',
+                        style: TextStyle(
+                            fontFamily: 'BeVietnamPro',
+                            fontSize: 13,
+                            color: AppColors.textSecondary),
+                      ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text('${members.length} NV',
                         style: const TextStyle(
                             fontFamily: 'BeVietnamPro',

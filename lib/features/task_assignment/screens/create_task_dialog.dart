@@ -847,7 +847,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
+                                  Flexible(child: Text(
                                     widget.taskToEdit != null
                                         ? 'Lưu thay đổi'
                                         : 'Giao công việc',
@@ -855,7 +855,9 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
                                     ),
-                                  ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )),
                                 ],
                               ),
                       ),
@@ -1041,14 +1043,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    Flexible(child: Text(
                       'Chọn các thứ trong tuần lặp lại:',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
-                    ),
+                    )),
                     Text(
                       '(${_selectedDaysOfWeek.length}/7 thứ)',
                       style: GoogleFonts.beVietnamPro(
@@ -1308,13 +1310,13 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 children: [
                   const Icon(LucideIcons.info, size: 16, color: Colors.orange),
                   const SizedBox(width: 8),
-                  Text(
+                  Flexible(child: Text(
                     'Chưa chọn ngày nào. Vui lòng bấm chọn ngày phía trên.',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 12,
                       color: Colors.deepOrange,
                     ),
-                  ),
+                  )),
                 ],
               ),
             ),
@@ -1526,14 +1528,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              Flexible(child: Text(
                 'Chọn các bộ phận nhận việc:',
                 style: GoogleFonts.beVietnamPro(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 ),
-              ),
+              )),
               if (departments.length > 1)
                 InkWell(
                   onTap: () {

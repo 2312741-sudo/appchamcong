@@ -600,11 +600,13 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen>
                                         color: Colors.white.withOpacity(0.9),
                                         size: 18),
                                     const SizedBox(width: 8),
-                                    Text(store.name,
+                                    Flexible(child: Text(store.name,
                                         style: TextStyle(
                                             color:
                                                 Colors.white.withOpacity(0.9),
-                                            fontWeight: FontWeight.w600)),
+                                            fontWeight: FontWeight.w600),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis)),
                                   ],
                                 ),
                               ),
@@ -1050,10 +1052,12 @@ class _ProductionChecklistDialogState
                                           ),
                                         ),
                                       const SizedBox(width: 12),
-                                      Text(t.unitLabel,
+                                      Flexible(child: Text(t.unitLabel,
                                           style: const TextStyle(
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.grey)),
+                                              color: Colors.grey),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis)),
                                     ],
                                   )
                                 : const Row(

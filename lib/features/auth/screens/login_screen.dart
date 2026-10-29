@@ -223,10 +223,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: const [
                 Icon(LucideIcons.rotateCcwKey, color: AppColors.primary, size: 24),
                 SizedBox(width: 8),
-                Text(
+                Flexible(child: Text(
                   AppStrings.forgotPassword,
                   style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold, fontSize: 18),
-                ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )),
               ],
             ),
             content: Form(

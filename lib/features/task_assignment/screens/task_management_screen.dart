@@ -666,6 +666,12 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                 // Top row: Status badge + Repeat daily + Photo requirement + Menu actions
                 Row(
                   children: [
+                    // Nhãn tự xuống dòng khi nhiều, menu luôn ở bên phải
+                    Expanded(
+                      child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    runSpacing: 6,
+                    children: [
                     _buildStatusBadge(task.status),
                     const SizedBox(width: 8),
                     if (task.repeatDaily) ...[
@@ -714,14 +720,14 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                               color: AppColors.primary,
                             ),
                             const SizedBox(width: 4),
-                            Text(
+                            Flexible(child: Text(
                               'Thứ ${task.repeatDaysOfWeek.map((d) => d == 7 ? 'CN' : 'T${d + 1}').join(', ')}',
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
                               ),
-                            ),
+                            )),
                           ],
                         ),
                       ),
@@ -755,7 +761,9 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           ],
                         ),
                       ),
-                    const Spacer(),
+                    ],
+                      ),
+                    ),
                     // Menu actions
                     PopupMenuButton<String>(
                       icon: const Icon(
@@ -900,14 +908,18 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    Text(
-                      task.createdByName.isNotEmpty
-                          ? task.createdByName
-                          : 'Quản lý',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        task.createdByName.isNotEmpty
+                            ? task.createdByName
+                            : 'Quản lý',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1048,14 +1060,16 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
         children: [
           Icon(icon, size: 13, color: fg),
           const SizedBox(width: 4),
-          Text(
+          Flexible(child: Text(
             label,
             style: GoogleFonts.beVietnamPro(
               fontSize: 11,
               fontWeight: FontWeight.bold,
               color: fg,
             ),
-          ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )),
         ],
       ),
     );
