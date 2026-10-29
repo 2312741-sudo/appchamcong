@@ -13,6 +13,7 @@ import 'supply_items_screen.dart';
 import 'supply_history_screen.dart';
 import 'supply_settings_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../widgets/supply_error_view.dart';
 
 /// Đặt hàng (bao bì, hàng hóa) cho một ngày và tích "Đã soạn" khi vào ca.
 /// Mọi vai trò đều đặt và tích được; nhiều người cùng đặt vào MỘT phiếu của ngày.
@@ -87,7 +88,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
       }
       _snack('Đã đặt ${quantities.length} món cho ${SupplyDateUtils.label(_date)}');
     } catch (e) {
-      _snack('Không lưu được: $e', error: true);
+      _snack('Không lưu được: ${supplyErrorMessage(e)}', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -175,7 +176,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
             qty: qty, note: note, uid: _uid, userName: _userName,
           );
     } catch (e) {
-      _snack('Không lưu được: $e', error: true);
+      _snack('Không lưu được: ${supplyErrorMessage(e)}', error: true);
     }
   }
 
@@ -197,7 +198,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
     try {
       await ref.read(supplyOrderRepositoryProvider).removeLine(storeId, _date, line.itemId);
     } catch (e) {
-      _snack('Không xóa được: $e', error: true);
+      _snack('Không xóa được: ${supplyErrorMessage(e)}', error: true);
     }
   }
 
@@ -210,7 +211,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
             prepared: value, uid: _uid, userName: _userName,
           );
     } catch (e) {
-      _snack('Không lưu được: $e', error: true);
+      _snack('Không lưu được: ${supplyErrorMessage(e)}', error: true);
     }
   }
 
@@ -261,6 +262,10 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
         title: const Text('Đặt & soạn hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        // Theme chung đặt màu chữ/icon AppBar cố định → phải ghi rõ để nền màu dùng chữ trắng
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
         actions: [
           IconButton(
             tooltip: 'Lịch sử phiếu',
@@ -320,7 +325,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
       {required bool locked, required bool pastCutoff, String? cutoffText}) {
     return itemsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Lỗi tải danh mục: $e')),
+      error: (e, _) => SupplyErrorView(e),
       data: (items) {
         if (items.isEmpty) {
           return Center(
@@ -431,7 +436,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
       {required bool canPrepare, required bool canEditLines, required String prepDeptNames}) {
     return orderAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Lỗi tải phiếu: $e')),
+      error: (e, _) => SupplyErrorView(e),
       data: (order) {
         if (order.isEmpty) {
           return Center(

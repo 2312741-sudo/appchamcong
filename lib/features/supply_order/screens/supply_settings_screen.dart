@@ -7,6 +7,7 @@ import '../../../models/supply_order_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/supply_order_provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../widgets/supply_error_view.dart';
 
 /// Cài đặt đặt & soạn hàng: giờ chốt đặt hàng, bộ phận soạn hàng khi vào ca. Chủ, QL1, QL2 chỉnh.
 class SupplySettingsScreen extends ConsumerStatefulWidget {
@@ -51,7 +52,7 @@ class _SupplySettingsScreenState extends ConsumerState<SupplySettingsScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không lưu được: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không lưu được: ${supplyErrorMessage(e)}')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -75,9 +76,13 @@ class _SupplySettingsScreenState extends ConsumerState<SupplySettingsScreen> {
         title: const Text('Cài đặt đặt & soạn hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        // Theme chung đặt màu chữ/icon AppBar cố định → phải ghi rõ để nền màu dùng chữ trắng
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
       ),
       body: settings == null
-          ? const Center(child: CircularProgressIndicator())
+          ? (settingsAsync.hasError ? SupplyErrorView(settingsAsync.error!) : const Center(child: CircularProgressIndicator()))
           : ListView(padding: const EdgeInsets.all(16), children: [
               Container(
                 padding: const EdgeInsets.all(14),

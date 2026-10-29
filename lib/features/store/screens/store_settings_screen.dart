@@ -948,6 +948,10 @@ class _StoreSettingsScreenState extends ConsumerState<StoreSettingsScreen> {
           appBar: AppBar(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
+            // Theme chung đặt màu chữ/icon AppBar cố định → phải ghi rõ để nền màu dùng chữ trắng
+            iconTheme: const IconThemeData(color: Colors.white),
+            actionsIconTheme: const IconThemeData(color: Colors.white),
+            titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
             title: const Text(
               'Cài đặt cửa hàng',
               style: TextStyle(

@@ -8,6 +8,7 @@ import '../../store/providers/store_provider.dart';
 import '../supply_export.dart';
 import 'supply_order_screen.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../widgets/supply_error_view.dart';
 
 /// Lịch sử phiếu đặt / soạn hàng theo ngày
 class SupplyHistoryScreen extends ConsumerWidget {
@@ -51,7 +52,7 @@ class SupplyHistoryScreen extends ConsumerWidget {
         context: context,
       );
     } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất file: $e')));
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xuất file: ${supplyErrorMessage(e)}')));
     }
   }
 
@@ -64,13 +65,17 @@ class SupplyHistoryScreen extends ConsumerWidget {
         title: const Text('Lịch sử đặt & soạn hàng', style: TextStyle(fontFamily: 'BeVietnamPro', fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        // Theme chung đặt màu chữ/icon AppBar cố định → phải ghi rõ để nền màu dùng chữ trắng
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
         actions: [
           IconButton(tooltip: 'Xuất Excel', icon: const Icon(LucideIcons.download), onPressed: () => _export(context, ref)),
         ],
       ),
       body: ordersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Lỗi: $e')),
+        error: (e, _) => SupplyErrorView(e),
         data: (orders) {
           final list = orders.where((o) => !o.isEmpty).toList();
           if (list.isEmpty) {

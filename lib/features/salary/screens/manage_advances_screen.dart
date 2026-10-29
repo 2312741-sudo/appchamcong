@@ -43,6 +43,10 @@ class _ManageAdvancesScreenState extends ConsumerState<ManageAdvancesScreen> {
         title: const Text('Duyệt Ứng Lương', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro')),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        // Theme chung đặt màu chữ/icon AppBar cố định → phải ghi rõ để nền màu dùng chữ trắng
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
       ),
       body: Column(
         children: [

@@ -93,6 +93,10 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
         ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        // Theme chung đặt màu chữ/icon AppBar cố định → phải ghi rõ để nền màu dùng chữ trắng
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
