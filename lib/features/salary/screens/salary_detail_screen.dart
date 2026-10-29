@@ -12,6 +12,7 @@ import '../../../models/advance_request_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../../attendance/providers/attendance_provider.dart';
 import '../providers/salary_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SalaryDetailScreen extends ConsumerStatefulWidget {
   final String? userId;
@@ -130,7 +131,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(LucideIcons.x),
                 ),
               ],
             ),
@@ -142,7 +143,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                 labelText: 'Số tiền muốn ứng (VNĐ)',
                 hintText: 'Ví dụ: 1000000',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.payments_outlined, color: AppColors.primary),
+                prefixIcon: const Icon(LucideIcons.banknote, color: AppColors.primary),
               ),
             ),
             const SizedBox(height: 16),
@@ -151,7 +152,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
               decoration: InputDecoration(
                 labelText: 'Lý do (không bắt buộc)',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                prefixIcon: const Icon(Icons.notes_rounded, color: AppColors.textSecondary),
+                prefixIcon: const Icon(LucideIcons.notebookText, color: AppColors.textSecondary),
               ),
             ),
             const SizedBox(height: 24),
@@ -246,7 +247,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.neutral, size: 20),
+          icon: const Icon(LucideIcons.chevronLeft, color: AppColors.neutral, size: 20),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -260,7 +261,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month_outlined, color: AppColors.neutral),
+            icon: const Icon(LucideIcons.calendarDays, color: AppColors.neutral),
             onPressed: _pickMonth,
             tooltip: 'Chọn tháng',
           ),
@@ -341,7 +342,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.hourglass_top_rounded, color: Color(0xFFF57F17), size: 20),
+                        const Icon(LucideIcons.hourglass, color: Color(0xFFF57F17), size: 20),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -457,7 +458,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF0066CC), size: 16),
+                      const Icon(LucideIcons.chevronRight, color: Color(0xFF0066CC), size: 16),
                     ],
                   ),
                 ),
@@ -560,7 +561,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        icon: const Icon(Icons.payments_outlined, size: 16, color: AppColors.primary),
+                        icon: const Icon(LucideIcons.banknote, size: 16, color: AppColors.primary),
                         label: Text(
                           'Xin ứng lương',
                           style: GoogleFonts.beVietnamPro(
@@ -587,7 +588,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
             child: TextButton.icon(
               onPressed: () => setState(() => _isExpanded = !_isExpanded),
               icon: Icon(
-                _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                _isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                 color: AppColors.textSecondary,
                 size: 18,
               ),
@@ -702,7 +703,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         color: const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.chevron_left_rounded, size: 18, color: AppColors.neutral),
+                      child: const Icon(LucideIcons.chevronLeft, size: 18, color: AppColors.neutral),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -724,7 +725,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         color: const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.neutral),
+                      child: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.neutral),
                     ),
                   ),
                 ],
@@ -758,7 +759,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF0066CC), size: 16),
+                      const Icon(LucideIcons.chevronRight, color: Color(0xFF0066CC), size: 16),
                     ],
                   ),
                 ),
@@ -906,7 +907,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
               ),
               Row(
                 children: [
-                  const Icon(Icons.timer_outlined, size: 13, color: AppColors.primary),
+                  const Icon(LucideIcons.timer, size: 13, color: AppColors.primary),
                   const SizedBox(width: 4),
                   Text(
                     '${totalHours.toStringAsFixed(1)}h',
@@ -937,7 +938,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              const Icon(Icons.event_available_rounded, color: Color(0xFF70B843), size: 24),
+              const Icon(LucideIcons.calendarCheck, color: Color(0xFF70B843), size: 24),
               const SizedBox(width: 8),
               Text(
                 'Ngày $day/$month/$year',
@@ -976,7 +977,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.schedule_rounded, size: 14, color: AppColors.primary),
+                      const Icon(LucideIcons.clock, size: 14, color: AppColors.primary),
                       const SizedBox(width: 6),
                       Text(
                         '$inTime - $outTime (${a.totalHours.toStringAsFixed(1)}h)',
@@ -1070,7 +1071,7 @@ class _SalaryDetailScreenState extends ConsumerState<SalaryDetailScreen> {
               const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () => context.push(AppRoutes.checkIn),
-                icon: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 20),
+                icon: const Icon(LucideIcons.fingerprint, color: Colors.white, size: 20),
                 label: Text(
                   isActive ? 'Ra ca' : 'Chấm công',
                   style: GoogleFonts.beVietnamPro(

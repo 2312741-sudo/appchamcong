@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 enum AttendanceStatus { working, notStarted, finished, pending, absent }
 
@@ -77,15 +78,15 @@ class StatusChip extends StatelessWidget {
   IconData get _icon {
     switch (status) {
       case AttendanceStatus.working:
-        return Icons.work_rounded;
+        return LucideIcons.briefcase;
       case AttendanceStatus.notStarted:
-        return Icons.schedule_rounded;
+        return LucideIcons.clock;
       case AttendanceStatus.finished:
-        return Icons.check_circle_rounded;
+        return LucideIcons.circleCheck;
       case AttendanceStatus.pending:
-        return Icons.hourglass_empty_rounded;
+        return LucideIcons.hourglass;
       case AttendanceStatus.absent:
-        return Icons.cancel_rounded;
+        return LucideIcons.circleX;
     }
   }
 

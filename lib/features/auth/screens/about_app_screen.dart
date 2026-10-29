@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AboutAppScreen extends StatefulWidget {
   const AboutAppScreen({super.key});
@@ -72,7 +73,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(LucideIcons.chevronLeft),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -105,7 +106,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                       errorBuilder: (_, __, ___) => Container(
                         color: AppColors.logoRed,
                         child: const Icon(
-                          Icons.access_time_filled_rounded,
+                          LucideIcons.clock,
                           color: Colors.white,
                           size: 48,
                         ),
@@ -183,7 +184,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
               child: Column(
                 children: [
                   _LinkTile(
-                    icon: Icons.privacy_tip_outlined,
+                    icon: LucideIcons.shieldAlert,
                     iconColor: const Color(0xFF0284C7),
                     title: 'Chính sách quyền riêng tư',
                     subtitle: 'Quy định bảo mật và bảo vệ dữ liệu người dùng',
@@ -191,7 +192,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                   ),
                   const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                   _LinkTile(
-                    icon: Icons.no_accounts_outlined,
+                    icon: LucideIcons.userX,
                     iconColor: const Color(0xFFEA580C),
                     title: 'Quy định xóa tài khoản',
                     subtitle: 'Quy trình xóa tài khoản và dữ liệu cá nhân',
@@ -199,7 +200,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                   ),
                   const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                   _LinkTile(
-                    icon: Icons.support_agent_rounded,
+                    icon: LucideIcons.headset,
                     iconColor: const Color(0xFF16A34A),
                     title: 'Hỗ trợ & Liên hệ',
                     subtitle: 'nthanhtam.402@gmail.com',
@@ -239,7 +240,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
-                          Icons.verified_user_outlined,
+                          LucideIcons.shieldCheck,
                           color: AppColors.logoRed,
                           size: 20,
                         ),
@@ -344,7 +345,7 @@ class _LinkTile extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.arrow_forward_ios_rounded,
+              LucideIcons.chevronRight,
               size: 14,
               color: Color(0xFF94A3B8),
             ),

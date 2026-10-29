@@ -9,6 +9,7 @@ import '../../store/providers/store_provider.dart';
 import '../providers/schedule_provider.dart';
 import '../repositories/schedule_repository.dart';
 import 'schedule_palette.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ScheduleRegisterScreen extends ConsumerStatefulWidget {
   final String? initialWeekStart;
@@ -344,7 +345,7 @@ class _ScheduleRegisterScreenState
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.white),
+            icon: const Icon(LucideIcons.chevronLeft, color: Colors.white),
             onPressed: _selectedWeekIndex > 0
                 ? () {
                     setState(() {
@@ -394,7 +395,7 @@ class _ScheduleRegisterScreenState
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.today_rounded, size: 13, color: Colors.white),
+                            const Icon(LucideIcons.calendarCheck, size: 13, color: Colors.white),
                             const SizedBox(width: 4),
                             Text(
                               'Về tuần này',
@@ -432,7 +433,7 @@ class _ScheduleRegisterScreenState
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.white),
+            icon: const Icon(LucideIcons.chevronRight, color: Colors.white),
             onPressed: _selectedWeekIndex < _weeks.length - 1
                 ? () {
                     setState(() {
@@ -456,7 +457,7 @@ class _ScheduleRegisterScreenState
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded,
+          const Icon(LucideIcons.triangleAlert,
               color: AppColors.accentInk, size: 20),
           const SizedBox(width: 8),
           Expanded(
@@ -573,7 +574,7 @@ class _DayRow extends StatelessWidget {
                       fontSize: 12, color: AppColors.textSecondary),
                 ),
                 const Spacer(),
-                const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+                const Icon(LucideIcons.chevronRight, color: AppColors.textSecondary, size: 18),
               ],
             ),
             const SizedBox(height: 8),
@@ -585,10 +586,10 @@ class _DayRow extends StatelessWidget {
                 runSpacing: 6,
                   children: selectedShifts.map((s) {
                     if (s == 'delivery') {
-                      return _Chip(label: 'Chở hàng', color: palette.accent, icon: Icons.local_shipping);
+                      return _Chip(label: 'Chở hàng', color: palette.accent, icon: LucideIcons.truck);
                     }
                     if (s == 'giaohang') {
-                      return const _Chip(label: 'Giao hàng', color: Colors.orange, icon: Icons.inventory_2);
+                      return const _Chip(label: 'Giao hàng', color: Colors.orange, icon: LucideIcons.package);
                     }
                     final parts = s.split('|');
                   final baseId = parts[0];

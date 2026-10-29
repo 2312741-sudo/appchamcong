@@ -10,6 +10,7 @@ import '../../../models/attendance_model.dart';
 import '../../schedule/providers/schedule_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/attendance_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ActiveStaffScreen extends ConsumerStatefulWidget {
   const ActiveStaffScreen({super.key});
@@ -95,7 +96,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(LucideIcons.chevronLeft),
           onPressed: () => context.pop(),
         ),
       ),
@@ -131,7 +132,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.person_off_rounded,
+                        LucideIcons.userX,
                         size: 40,
                         color: AppColors.primary,
                       ),
@@ -186,7 +187,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                         fontFamily: 'BeVietnamPro',
                         fontSize: 13.5,
                       ),
-                      prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade500, size: 20),
+                      prefixIcon: Icon(LucideIcons.search, color: Colors.grey.shade500, size: 20),
                       filled: true,
                       fillColor: Colors.white,
                       isDense: true,
@@ -351,7 +352,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                   // Row of check-in time and duration worked
                                   Row(
                                     children: [
-                                      Icon(Icons.login_rounded, size: 14, color: Colors.grey.shade600),
+                                      Icon(LucideIcons.logIn, size: 14, color: Colors.grey.shade600),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Vào lúc: $checkInTime',
@@ -363,7 +364,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 12),
-                                      Icon(Icons.timer_outlined, size: 14, color: Colors.grey.shade600),
+                                      Icon(LucideIcons.timer, size: 14, color: Colors.grey.shade600),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Đã làm: $workedDuration',
@@ -399,7 +400,7 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 const Icon(
-                                                  Icons.warning_amber_rounded,
+                                                  LucideIcons.triangleAlert,
                                                   size: 12,
                                                   color: Color(0xFFE65100),
                                                 ),
@@ -427,8 +428,8 @@ class _ActiveStaffScreenState extends ConsumerState<ActiveStaffScreen> {
                                             children: [
                                               Icon(
                                                 att.checkInMethod == CheckInMethod.gps
-                                                    ? Icons.location_on_rounded
-                                                    : Icons.wifi_rounded,
+                                                    ? LucideIcons.mapPin
+                                                    : LucideIcons.wifi,
                                                 size: 12,
                                                 color: Colors.grey.shade700,
                                               ),

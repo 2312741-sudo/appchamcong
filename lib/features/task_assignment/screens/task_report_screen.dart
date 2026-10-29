@@ -10,6 +10,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../attendance/providers/attendance_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Màn hình Báo cáo công việc cho người nhận việc
 /// Áp dụng cho cả Nhân viên, QL1, QL2 và Chủ cửa hàng.
@@ -327,7 +328,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                       child: CircularProgressIndicator(color: Colors.white),
                     ),
                     errorWidget: (_, __, ___) => const Center(
-                      child: Icon(Icons.broken_image,
+                      child: Icon(LucideIcons.imageOff,
                           color: Colors.white70, size: 48),
                     ),
                   ),
@@ -345,7 +346,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                     color: Color(0x8A000000),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close_rounded,
+                  child: const Icon(LucideIcons.x,
                       color: Colors.white, size: 22),
                 ),
               ),
@@ -382,7 +383,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: const Icon(LucideIcons.chevronLeft,
               color: AppColors.neutral),
           onPressed: () => Navigator.pop(context),
         ),
@@ -475,7 +476,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
           // Người giao & Ngày thực hiện
           Row(
             children: [
-              const Icon(Icons.person_outline_rounded,
+              const Icon(LucideIcons.user,
                   size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 6),
               Expanded(
@@ -494,7 +495,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.calendar_today_rounded,
+              const Icon(LucideIcons.calendar,
                   size: 15, color: AppColors.textSecondary),
               const SizedBox(width: 6),
               Text(
@@ -512,7 +513,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.check_circle_outline_rounded,
+                const Icon(LucideIcons.circleCheck,
                     size: 15, color: AppColors.success),
                 const SizedBox(width: 6),
                 Text(
@@ -548,8 +549,8 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
               children: [
                 Icon(
                   widget.task.requirePhoto
-                      ? Icons.camera_alt_rounded
-                      : Icons.photo_library_outlined,
+                      ? LucideIcons.camera
+                      : LucideIcons.images,
                   size: 14,
                   color: widget.task.requirePhoto
                       ? const Color(0xFFE65100)
@@ -589,7 +590,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle_rounded,
+            Icon(LucideIcons.circleCheck,
                 color: AppColors.success, size: 14),
             SizedBox(width: 4),
             Text(
@@ -615,7 +616,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.pending_actions_rounded,
+          Icon(LucideIcons.clipboardClock,
               color: AppColors.warning, size: 14),
           SizedBox(width: 4),
           Text(
@@ -652,7 +653,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.edit_note_rounded,
+              const Icon(LucideIcons.notebookPen,
                   color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
               const Expanded(
@@ -680,7 +681,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.keyboard_hide_rounded,
+                      Icon(LucideIcons.keyboardOff,
                           size: 15, color: AppColors.textSecondary),
                       SizedBox(width: 4),
                       Text(
@@ -762,7 +763,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.add_a_photo_rounded,
+                  const Icon(LucideIcons.camera,
                       color: AppColors.primary, size: 19),
                   const SizedBox(width: 8),
                   Text(
@@ -797,7 +798,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
               onPressed: _isUploadingPhoto
                   ? null
                   : () => _pickAndUploadPhoto(ImageSource.camera),
-              icon: const Icon(Icons.camera_alt_rounded, size: 20),
+              icon: const Icon(LucideIcons.camera, size: 20),
               label: const Text(
                 'Chụp ảnh trực tiếp tại thời điểm hoàn thành',
                 style: TextStyle(
@@ -830,7 +831,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
             child: const Row(
               children: [
                 Icon(
-                  Icons.lock_outline_rounded,
+                  LucideIcons.lock,
                   size: 16,
                   color: AppColors.primary,
                 ),
@@ -919,7 +920,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                               ),
                             ),
                             errorWidget: (_, __, ___) => const Center(
-                              child: Icon(Icons.broken_image,
+                              child: Icon(LucideIcons.imageOff,
                                   color: Colors.grey),
                             ),
                           ),
@@ -942,7 +943,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
-                            Icons.close_rounded,
+                            LucideIcons.x,
                             size: 14,
                             color: Colors.white,
                           ),
@@ -978,7 +979,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                       color: Colors.white,
                     ),
                   )
-                : const Icon(Icons.check_circle_rounded, size: 20),
+                : const Icon(LucideIcons.circleCheck, size: 20),
             label: Text(
               _isSubmitting ? 'Đang lưu...' : 'Hoàn thành công việc',
               style: const TextStyle(
@@ -1015,7 +1016,7 @@ class _TaskReportScreenState extends ConsumerState<TaskReportScreen> {
                       color: AppColors.primary,
                     ),
                   )
-                : const Icon(Icons.bookmark_border_rounded, size: 18),
+                : const Icon(LucideIcons.bookmark, size: 18),
             label: Text(
               _isSavingDraft ? 'Đang lưu nháp...' : 'Lưu nháp tiến độ',
               style: const TextStyle(

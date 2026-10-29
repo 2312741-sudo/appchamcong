@@ -9,6 +9,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../../../core/services/notification_service.dart';
 import '../providers/notification_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -29,7 +30,7 @@ class NotificationsScreen extends ConsumerWidget {
         centerTitle: false,
         leading: IconButton(
           icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
+            LucideIcons.chevronLeft,
             color: AppColors.info,
             size: 20,
           ),
@@ -70,7 +71,7 @@ class NotificationsScreen extends ConsumerWidget {
                     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể cập nhật trạng thái đã đọc. Vui lòng thử lại.')));
                   }
                 },
-                icon: const Icon(Icons.done_all_rounded, size: 18, color: AppColors.primary),
+                icon: const Icon(LucideIcons.checkCheck, size: 18, color: AppColors.primary),
                 label: Text(
                   'Đã đọc tất cả',
                   style: GoogleFonts.beVietnamPro(
@@ -95,7 +96,7 @@ class NotificationsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline_rounded, size: 48, color: Colors.grey.shade400),
+                  Icon(LucideIcons.circleAlert, size: 48, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   Text(
                     'Không thể tải thông báo',
@@ -114,7 +115,7 @@ class NotificationsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () => ref.refresh(notificationsStreamProvider),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    icon: const Icon(LucideIcons.refreshCw, size: 18),
                     label: const Text('Thử lại'),
                   ),
                 ],
@@ -138,7 +139,7 @@ class NotificationsScreen extends ConsumerWidget {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.notifications_off_rounded,
+                        LucideIcons.bellOff,
                         size: 44,
                         color: AppColors.primary,
                       ),
@@ -303,7 +304,7 @@ class _NotificationCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade500),
+                        Icon(LucideIcons.clock, size: 12, color: Colors.grey.shade500),
                         const SizedBox(width: 4),
                         Text(
                           _formatTime(notification.createdAt),
@@ -326,7 +327,7 @@ class _NotificationCard extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 2),
-                              Icon(Icons.chevron_right_rounded, size: 14, color: typeConfig.color),
+                              Icon(LucideIcons.chevronRight, size: 14, color: typeConfig.color),
                             ],
                           ),
                         ],
@@ -362,33 +363,33 @@ class _NotificationCard extends StatelessWidget {
   _TypeConfig _getTypeConfig(AppNotificationType type) {
     switch (type) {
       case AppNotificationType.joinRequest:
-        return const _TypeConfig(Icons.person_add_rounded, AppColors.primary);
+        return const _TypeConfig(LucideIcons.userPlus, AppColors.primary);
       case AppNotificationType.joinApproved:
-        return const _TypeConfig(Icons.check_circle_rounded, AppColors.success);
+        return const _TypeConfig(LucideIcons.circleCheck, AppColors.success);
       case AppNotificationType.joinRejected:
-        return const _TypeConfig(Icons.cancel_rounded, AppColors.primary);
+        return const _TypeConfig(LucideIcons.circleX, AppColors.primary);
       case AppNotificationType.advanceRequest:
-        return const _TypeConfig(Icons.account_balance_wallet_rounded, AppColors.accentInk);
+        return const _TypeConfig(LucideIcons.wallet, AppColors.accentInk);
       case AppNotificationType.advanceApproved:
-        return const _TypeConfig(Icons.payments_rounded, AppColors.success);
+        return const _TypeConfig(LucideIcons.banknote, AppColors.success);
       case AppNotificationType.advanceRejected:
-        return const _TypeConfig(Icons.money_off_rounded, AppColors.primary);
+        return const _TypeConfig(LucideIcons.circleOff, AppColors.primary);
       case AppNotificationType.scheduleChanged:
-        return const _TypeConfig(Icons.calendar_month_rounded, AppColors.info);
+        return const _TypeConfig(LucideIcons.calendarDays, AppColors.info);
       case AppNotificationType.scheduleRegistrationReminder:
-        return const _TypeConfig(Icons.alarm_rounded, Color(0xFFD97706));
+        return const _TypeConfig(LucideIcons.alarmClock, Color(0xFFD97706));
       case AppNotificationType.checklistReminder:
-        return const _TypeConfig(Icons.assignment_late_rounded, Color(0xFFEA580C));
+        return const _TypeConfig(LucideIcons.clipboardX, Color(0xFFEA580C));
       case AppNotificationType.deliveryUpdate:
-        return const _TypeConfig(Icons.local_shipping_rounded, Color(0xFF7B1FA2));
+        return const _TypeConfig(LucideIcons.truck, Color(0xFF7B1FA2));
       case AppNotificationType.birthday:
-        return const _TypeConfig(Icons.cake_rounded, Color(0xFFE91E63));
+        return const _TypeConfig(LucideIcons.cake, Color(0xFFE91E63));
       case AppNotificationType.checkIn:
-        return const _TypeConfig(Icons.login_rounded, AppColors.success);
+        return const _TypeConfig(LucideIcons.logIn, AppColors.success);
       case AppNotificationType.checkOut:
-        return const _TypeConfig(Icons.logout_rounded, AppColors.primary);
+        return const _TypeConfig(LucideIcons.logOut, AppColors.primary);
       case AppNotificationType.general:
-        return const _TypeConfig(Icons.notifications_rounded, Color(0xFF475569));
+        return const _TypeConfig(LucideIcons.bell, Color(0xFF475569));
     }
   }
 }

@@ -8,6 +8,7 @@ import '../../../app/router.dart';
 import '../../auth/providers/auth_notifier.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class JoinStoreScreen extends ConsumerStatefulWidget {
   const JoinStoreScreen({super.key});
@@ -88,7 +89,7 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            icon: const Icon(LucideIcons.logOut, color: Colors.white),
             tooltip: 'Đăng xuất',
             onPressed: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
@@ -117,7 +118,7 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.store_rounded,
+                    LucideIcons.store,
                     color: AppColors.primary,
                     size: 48,
                   ),
@@ -278,7 +279,7 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
                   height: 56,
                   child: OutlinedButton.icon(
                     onPressed: () => context.push('/join-qr'),
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    icon: const Icon(LucideIcons.scanQrCode),
                     label: const Text(
                       'Quét mã QR',
                       style: TextStyle(
@@ -306,7 +307,7 @@ class _JoinStoreScreenState extends ConsumerState<JoinStoreScreen> {
                       await ref.read(authNotifierProvider.notifier).signOut();
                       if (context.mounted) context.go(AppRoutes.login);
                     },
-                    icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.textSecondary),
+                    icon: const Icon(LucideIcons.logOut, size: 18, color: AppColors.textSecondary),
                     label: const Text(
                       'Đăng xuất / Đăng nhập tài khoản khác',
                       style: TextStyle(

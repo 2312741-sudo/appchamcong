@@ -9,6 +9,7 @@ import '../../../models/member_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/attendance_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // ── Providers ───────────────────────────────────────────────────────────────
 
@@ -100,7 +101,7 @@ class _MonthlyAttendanceScreenState
                     color: AppColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_rounded, size: 40, color: AppColors.primary),
+                  child: const Icon(LucideIcons.lock, size: 40, color: AppColors.primary),
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -281,7 +282,7 @@ class _MonthCalendarBody extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+                  icon: const Icon(LucideIcons.chevronLeft, color: Colors.white, size: 28),
                   onPressed: onPrevMonth,
                 ),
                 Text(
@@ -293,7 +294,7 @@ class _MonthCalendarBody extends StatelessWidget {
                       color: Colors.white),
                 ),
                 IconButton(
-                  icon: Icon(Icons.chevron_right,
+                  icon: Icon(LucideIcons.chevronRight,
                       color: canGoNext ? Colors.white : Colors.white38,
                       size: 28),
                   onPressed: canGoNext ? onNextMonth : null,
@@ -445,14 +446,14 @@ class _MonthCalendarBody extends StatelessWidget {
             children: [
               _SummaryItem(
                 color: AppColors.success,
-                icon: Icons.check_circle_rounded,
+                icon: LucideIcons.circleCheck,
                 label: 'Đi làm',
                 value: '$_workedCount ngày',
               ),
               const SizedBox(width: 12),
               _SummaryItem(
                 color: const Color(0xFF1565C0),
-                icon: Icons.radio_button_on_rounded,
+                icon: LucideIcons.circleDot,
                 label: 'Đang làm',
                 value: '$_inProgressCount ngày',
               ),
@@ -463,14 +464,14 @@ class _MonthCalendarBody extends StatelessWidget {
             children: [
               _SummaryItem(
                 color: AppColors.textSecondary,
-                icon: Icons.cancel_outlined,
+                icon: LucideIcons.circleX,
                 label: 'Chưa chấm',
                 value: '$_absentCount ngày',
               ),
               const SizedBox(width: 12),
               _SummaryItem(
                 color: AppColors.primary,
-                icon: Icons.access_time_rounded,
+                icon: LucideIcons.clock,
                 label: 'Tổng giờ',
                 value: '${_totalHours.toStringAsFixed(1)}h',
               ),
@@ -959,7 +960,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () => setState(() => _editing = true),
-                            icon: const Icon(Icons.edit_rounded, size: 18),
+                            icon: const Icon(LucideIcons.pencil, size: 18),
                             label: Text(
                               hasCheckIn ? 'Sửa giờ vào/ra' : 'Thêm chấm công',
                               style: const TextStyle(
@@ -990,7 +991,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
         child: Center(
           child: Column(
             children: [
-              Icon(Icons.event_busy_rounded,
+              Icon(LucideIcons.calendarX,
                   size: 52, color: AppColors.textSecondary),
               SizedBox(height: 12),
               Text('Ngày này chưa chấm công',
@@ -1030,7 +1031,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
               child: _TimeCard(
                 label: 'Giờ vào (${DateFormat('dd/MM').format(ciLocal)})',
                 time: checkInStr,
-                icon: Icons.login_rounded,
+                icon: LucideIcons.logIn,
                 color: AppColors.success,
               ),
             ),
@@ -1041,7 +1042,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
                     ? 'Giờ ra $checkOutDateNote'
                     : 'Giờ ra (${DateFormat('dd/MM').format(ciLocal)})',
                 time: checkOutStr,
-                icon: Icons.logout_rounded,
+                icon: LucideIcons.logOut,
                 color: AppColors.primary,
               ),
             ),
@@ -1082,7 +1083,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.edit_note_rounded,
+                const Icon(LucideIcons.notebookPen,
                     color: AppColors.accent, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1138,7 +1139,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
             Expanded(
               child: _DateTimeCard(
                 title: 'Giờ vào',
-                icon: Icons.login_rounded,
+                icon: LucideIcons.logIn,
                 color: AppColors.success,
                 date: _checkInDate,
                 time: _checkInTime,
@@ -1150,7 +1151,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
             Expanded(
               child: _DateTimeCard(
                 title: 'Giờ ra',
-                icon: Icons.logout_rounded,
+                icon: LucideIcons.logOut,
                 color: AppColors.primary,
                 date: _checkOutDate,
                 time: _checkOutTime,
@@ -1178,7 +1179,7 @@ class _DayDetailSheetState extends ConsumerState<_DayDetailSheet> {
           child: Row(
             children: [
               Icon(
-                isValid ? Icons.timelapse_rounded : Icons.warning_amber_rounded,
+                isValid ? LucideIcons.timer : LucideIcons.triangleAlert,
                 size: 16,
                 color: isValid ? AppColors.success : AppColors.primary,
               ),
@@ -1288,7 +1289,7 @@ class _DateTimeCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.calendar_today_rounded, size: 13, color: color),
+                  Icon(LucideIcons.calendar, size: 13, color: color),
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
@@ -1301,7 +1302,7 @@ class _DateTimeCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down_rounded,
+                  const Icon(LucideIcons.chevronDown,
                       size: 16, color: AppColors.textSecondary),
                 ],
               ),
@@ -1320,7 +1321,7 @@ class _DateTimeCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.access_time_rounded, size: 13, color: color),
+                  Icon(LucideIcons.clock, size: 13, color: color),
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
@@ -1333,7 +1334,7 @@ class _DateTimeCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down_rounded,
+                  const Icon(LucideIcons.chevronDown,
                       size: 16, color: AppColors.textSecondary),
                 ],
               ),
@@ -1428,7 +1429,7 @@ class _TimePickerButton extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: color)),
             const SizedBox(height: 4),
-            Icon(Icons.touch_app_rounded, color: color, size: 14),
+            Icon(LucideIcons.pointer, color: color, size: 14),
           ],
         ),
       ),
@@ -1444,10 +1445,10 @@ class _MethodBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, color) = switch (method) {
-      CheckInMethod.gps => (Icons.location_on_rounded, AppColors.success),
-      CheckInMethod.wifi => (Icons.wifi_rounded, AppColors.info),
-      CheckInMethod.qr => (Icons.qr_code_rounded, AppColors.accent),
-      CheckInMethod.manual => (Icons.edit_rounded, AppColors.textSecondary),
+      CheckInMethod.gps => (LucideIcons.mapPin, AppColors.success),
+      CheckInMethod.wifi => (LucideIcons.wifi, AppColors.info),
+      CheckInMethod.qr => (LucideIcons.qrCode, AppColors.accent),
+      CheckInMethod.manual => (LucideIcons.pencil, AppColors.textSecondary),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

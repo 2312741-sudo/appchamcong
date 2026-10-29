@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
@@ -19,7 +20,7 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.attendance({VoidCallback? onRefresh}) {
     return EmptyState(
-      icon: Icons.event_busy_rounded,
+      icon: LucideIcons.calendarX,
       message: 'Chưa có dữ liệu chấm công',
       subtitle: 'Dữ liệu chấm công sẽ xuất hiện ở đây',
       actionLabel: onRefresh != null ? 'Làm mới' : null,
@@ -29,7 +30,7 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.members({VoidCallback? onAdd}) {
     return EmptyState(
-      icon: Icons.group_outlined,
+      icon: LucideIcons.users,
       message: 'Chưa có nhân viên nào',
       subtitle: 'Mời nhân viên tham gia bằng mã hoặc mã QR',
       actionLabel: onAdd != null ? 'Mời nhân viên' : null,
@@ -39,7 +40,7 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.schedule({VoidCallback? onCreate}) {
     return EmptyState(
-      icon: Icons.calendar_month_outlined,
+      icon: LucideIcons.calendarDays,
       message: 'Chưa có lịch làm việc',
       subtitle: 'Tạo lịch làm việc cho tuần này',
       actionLabel: onCreate != null ? 'Tạo lịch' : null,
@@ -49,7 +50,7 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.salary({VoidCallback? onCalculate}) {
     return EmptyState(
-      icon: Icons.calculate_outlined,
+      icon: LucideIcons.calculator,
       message: 'Chưa có dữ liệu lương',
       subtitle: 'Tính lương cho tháng này',
       actionLabel: onCalculate != null ? 'Tính lương' : null,
@@ -59,7 +60,7 @@ class EmptyState extends StatelessWidget {
 
   factory EmptyState.search() {
     return const EmptyState(
-      icon: Icons.search_off_rounded,
+      icon: LucideIcons.searchX,
       message: 'Không tìm thấy kết quả',
       subtitle: 'Thử tìm kiếm với từ khóa khác',
     );

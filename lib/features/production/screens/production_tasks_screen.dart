@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/production_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/production_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ProductionTasksScreen extends ConsumerStatefulWidget {
   const ProductionTasksScreen({super.key});
@@ -203,7 +204,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
         actions: [
           if (isOwner)
             IconButton(
-              icon: const Icon(Icons.add_circle_outline_rounded),
+              icon: const Icon(LucideIcons.circlePlus),
               tooltip: 'Thêm công việc',
               onPressed: () {
                 final count = tasksAsync.valueOrNull?.length ?? 0;
@@ -224,7 +225,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.checklist_rounded,
+                    const Icon(LucideIcons.listChecks,
                         size: 64, color: AppColors.textDisabled),
                     const SizedBox(height: 16),
                     Text(
@@ -247,7 +248,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: () => _openTaskDialog(currentCount: 0),
-                        icon: const Icon(Icons.add_rounded),
+                        icon: const Icon(LucideIcons.plus),
                         label: const Text('Thêm công việc mới'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -274,7 +275,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                 color: const Color(0xFFF1F3F5),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline_rounded,
+                    const Icon(LucideIcons.info,
                         size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
                     Expanded(
@@ -333,7 +334,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                                     index: index,
                                     child: const Padding(
                                       padding: EdgeInsets.only(right: 8),
-                                      child: Icon(Icons.drag_handle_rounded,
+                                      child: Icon(LucideIcons.gripHorizontal,
                                           color: AppColors.textDisabled, size: 22),
                                     ),
                                   ),
@@ -415,7 +416,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                                     },
                                   ),
                                   PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert_rounded,
+                                    icon: const Icon(LucideIcons.ellipsisVertical,
                                         color: AppColors.textSecondary, size: 20),
                                     onSelected: (val) async {
                                       if (val == 'edit') {
@@ -454,7 +455,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                                         value: 'edit',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.edit_rounded, size: 18),
+                                            Icon(LucideIcons.pencil, size: 18),
                                             SizedBox(width: 8),
                                             Text('Chỉnh sửa'),
                                           ],
@@ -464,7 +465,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                                         value: 'delete',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.delete_outline_rounded,
+                                            Icon(LucideIcons.trash2,
                                                 size: 18, color: AppColors.danger),
                                             SizedBox(width: 8),
                                             Text('Xóa',

@@ -5,6 +5,7 @@ import '../../store/providers/store_provider.dart';
 import 'schedule_manager_screen.dart';
 import 'schedule_palette.dart';
 import 'schedule_register_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class EmployeeScheduleTab extends ConsumerStatefulWidget {
   const EmployeeScheduleTab({super.key});
@@ -66,11 +67,11 @@ class _EmployeeScheduleTabState extends ConsumerState<EmployeeScheduleTab>
               ),
               tabs: const [
                 Tab(
-                  icon: Icon(Icons.edit_calendar_rounded, size: 18),
+                  icon: Icon(LucideIcons.calendarCog, size: 18),
                   text: 'Đăng ký lịch làm',
                 ),
                 Tab(
-                  icon: Icon(Icons.storefront_rounded, size: 18),
+                  icon: Icon(LucideIcons.store, size: 18),
                   text: 'Lịch cửa hàng',
                 ),
               ],

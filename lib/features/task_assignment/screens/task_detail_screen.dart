@@ -15,6 +15,7 @@ import '../../schedule/providers/schedule_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
 import 'create_task_dialog.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Màn hình Chi tiết Công việc & Báo cáo hoàn thành.
 /// Cho phép Chủ và Quản lý theo dõi ai đã nộp báo cáo (văn bản + ảnh chụp)
@@ -97,7 +98,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  icon: const Icon(LucideIcons.x, color: Colors.white),
                   onPressed: () => Navigator.of(ctx).pop(),
                 ),
                 title: Text(
@@ -128,7 +129,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       errorWidget: (context, url, error) => Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.broken_image_rounded,
+                          const Icon(LucideIcons.imageOff,
                               size: 48, color: Colors.white54),
                           const SizedBox(height: 8),
                           Text(
@@ -151,7 +152,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back_ios_rounded,
+                            icon: const Icon(LucideIcons.chevronLeft,
                                 color: Colors.white),
                             onPressed: currentIndex > 0
                                 ? () => setDialogState(
@@ -166,7 +167,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           ),
                           const SizedBox(width: 20),
                           IconButton(
-                            icon: const Icon(Icons.arrow_forward_ios_rounded,
+                            icon: const Icon(LucideIcons.chevronRight,
                                 color: Colors.white),
                             onPressed: currentIndex < allUrls.length - 1
                                 ? () => setDialogState(
@@ -349,7 +350,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               )
             : const Center(
                 child: EmptyState(
-                  icon: Icons.search_off_rounded,
+                  icon: LucideIcons.searchX,
                   message: 'Không tìm thấy công việc này',
                   subtitle: 'Công việc có thể đã bị xóa khỏi hệ thống',
                 ),
@@ -381,7 +382,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: const Icon(LucideIcons.ellipsisVertical),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             onSelected: (val) {
               if (val == 'edit') {
@@ -399,7 +400,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 value: 'edit',
                 child: Row(
                   children: [
-                    const Icon(Icons.edit_outlined,
+                    const Icon(LucideIcons.pencil,
                         color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Text('Chỉnh sửa công việc',
@@ -412,7 +413,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   value: 'complete',
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline_rounded,
+                      const Icon(LucideIcons.circleCheck,
                           color: AppColors.success, size: 20),
                       const SizedBox(width: 8),
                       Text('Đánh dấu hoàn thành',
@@ -424,7 +425,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   value: 'cancel',
                   child: Row(
                     children: [
-                      const Icon(Icons.cancel_outlined,
+                      const Icon(LucideIcons.circleX,
                           color: Colors.orange, size: 20),
                       const SizedBox(width: 8),
                       Text('Hủy công việc',
@@ -437,7 +438,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 value: 'delete',
                 child: Row(
                   children: [
-                    const Icon(Icons.delete_outline_rounded,
+                    const Icon(LucideIcons.trash2,
                         color: AppColors.danger, size: 20),
                     const SizedBox(width: 8),
                     Text('Xóa công việc',
@@ -456,7 +457,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         ),
         error: (err, stack) => Center(
           child: EmptyState(
-            icon: Icons.error_outline_rounded,
+            icon: LucideIcons.circleAlert,
             message: 'Lỗi tải báo cáo: $err',
           ),
         ),
@@ -576,7 +577,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.repeat_rounded,
+                        LucideIcons.repeat,
                         size: 13,
                         color: AppColors.primary,
                       ),
@@ -605,7 +606,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.event_repeat_rounded,
+                        LucideIcons.calendarSync,
                         size: 13,
                         color: AppColors.primary,
                       ),
@@ -635,7 +636,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.photo_camera_rounded,
+                        LucideIcons.camera,
                         size: 13,
                         color: Color(0xFFD97706),
                       ),
@@ -695,7 +696,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           // Thông tin người giao
           Row(
             children: [
-              const Icon(Icons.person_pin_rounded,
+              const Icon(LucideIcons.userRound,
                   size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
               Text(
@@ -722,7 +723,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           // Thời gian tạo
           Row(
             children: [
-              const Icon(Icons.access_time_rounded,
+              const Icon(LucideIcons.clock,
                   size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               Text(
@@ -741,10 +742,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             children: [
               Icon(
                 task.isAllStore
-                    ? Icons.storefront_rounded
+                    ? LucideIcons.store
                     : (task.isDepartment
-                        ? Icons.apartment_rounded
-                        : Icons.group_rounded),
+                        ? LucideIcons.building
+                        : LucideIcons.users),
                 size: 18,
                 color: AppColors.textSecondary,
               ),
@@ -789,7 +790,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       children: [
         Row(
           children: [
-            const Icon(Icons.calendar_today_rounded,
+            const Icon(LucideIcons.calendar,
                 size: 16, color: AppColors.textSecondary),
             const SizedBox(width: 6),
             Text(
@@ -937,7 +938,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded,
+                      const Icon(LucideIcons.circleCheck,
                           size: 16, color: AppColors.success),
                       const SizedBox(width: 6),
                       Text(
@@ -970,7 +971,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.access_time_rounded,
+                      const Icon(LucideIcons.clock,
                           size: 16, color: Colors.orange),
                       const SizedBox(width: 6),
                       Text(
@@ -1180,7 +1181,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.check_circle_rounded,
+                      const Icon(LucideIcons.circleCheck,
                           size: 14, color: AppColors.success),
                       const SizedBox(width: 4),
                       Text(
@@ -1205,7 +1206,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.access_time_rounded,
+                      const Icon(LucideIcons.clock,
                           size: 14, color: Colors.orange),
                       const SizedBox(width: 4),
                       Text(
@@ -1240,7 +1241,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.description_outlined,
+                      const Icon(LucideIcons.fileText,
                           size: 14, color: AppColors.textSecondary),
                       const SizedBox(width: 4),
                       Text(
@@ -1326,7 +1327,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             errorWidget: (context, url, error) => Container(
                               color: AppColors.surface,
                               child: const Icon(
-                                Icons.broken_image_rounded,
+                                LucideIcons.imageOff,
                                 color: AppColors.textDisabled,
                               ),
                             ),
@@ -1434,25 +1435,25 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         bg = AppColors.success.withValues(alpha: 0.12);
         fg = AppColors.success;
         label = 'Đang thực hiện';
-        icon = Icons.play_circle_filled_rounded;
+        icon = LucideIcons.circlePlay;
         break;
       case TaskStatus.completed:
         bg = AppColors.managerAccent.withValues(alpha: 0.12);
         fg = AppColors.managerAccent;
         label = 'Đã hoàn thành';
-        icon = Icons.check_circle_rounded;
+        icon = LucideIcons.circleCheck;
         break;
       case TaskStatus.cancelled:
         bg = Colors.red.withValues(alpha: 0.12);
         fg = Colors.red;
         label = 'Đã hủy';
-        icon = Icons.cancel_rounded;
+        icon = LucideIcons.circleX;
         break;
       case TaskStatus.archived:
         bg = Colors.grey.withValues(alpha: 0.15);
         fg = Colors.grey;
         label = 'Lưu trữ';
-        icon = Icons.archive_rounded;
+        icon = LucideIcons.archive;
         break;
     }
 

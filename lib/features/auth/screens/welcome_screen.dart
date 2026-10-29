@@ -8,6 +8,7 @@ import '../../../core/constants/app_strings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_notifier.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
@@ -139,7 +140,7 @@ class WelcomeScreen extends ConsumerWidget {
                                   context.push(AppRoutes.login);
                                 }
                               },
-                              icon: const Icon(Icons.add_business_rounded,
+                              icon: const Icon(LucideIcons.store,
                                   size: 20),
                               label: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,7 +185,7 @@ class WelcomeScreen extends ConsumerWidget {
                                 }
                               },
                               icon:
-                                  const Icon(Icons.group_add_rounded, size: 20),
+                                  const Icon(LucideIcons.userPlus, size: 20),
                               label: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
@@ -224,7 +225,7 @@ class WelcomeScreen extends ConsumerWidget {
                                   await ref.read(authNotifierProvider.notifier).signOut();
                                   if (context.mounted) context.go(AppRoutes.login);
                                 },
-                                icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.textSecondary),
+                                icon: const Icon(LucideIcons.logOut, size: 18, color: AppColors.textSecondary),
                                 label: const Text(
                                   'Đăng xuất / Đăng nhập tài khoản khác',
                                   style: TextStyle(
@@ -253,7 +254,7 @@ class WelcomeScreen extends ConsumerWidget {
                     if (context.mounted) context.go(AppRoutes.login);
                   },
                   icon:
-                      const Icon(Icons.logout_rounded, color: AppColors.white),
+                      const Icon(LucideIcons.logOut, color: AppColors.white),
                   tooltip: 'Đăng xuất',
                 ),
               ),

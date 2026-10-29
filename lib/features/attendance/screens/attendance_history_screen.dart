@@ -11,6 +11,7 @@ import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../../salary/providers/salary_provider.dart';
 import '../repositories/attendance_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AttendanceHistoryScreen extends ConsumerStatefulWidget {
   final String? userId;
@@ -151,7 +152,7 @@ class _AttendanceHistoryScreenState
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: const Icon(LucideIcons.chevronLeft,
               color: AppColors.neutral, size: 20),
           onPressed: () => context.pop(),
         ),
@@ -165,7 +166,7 @@ class _AttendanceHistoryScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month_outlined,
+            icon: const Icon(LucideIcons.calendarDays,
                 color: AppColors.neutral),
             onPressed: _pickMonth,
             tooltip: 'Chọn tháng',
@@ -213,7 +214,7 @@ class _AttendanceHistoryScreenState
                             color: const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.chevron_left_rounded,
+                          child: const Icon(LucideIcons.chevronLeft,
                               size: 20, color: AppColors.neutral),
                         ),
                       ),
@@ -234,7 +235,7 @@ class _AttendanceHistoryScreenState
                             color: const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.chevron_right_rounded,
+                          child: const Icon(LucideIcons.chevronRight,
                               size: 20, color: AppColors.neutral),
                         ),
                       ),
@@ -249,7 +250,7 @@ class _AttendanceHistoryScreenState
                   children: [
                     Expanded(
                       child: _buildStatBadge(
-                        icon: Icons.access_time_filled_rounded,
+                        icon: LucideIcons.clock,
                         color: AppColors.primary,
                         title: 'Tổng giờ',
                         value: '${totalHours.toStringAsFixed(1)}h',
@@ -258,7 +259,7 @@ class _AttendanceHistoryScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildStatBadge(
-                        icon: Icons.event_available_rounded,
+                        icon: LucideIcons.calendarCheck,
                         color: const Color(0xFF70B843),
                         title: 'Ngày làm',
                         value: '$uniqueDays ngày',
@@ -267,7 +268,7 @@ class _AttendanceHistoryScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildStatBadge(
-                        icon: Icons.receipt_long_rounded,
+                        icon: LucideIcons.receiptText,
                         color: const Color(0xFF0066CC),
                         title: 'Số ca',
                         value: '$totalShifts ca',
@@ -316,7 +317,7 @@ class _AttendanceHistoryScreenState
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.history_toggle_off_rounded,
+                        Icon(LucideIcons.history,
                             size: 48, color: Colors.grey[400]),
                         const SizedBox(height: 12),
                         Text(
@@ -371,7 +372,7 @@ class _AttendanceHistoryScreenState
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.calendar_today_rounded,
+                                    LucideIcons.calendar,
                                     size: 14,
                                     color: isActive
                                         ? AppColors.primary
@@ -436,7 +437,7 @@ class _AttendanceHistoryScreenState
                                             BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
-                                        Icons.login_rounded,
+                                        LucideIcons.logIn,
                                         color: Color(0xFF2E7D32),
                                         size: 16,
                                       ),
@@ -468,7 +469,7 @@ class _AttendanceHistoryScreenState
                               ),
 
                               // Arrow
-                              const Icon(Icons.arrow_forward_rounded,
+                              const Icon(LucideIcons.arrowRight,
                                   size: 14, color: Color(0xFF9CA3AF)),
 
                               // Check Out
@@ -513,8 +514,8 @@ class _AttendanceHistoryScreenState
                                       ),
                                       child: Icon(
                                         a.checkOut != null
-                                            ? Icons.logout_rounded
-                                            : Icons.timelapse_rounded,
+                                            ? LucideIcons.logOut
+                                            : LucideIcons.timer,
                                         color: a.checkOut != null
                                             ? AppColors.primary
                                             : const Color(0xFF856404),

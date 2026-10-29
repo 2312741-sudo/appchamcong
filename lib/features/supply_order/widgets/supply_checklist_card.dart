@@ -11,6 +11,7 @@ import '../repositories/supply_order_repository.dart';
 import '../supply_reminder_service.dart';
 import '../../attendance/providers/attendance_provider.dart';
 import '../screens/supply_order_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Thẻ trên Dashboard: hàng cần soạn hôm nay (tích "Đã soạn") + lối tắt đặt hàng ngày mai.
 class SupplyChecklistCard extends ConsumerWidget {
@@ -56,7 +57,7 @@ class SupplyChecklistCard extends ConsumerWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.inventory_2_rounded, color: AppColors.primary),
+          const Icon(LucideIcons.package, color: AppColors.primary),
           const SizedBox(width: 8),
           Expanded(child: Text('Đặt & soạn hàng', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 15))),
         ]),
@@ -77,7 +78,7 @@ class SupplyChecklistCard extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(children: [
-              Icon(total == 0 ? Icons.inbox_outlined : (allDone ? Icons.check_circle : Icons.pending_actions_rounded),
+              Icon(total == 0 ? LucideIcons.inbox : (allDone ? LucideIcons.circleCheck : LucideIcons.clipboardClock),
                   color: total == 0 ? AppColors.textDisabled : (allDone ? AppColors.success : AppColors.warning)),
               const SizedBox(width: 10),
               Expanded(
@@ -88,7 +89,7 @@ class SupplyChecklistCard extends ConsumerWidget {
                   style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
                 ),
               ),
-              if (total > 0) const Icon(Icons.chevron_right),
+              if (total > 0) const Icon(LucideIcons.chevronRight),
             ]),
           ),
         ),
@@ -107,7 +108,7 @@ class SupplyChecklistCard extends ConsumerWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () => open(tomorrow),
-            icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+            icon: const Icon(LucideIcons.shoppingCart, size: 18),
             label: Text(tomorrowCount == 0 ? 'Đặt hàng cho ngày mai' : 'Ngày mai: $tomorrowCount món đã đặt — thêm / xem'),
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary, side: const BorderSide(color: AppColors.primary)),
           ),

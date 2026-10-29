@@ -12,6 +12,7 @@ import '../../../models/task_assignment_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Modal / Dialog tạo và giao việc mới cho nhân viên cửa hàng.
 /// Dành cho Chủ cửa hàng (Owner), Quản lý 1 (Manager 1), Quản lý 2 (Manager 2).
@@ -400,7 +401,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const Icon(LucideIcons.circleCheck, color: Colors.white),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -477,8 +478,8 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                   ),
                   child: Icon(
                     widget.taskToEdit != null
-                        ? Icons.edit_note_rounded
-                        : Icons.assignment_add,
+                        ? LucideIcons.notebookPen
+                        : LucideIcons.clipboardPlus,
                     color: AppColors.primary,
                     size: 22,
                   ),
@@ -512,14 +513,14 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 ),
                 IconButton(
                   onPressed: () => FocusScope.of(context).unfocus(),
-                  icon: const Icon(Icons.keyboard_hide_rounded),
+                  icon: const Icon(LucideIcons.keyboardOff),
                   tooltip: 'Ẩn bàn phím',
                   splashRadius: 20,
                   color: AppColors.textSecondary,
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(LucideIcons.x),
                   splashRadius: 20,
                   color: AppColors.textSecondary,
                 ),
@@ -555,7 +556,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                         child: Row(
                           children: [
                             const Icon(
-                              Icons.error_outline_rounded,
+                              LucideIcons.circleAlert,
                               color: AppColors.danger,
                               size: 20,
                             ),
@@ -597,7 +598,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                         filled: true,
                         fillColor: AppColors.surface,
                         prefixIcon: const Icon(
-                          Icons.title_rounded,
+                          LucideIcons.type,
                           color: AppColors.textSecondary,
                           size: 20,
                         ),
@@ -717,7 +718,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
-                              Icons.camera_alt_rounded,
+                              LucideIcons.camera,
                               color: _requirePhoto
                                   ? const Color(0xFFD97706)
                                   : AppColors.textSecondary,
@@ -841,8 +842,8 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                                 children: [
                                   Icon(
                                     widget.taskToEdit != null
-                                        ? Icons.save_rounded
-                                        : Icons.add_task_rounded,
+                                        ? LucideIcons.save
+                                        : LucideIcons.listPlus,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
@@ -944,7 +945,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Expanded(
                 child: _buildSegmentButton(
                   title: 'Ngày cụ thể',
-                  icon: Icons.event_rounded,
+                  icon: LucideIcons.calendar,
                   isSelected: _repeatMode == 0,
                   onTap: () {
                     setState(() {
@@ -961,7 +962,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Expanded(
                 child: _buildSegmentButton(
                   title: 'Lặp mỗi ngày',
-                  icon: Icons.repeat_rounded,
+                  icon: LucideIcons.repeat,
                   isSelected: _repeatMode == 1,
                   onTap: () {
                     setState(() {
@@ -975,7 +976,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Expanded(
                 child: _buildSegmentButton(
                   title: 'Lặp theo thứ',
-                  icon: Icons.event_repeat_rounded,
+                  icon: LucideIcons.calendarSync,
                   isSelected: _repeatMode == 2,
                   onTap: () {
                     setState(() {
@@ -1007,7 +1008,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             child: Row(
               children: [
                 const Icon(
-                  Icons.info_outline_rounded,
+                  LucideIcons.info,
                   size: 18,
                   color: AppColors.primary,
                 ),
@@ -1139,7 +1140,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline_rounded,
+                      const Icon(LucideIcons.circleCheck,
                           size: 16, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Expanded(
@@ -1225,7 +1226,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                 ],
                 ActionChip(
                   avatar: const Icon(
-                    Icons.calendar_month_rounded,
+                    LucideIcons.calendarDays,
                     size: 16,
                     color: AppColors.primary,
                   ),
@@ -1274,7 +1275,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                       ),
                     ),
                     deleteIcon: const Icon(
-                      Icons.close_rounded,
+                      LucideIcons.x,
                       size: 16,
                       color: AppColors.primary,
                     ),
@@ -1305,7 +1306,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                  const Icon(LucideIcons.info, size: 16, color: Colors.orange),
                   const SizedBox(width: 8),
                   Text(
                     'Chưa chọn ngày nào. Vui lòng bấm chọn ngày phía trên.',
@@ -1392,7 +1393,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Expanded(
                 child: _buildSegmentButton(
                   title: 'Toàn cửa hàng',
-                  icon: Icons.storefront_rounded,
+                  icon: LucideIcons.store,
                   isSelected: _targetType == TaskTargetType.allStore,
                   onTap: () {
                     setState(() {
@@ -1406,7 +1407,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Expanded(
                 child: _buildSegmentButton(
                   title: 'Theo bộ phận',
-                  icon: Icons.apartment_rounded,
+                  icon: LucideIcons.building,
                   isSelected: _targetType == TaskTargetType.department,
                   onTap: () {
                     setState(() {
@@ -1423,7 +1424,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
               Expanded(
                 child: _buildSegmentButton(
                   title: 'Cá nhân/nhóm',
-                  icon: Icons.group_outlined,
+                  icon: LucideIcons.users,
                   isSelected: _targetType == TaskTargetType.individual,
                   onTap: () {
                     setState(() {
@@ -1469,7 +1470,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline_rounded, size: 18, color: Colors.orange),
+                const Icon(LucideIcons.info, size: 18, color: Colors.orange),
                 const SizedBox(width: 8),
                 Text(
                   'Chưa thiết lập bộ phận',
@@ -1571,7 +1572,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
+                const Icon(LucideIcons.info, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1638,7 +1639,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.people_outline_rounded, size: 16, color: AppColors.primary),
+                const Icon(LucideIcons.users, size: 16, color: AppColors.primary),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -1679,7 +1680,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+                          const Icon(LucideIcons.circleCheck, size: 18, color: AppColors.success),
                           const SizedBox(width: 8),
                           AvatarWidget(name: member.name, avatarUrl: member.avatarUrl, radius: 14),
                           const SizedBox(width: 8),
@@ -1830,7 +1831,7 @@ class _CreateTaskDialogState extends ConsumerState<CreateTaskDialog> {
                   color: AppColors.textDisabled,
                 ),
                 prefixIcon: const Icon(
-                  Icons.search_rounded,
+                  LucideIcons.search,
                   size: 18,
                   color: AppColors.textSecondary,
                 ),

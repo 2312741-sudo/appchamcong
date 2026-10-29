@@ -23,6 +23,7 @@ import '../../features/task_assignment/widgets/shift_tasks_card.dart';
 import '../../features/supply_order/widgets/supply_checklist_card.dart';
 
 import '../../core/services/app_update_service.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class OwnerDashboard extends ConsumerStatefulWidget {
   const OwnerDashboard({super.key});
@@ -108,7 +109,7 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
         backgroundColor: AppColors.ownerAccent,
         foregroundColor: Colors.white,
         elevation: 4,
-        icon: const Icon(Icons.fingerprint_rounded, size: 22),
+        icon: const Icon(LucideIcons.fingerprint, size: 22),
         label: const Text(
           'Chấm công',
           style: TextStyle(
@@ -133,10 +134,10 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
             children: [
-              _OwnerNavItem(icon: Icons.home_rounded, label: 'Tổng quan', index: 0, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
-              _OwnerNavItem(icon: Icons.people_alt_rounded, label: 'Nhân viên', index: 1, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
-              _OwnerNavItem(icon: Icons.table_chart_rounded, label: 'Bảng công', index: 2, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
-              _OwnerNavItem(icon: Icons.settings_rounded, label: 'Cài đặt', index: 3, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _OwnerNavItem(icon: LucideIcons.house, label: 'Tổng quan', index: 0, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _OwnerNavItem(icon: LucideIcons.users, label: 'Nhân viên', index: 1, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _OwnerNavItem(icon: LucideIcons.sheet, label: 'Bảng công', index: 2, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _OwnerNavItem(icon: LucideIcons.settings, label: 'Cài đặt', index: 3, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
             ],
           ),
         ),
@@ -222,7 +223,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                const Icon(Icons.arrow_drop_down, color: Colors.white, size: 24),
+                                const Icon(LucideIcons.chevronDown, color: Colors.white, size: 24),
                               ],
                             ),
                           ),
@@ -237,7 +238,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.workspace_premium_rounded, color: AppColors.accent, size: 15),
+                                Icon(LucideIcons.award, color: AppColors.accent, size: 15),
                                 SizedBox(width: 6),
                                 Text('CHỦ CỬA HÀNG', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5, fontFamily: 'BeVietnamPro')),
                               ],
@@ -320,7 +321,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Color(0xFFE65100), size: 22),
+                      const Icon(LucideIcons.triangleAlert, color: Color(0xFFE65100), size: 22),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -379,16 +380,16 @@ class _OwnerHomeTab extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: _StatCard(value: workingNow.toString(), label: 'Đang làm', icon: Icons.work_rounded, color: AppColors.success)),
+                    Expanded(child: _StatCard(value: workingNow.toString(), label: 'Đang làm', icon: LucideIcons.briefcase, color: AppColors.success)),
                     const SizedBox(width: 12),
-                    Expanded(child: _StatCard(value: doneToday.toString(), label: 'Đã ra ca', icon: Icons.check_circle_rounded, color: AppColors.info)),
+                    Expanded(child: _StatCard(value: doneToday.toString(), label: 'Đã ra ca', icon: LucideIcons.circleCheck, color: AppColors.info)),
                     const SizedBox(width: 12),
-                    Expanded(child: _StatCard(value: activeCount.toString(), label: 'Tổng NV', icon: Icons.people_rounded, color: AppColors.primaryDark)),
+                    Expanded(child: _StatCard(value: activeCount.toString(), label: 'Tổng NV', icon: LucideIcons.users, color: AppColors.primaryDark)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: GestureDetector(
                         onTap: pendingCount > 0 ? () => GoRouter.of(context).push(AppRoutes.pendingMembers) : null,
-                        child: _StatCard(value: pendingCount.toString(), label: 'Chờ duyệt', icon: Icons.pending_rounded, color: AppColors.primary, highlight: pendingCount > 0),
+                        child: _StatCard(value: pendingCount.toString(), label: 'Chờ duyệt', icon: LucideIcons.circleEllipsis, color: AppColors.primary, highlight: pendingCount > 0),
                       ),
                     ),
                   ],
@@ -476,7 +477,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.warning_amber_rounded, size: 11, color: Color(0xFFE65100)),
+                                            const Icon(LucideIcons.triangleAlert, size: 11, color: Color(0xFFE65100)),
                                             const SizedBox(width: 3),
                                             Text(
                                               lateWarning,
@@ -538,17 +539,17 @@ class _OwnerHomeTab extends ConsumerWidget {
               children: [
                 const Text('Công cụ quản lý', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: AppColors.neutral)),
                 const SizedBox(height: 12),
-                _ToolCard(icon: Icons.fingerprint_rounded, label: 'Chấm công của tôi', sub: 'Chấm vào/ra ca nhanh', color: AppColors.primary, onTap: () => GoRouter.of(context).push(AppRoutes.checkIn)),
+                _ToolCard(icon: LucideIcons.fingerprint, label: 'Chấm công của tôi', sub: 'Chấm vào/ra ca nhanh', color: AppColors.primary, onTap: () => GoRouter.of(context).push(AppRoutes.checkIn)),
                 const SizedBox(height: 10),
-                _ToolCard(icon: Icons.calendar_month_rounded, label: 'Quản lý lịch làm', sub: 'Xem & chỉnh lịch toàn bộ NV', color: AppColors.info, onTap: () => GoRouter.of(context).push(AppRoutes.scheduleManager)),
+                _ToolCard(icon: LucideIcons.calendarDays, label: 'Quản lý lịch làm', sub: 'Xem & chỉnh lịch toàn bộ NV', color: AppColors.info, onTap: () => GoRouter.of(context).push(AppRoutes.scheduleManager)),
                 const SizedBox(height: 10),
-                _ToolCard(icon: Icons.payments_rounded, label: 'Báo cáo lương', sub: 'Tổng hợp lương tháng', color: AppColors.success, onTap: () => GoRouter.of(context).push(AppRoutes.salaryOverview)),
+                _ToolCard(icon: LucideIcons.banknote, label: 'Báo cáo lương', sub: 'Tổng hợp lương tháng', color: AppColors.success, onTap: () => GoRouter.of(context).push(AppRoutes.salaryOverview)),
                 const SizedBox(height: 10),
-                _ToolCard(icon: Icons.account_balance_wallet_rounded, label: 'Duyệt tạm ứng', sub: 'Xem yêu cầu ứng lương', color: AppColors.accentInk, onTap: () => GoRouter.of(context).push(AppRoutes.manageAdvances)),
+                _ToolCard(icon: LucideIcons.wallet, label: 'Duyệt tạm ứng', sub: 'Xem yêu cầu ứng lương', color: AppColors.accentInk, onTap: () => GoRouter.of(context).push(AppRoutes.manageAdvances)),
                 const SizedBox(height: 10),
-                _ToolCard(icon: Icons.qr_code_rounded, label: 'QR chấm công', sub: 'Chia sẻ mã QR cho NV', color: AppColors.primaryDark, onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
+                _ToolCard(icon: LucideIcons.qrCode, label: 'QR chấm công', sub: 'Chia sẻ mã QR cho NV', color: AppColors.primaryDark, onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
                 const SizedBox(height: 10),
-                _ToolCard(icon: Icons.assignment_outlined, label: 'Giao việc & Quản lý việc', sub: 'Phân công công việc & theo dõi báo cáo NV', color: AppColors.managerAccent, onTap: () => GoRouter.of(context).push(AppRoutes.taskManagement)),
+                _ToolCard(icon: LucideIcons.clipboardList, label: 'Giao việc & Quản lý việc', sub: 'Phân công công việc & theo dõi báo cáo NV', color: AppColors.managerAccent, onTap: () => GoRouter.of(context).push(AppRoutes.taskManagement)),
               ],
             ),
           ),
@@ -626,14 +627,14 @@ class _OwnerSettingsTab extends ConsumerWidget {
 
           _SettingsSection(title: 'Chấm công & Cá nhân', items: [
             _SettingsItem(
-              icon: Icons.fingerprint_rounded,
+              icon: LucideIcons.fingerprint,
               label: 'Chấm công',
               sub: 'Chấm vào ca / ra ca (WiFi, GPS, QR)',
               color: AppColors.primary,
               onTap: () => GoRouter.of(context).push(AppRoutes.checkIn),
             ),
             _SettingsItem(
-              icon: Icons.history_rounded,
+              icon: LucideIcons.history,
               label: 'Lịch sử chấm công của tôi',
               sub: 'Xem chi tiết ngày công và giờ vào/ra',
               color: AppColors.info,
@@ -642,14 +643,14 @@ class _OwnerSettingsTab extends ConsumerWidget {
               ),
             ),
             _SettingsItem(
-              icon: Icons.calendar_month_rounded,
+              icon: LucideIcons.calendarDays,
               label: 'Lịch làm việc & Đăng ký ca',
               sub: 'Xem và đăng ký ca làm cá nhân',
               color: AppColors.success,
               onTap: () => GoRouter.of(context).push(AppRoutes.scheduleRegister),
             ),
             _SettingsItem(
-              icon: Icons.payments_rounded,
+              icon: LucideIcons.banknote,
               label: 'Bảng lương của tôi',
               sub: 'Xem lương và tạm ứng cá nhân',
               color: AppColors.accentInk,
@@ -659,14 +660,14 @@ class _OwnerSettingsTab extends ConsumerWidget {
           const SizedBox(height: 12),
 
           _SettingsSection(title: 'Cửa hàng', items: [
-            _SettingsItem(icon: Icons.store_rounded, label: 'Cài đặt cửa hàng', sub: store.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
-            _SettingsItem(icon: Icons.schedule_rounded, label: 'Quản lý ca làm', onTap: () => GoRouter.of(context).push(AppRoutes.shiftSettings)),
-            _SettingsItem(icon: Icons.qr_code_rounded, label: 'Mã QR cửa hàng', onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
+            _SettingsItem(icon: LucideIcons.store, label: 'Cài đặt cửa hàng', sub: store.name, onTap: () => GoRouter.of(context).push(AppRoutes.storeSettings)),
+            _SettingsItem(icon: LucideIcons.clock, label: 'Quản lý ca làm', onTap: () => GoRouter.of(context).push(AppRoutes.shiftSettings)),
+            _SettingsItem(icon: LucideIcons.qrCode, label: 'Mã QR cửa hàng', onTap: () => GoRouter.of(context).push(AppRoutes.qrDisplay)),
           ]),
           const SizedBox(height: 12),
           _SettingsSection(title: 'Tài khoản', items: [
-            _SettingsItem(icon: Icons.person_rounded, label: 'Hồ sơ cá nhân', onTap: () => GoRouter.of(context).push(AppRoutes.profileSettings)),
-            _SettingsItem(icon: Icons.logout_rounded, label: 'Đăng xuất', color: Colors.red, onTap: () async {
+            _SettingsItem(icon: LucideIcons.user, label: 'Hồ sơ cá nhân', onTap: () => GoRouter.of(context).push(AppRoutes.profileSettings)),
+            _SettingsItem(icon: LucideIcons.logOut, label: 'Đăng xuất', color: Colors.red, onTap: () async {
               final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
                 title: const Text('Đăng xuất?'),
                 actions: [
@@ -759,7 +760,7 @@ class _ToolCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            Icon(LucideIcons.chevronRight, color: Colors.grey[400]),
           ],
         ),
       ),
@@ -797,7 +798,7 @@ class _SettingsSection extends StatelessWidget {
                       leading: Icon(item.icon, color: item.color ?? AppColors.neutral, size: 22),
                       title: Text(item.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', color: item.color ?? AppColors.neutral)),
                       subtitle: item.sub != null ? Text(item.sub!, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'BeVietnamPro')) : null,
-                      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                      trailing: const Icon(LucideIcons.chevronRight, color: Colors.grey),
                     ),
                   ),
                   if (!isLast) const Divider(height: 1, indent: 56),
@@ -904,10 +905,10 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
                 ),
                 child: Icon(
                   isActive
-                      ? Icons.timer_rounded
+                      ? LucideIcons.timer
                       : isDone
-                          ? Icons.check_circle_rounded
-                          : Icons.fingerprint_rounded,
+                          ? LucideIcons.circleCheck
+                          : LucideIcons.fingerprint,
                   color: isActive
                       ? AppColors.success
                       : isDone
@@ -958,7 +959,7 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: () => context.push(AppRoutes.checkIn),
                 icon: Icon(
-                  isActive ? Icons.logout_rounded : Icons.fingerprint_rounded,
+                  isActive ? LucideIcons.logOut : LucideIcons.fingerprint,
                   size: 16,
                 ),
                 label: Text(
@@ -991,7 +992,7 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _PersonalQuickLink(
-                icon: Icons.history_rounded,
+                icon: LucideIcons.history,
                 label: 'Lịch sử công',
                 onTap: () => context.push(
                   Uri(
@@ -1001,12 +1002,12 @@ class _OwnerPersonalAttendanceCard extends StatelessWidget {
                 ),
               ),
               _PersonalQuickLink(
-                icon: Icons.calendar_month_rounded,
+                icon: LucideIcons.calendarDays,
                 label: 'Lịch cá nhân',
                 onTap: () => context.push(AppRoutes.scheduleRegister),
               ),
               _PersonalQuickLink(
-                icon: Icons.payments_rounded,
+                icon: LucideIcons.banknote,
                 label: 'Lương cá nhân',
                 onTap: () => context.push(AppRoutes.salary),
               ),

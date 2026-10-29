@@ -7,6 +7,7 @@ import '../providers/supply_order_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../supply_export.dart';
 import 'supply_order_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Lịch sử phiếu đặt / soạn hàng theo ngày
 class SupplyHistoryScreen extends ConsumerWidget {
@@ -25,7 +26,7 @@ class SupplyHistoryScreen extends ConsumerWidget {
           const ListTile(title: Text('Xuất Excel tháng', style: TextStyle(fontWeight: FontWeight.bold))),
           for (final m in months)
             ListTile(
-              leading: const Icon(Icons.calendar_month_outlined),
+              leading: const Icon(LucideIcons.calendarDays),
               title: Text('Tháng ${m.month}/${m.year}'),
               onTap: () => Navigator.pop(ctx, m),
             ),
@@ -64,7 +65,7 @@ class SupplyHistoryScreen extends ConsumerWidget {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(tooltip: 'Xuất Excel', icon: const Icon(Icons.file_download_outlined), onPressed: () => _export(context, ref)),
+          IconButton(tooltip: 'Xuất Excel', icon: const Icon(LucideIcons.download), onPressed: () => _export(context, ref)),
         ],
       ),
       body: ordersAsync.when(
@@ -85,13 +86,13 @@ class SupplyHistoryScreen extends ConsumerWidget {
               return Container(
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
                 child: ListTile(
-                  leading: Icon(o.isAllPrepared ? Icons.check_circle : Icons.pending_actions_rounded,
+                  leading: Icon(o.isAllPrepared ? LucideIcons.circleCheck : LucideIcons.clipboardClock,
                       color: o.isAllPrepared ? AppColors.success : AppColors.warning),
                   title: Text(SupplyDateUtils.label(o.date), style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
                   subtitle: Text('${o.lines.length} món • đã soạn ${o.preparedCount}/${o.lines.length}'
                       '${names.isEmpty ? "" : "\nĐặt bởi: ${names.join(", ")}"}'),
                   isThreeLine: names.isNotEmpty,
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const Icon(LucideIcons.chevronRight),
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyOrderScreen(initialDate: o.date))),
                 ),
               );

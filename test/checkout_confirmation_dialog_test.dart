@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:cham_cong_tram/core/constants/app_colors.dart';
 import 'package:cham_cong_tram/models/attendance_model.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 Widget createTestApp(Widget child) {
   return MaterialApp(
@@ -46,7 +47,7 @@ void main() {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       title: const Row(
                         children: [
-                          Icon(Icons.logout_rounded, color: AppColors.primary),
+                          Icon(LucideIcons.logOut, color: AppColors.primary),
                           SizedBox(width: 12),
                           Text('Xác nhận ra ca'),
                         ],

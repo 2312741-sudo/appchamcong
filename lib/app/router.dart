@@ -41,6 +41,7 @@ import '../features/task_assignment/screens/task_management_screen.dart';
 import '../features/task_assignment/screens/task_detail_screen.dart';
 import '../models/task_assignment_model.dart';
 import '../models/member_model.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // Route path constants
 class AppRoutes {
@@ -403,7 +404,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Color(0xFFC8102E)),
+            const Icon(LucideIcons.circleAlert, size: 64, color: Color(0xFFC8102E)),
             const SizedBox(height: 16),
             Text(
               'Không tìm thấy trang',

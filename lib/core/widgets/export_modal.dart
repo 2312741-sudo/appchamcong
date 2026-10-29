@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/member_model.dart';
 import '../constants/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ExportModal extends StatefulWidget {
   final List<MemberModel> members;
@@ -144,7 +145,7 @@ class _ExportModalState extends State<ExportModal> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Tháng ${_monthDate.month}/${_monthDate.year}', style: const TextStyle(fontFamily: 'BeVietnamPro')),
-                    const Icon(Icons.calendar_month, color: AppColors.textSecondary, size: 20),
+                    const Icon(LucideIcons.calendarDays, color: AppColors.textSecondary, size: 20),
                   ],
                 ),
               ),
@@ -161,7 +162,7 @@ class _ExportModalState extends State<ExportModal> {
                     Text(_startDate != null && _endDate != null
                         ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year} - ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
                         : 'Chọn khoảng ngày', style: const TextStyle(fontFamily: 'BeVietnamPro')),
-                    const Icon(Icons.date_range, color: AppColors.textSecondary, size: 20),
+                    const Icon(LucideIcons.calendarRange, color: AppColors.textSecondary, size: 20),
                   ],
                 ),
               ),

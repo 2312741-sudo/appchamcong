@@ -11,6 +11,7 @@ import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
 import 'create_task_dialog.dart';
 import 'task_detail_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Màn hình Quản lý & Giao việc (Dành cho Chủ cửa hàng, Quản lý 1, Quản lý 2).
 /// Hiển thị danh sách các công việc đã giao, lọc theo ngày thực hiện,
@@ -306,7 +307,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
+            icon: Icon(_isSearching ? LucideIcons.x : LucideIcons.search),
             onPressed: () {
               setState(() {
                 if (_isSearching) {
@@ -320,7 +321,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.add_task_rounded, color: AppColors.primary),
+            icon: const Icon(LucideIcons.listPlus, color: AppColors.primary),
             tooltip: 'Giao việc mới',
             onPressed: _openCreateTaskDialog,
           ),
@@ -331,7 +332,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 3,
-        icon: const Icon(Icons.add_task_rounded, size: 20),
+        icon: const Icon(LucideIcons.listPlus, size: 20),
         label: Text(
           'Giao việc mới',
           style: GoogleFonts.beVietnamPro(
@@ -368,7 +369,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
               ),
               error: (err, stack) => Center(
                 child: EmptyState(
-                  icon: Icons.error_outline_rounded,
+                  icon: LucideIcons.circleAlert,
                   message: 'Lỗi tải danh sách công việc',
                   subtitle: err.toString(),
                 ),
@@ -405,7 +406,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                   return Center(
                     child: SingleChildScrollView(
                       child: EmptyState(
-                        icon: Icons.assignment_outlined,
+                        icon: LucideIcons.clipboardList,
                         message: _selectedDate != null
                             ? 'Không có công việc nào trong ngày này'
                             : 'Chưa có công việc nào được giao',
@@ -546,7 +547,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
           // Nút chọn ngày khác qua DatePicker
           ActionChip(
             avatar: const Icon(
-              Icons.calendar_month_rounded,
+              LucideIcons.calendarDays,
               size: 15,
               color: AppColors.primary,
             ),
@@ -679,7 +680,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.repeat_rounded,
+                              LucideIcons.repeat,
                               size: 13,
                               color: AppColors.primary,
                             ),
@@ -708,7 +709,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.event_repeat_rounded,
+                              LucideIcons.calendarSync,
                               size: 13,
                               color: AppColors.primary,
                             ),
@@ -738,7 +739,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.camera_alt_outlined,
+                              LucideIcons.camera,
                               size: 13,
                               color: Color(0xFFD97706),
                             ),
@@ -758,7 +759,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                     // Menu actions
                     PopupMenuButton<String>(
                       icon: const Icon(
-                        Icons.more_vert_rounded,
+                        LucideIcons.ellipsisVertical,
                         size: 20,
                         color: AppColors.textSecondary,
                       ),
@@ -787,7 +788,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           value: 'detail',
                           child: Row(
                             children: [
-                              const Icon(Icons.visibility_outlined,
+                              const Icon(LucideIcons.eye,
                                   size: 18, color: AppColors.textSecondary),
                               const SizedBox(width: 8),
                               Text('Xem chi tiết',
@@ -800,7 +801,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           value: 'edit',
                           child: Row(
                             children: [
-                              const Icon(Icons.edit_outlined,
+                              const Icon(LucideIcons.pencil,
                                   size: 18, color: AppColors.primary),
                               const SizedBox(width: 8),
                               Text('Chỉnh sửa công việc',
@@ -814,7 +815,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                             value: 'complete',
                             child: Row(
                               children: [
-                                const Icon(Icons.check_circle_outline_rounded,
+                                const Icon(LucideIcons.circleCheck,
                                     size: 18, color: AppColors.success),
                                 const SizedBox(width: 8),
                                 Text('Đánh dấu hoàn thành',
@@ -827,7 +828,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                             value: 'cancel',
                             child: Row(
                               children: [
-                                const Icon(Icons.cancel_outlined,
+                                const Icon(LucideIcons.circleX,
                                     size: 18, color: Colors.orange),
                                 const SizedBox(width: 8),
                                 Text('Hủy việc',
@@ -841,7 +842,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                           value: 'delete',
                           child: Row(
                             children: [
-                              const Icon(Icons.delete_outline_rounded,
+                              const Icon(LucideIcons.trash2,
                                   size: 18, color: AppColors.danger),
                               const SizedBox(width: 8),
                               Text('Xóa vĩnh viễn',
@@ -889,7 +890,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                 // 1. Người giao việc
                 Row(
                   children: [
-                    const Icon(Icons.person_pin_circle_outlined,
+                    const Icon(LucideIcons.mapPin,
                         size: 15, color: AppColors.primary),
                     const SizedBox(width: 6),
                     Text(
@@ -920,10 +921,10 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                   children: [
                     Icon(
                       task.isAllStore
-                          ? Icons.storefront_rounded
+                          ? LucideIcons.store
                           : (task.isDepartment
-                              ? Icons.apartment_rounded
-                              : Icons.group_outlined),
+                              ? LucideIcons.building
+                              : LucideIcons.users),
                       size: 15,
                       color: AppColors.textSecondary,
                     ),
@@ -959,7 +960,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                 // 3. Ngày thực hiện
                 Row(
                   children: [
-                    const Icon(Icons.event_note_rounded,
+                    const Icon(LucideIcons.calendarClock,
                         size: 15, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
                     Text(
@@ -989,7 +990,7 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
                       ),
                     ),
                     const Icon(
-                      Icons.arrow_forward_ios_rounded,
+                      LucideIcons.chevronRight,
                       size: 13,
                       color: AppColors.textDisabled,
                     ),
@@ -1014,25 +1015,25 @@ class _TaskManagementScreenState extends ConsumerState<TaskManagementScreen> {
         bg = AppColors.success.withValues(alpha: 0.12);
         fg = AppColors.success;
         label = 'Đang thực hiện';
-        icon = Icons.play_circle_filled_rounded;
+        icon = LucideIcons.circlePlay;
         break;
       case TaskStatus.completed:
         bg = AppColors.managerAccent.withValues(alpha: 0.12);
         fg = AppColors.managerAccent;
         label = 'Đã hoàn thành';
-        icon = Icons.check_circle_rounded;
+        icon = LucideIcons.circleCheck;
         break;
       case TaskStatus.cancelled:
         bg = Colors.red.withValues(alpha: 0.12);
         fg = Colors.red;
         label = 'Đã hủy';
-        icon = Icons.cancel_rounded;
+        icon = LucideIcons.circleX;
         break;
       case TaskStatus.archived:
         bg = Colors.grey.withValues(alpha: 0.15);
         fg = Colors.grey;
         label = 'Lưu trữ';
-        icon = Icons.archive_rounded;
+        icon = LucideIcons.archive;
         break;
     }
 

@@ -8,6 +8,7 @@ import '../../auth/providers/auth_notifier.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
 import '../../../app/router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class CreateStoreScreen extends ConsumerStatefulWidget {
   const CreateStoreScreen({super.key});
@@ -193,7 +194,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            icon: const Icon(LucideIcons.logOut, color: Colors.white),
             tooltip: 'Đăng xuất',
             onPressed: () async {
               await ref.read(authNotifierProvider.notifier).signOut();
@@ -223,7 +224,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.store_rounded,
+                      Icon(LucideIcons.store,
                           color: AppColors.primary, size: 24),
                       SizedBox(width: 12),
                       Expanded(
@@ -247,7 +248,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                 _AppTextField(
                   controller: _nameCtrl,
                   hintText: 'Ví dụ: Trạm xăng Hoàng Minh',
-                  prefixIcon: Icons.store_mall_directory_rounded,
+                  prefixIcon: LucideIcons.store,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return 'Vui lòng nhập tên cửa hàng';
@@ -266,7 +267,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                 _AppTextField(
                   controller: _addressCtrl,
                   hintText: 'Ví dụ: 123 Nguyễn Văn Cừ, Quận 5, TP.HCM',
-                  prefixIcon: Icons.location_on_rounded,
+                  prefixIcon: LucideIcons.mapPin,
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
@@ -294,7 +295,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                             color: AppColors.primary,
                           ),
                         )
-                      : const Icon(Icons.wifi_rounded),
+                      : const Icon(LucideIcons.wifi),
                   label: Text(
                     _isFetchingWifi ? 'Đang nhận diện...' : 'Lấy WiFi hiện tại',
                   ),
@@ -329,7 +330,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                         Row(
                           children: [
                             const Icon(
-                              Icons.wifi_rounded,
+                              LucideIcons.wifi,
                               color: AppColors.success,
                               size: 20,
                             ),
@@ -348,7 +349,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close,
+                              icon: const Icon(LucideIcons.x,
                                   color: AppColors.danger, size: 18),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
@@ -368,7 +369,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                             labelText: 'Tên nhận diện WiFi',
                             hintText: 'VD: WiFi Chính / Cửa hàng',
                             prefixIcon:
-                                const Icon(Icons.edit_note_rounded, size: 20),
+                                const Icon(LucideIcons.notebookPen, size: 20),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -385,7 +386,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(Icons.fingerprint_rounded,
+                            const Icon(LucideIcons.fingerprint,
                                 size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
                             Expanded(
@@ -430,7 +431,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                             color: AppColors.primary,
                           ),
                         )
-                      : const Icon(Icons.my_location_rounded),
+                      : const Icon(LucideIcons.locateFixed),
                   label: Text(
                     _isFetchingLocation
                         ? 'Đang lấy vị trí...'
@@ -461,7 +462,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle_rounded,
+                        const Icon(LucideIcons.circleCheck,
                             color: AppColors.success, size: 16),
                         const SizedBox(width: 8),
                         Text(
@@ -482,7 +483,7 @@ class _CreateStoreScreenState extends ConsumerState<CreateStoreScreen> {
                     decoration: InputDecoration(
                       labelText: 'Tên vị trí này (tùy chọn)',
                       hintText: 'VD: Cơ sở chính, Điểm bán 1...',
-                      prefixIcon: const Icon(Icons.label_outline_rounded,
+                      prefixIcon: const Icon(LucideIcons.tag,
                           color: AppColors.primary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),

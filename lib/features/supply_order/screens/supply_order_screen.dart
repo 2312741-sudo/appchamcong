@@ -12,6 +12,7 @@ import '../providers/supply_order_provider.dart';
 import 'supply_items_screen.dart';
 import 'supply_history_screen.dart';
 import 'supply_settings_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Đặt hàng (bao bì, hàng hóa) cho một ngày và tích "Đã soạn" khi vào ca.
 /// Mọi vai trò đều đặt và tích được; nhiều người cùng đặt vào MỘT phiếu của ngày.
@@ -233,7 +234,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
         chip('Hôm nay', today),
         chip('Ngày mai', tomorrow),
         const Spacer(),
-        IconButton(tooltip: 'Chọn ngày', icon: const Icon(Icons.calendar_month_outlined), onPressed: _pickDate),
+        IconButton(tooltip: 'Chọn ngày', icon: const Icon(LucideIcons.calendarDays), onPressed: _pickDate),
       ]),
     );
   }
@@ -263,15 +264,15 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
         actions: [
           IconButton(
             tooltip: 'Lịch sử phiếu',
-            icon: const Icon(Icons.history_rounded),
+            icon: const Icon(LucideIcons.history),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupplyHistoryScreen())),
           ),
           if (canCatalog)
-            IconButton(tooltip: 'Danh mục hàng', icon: const Icon(Icons.inventory_2_outlined), onPressed: _openCatalog),
+            IconButton(tooltip: 'Danh mục hàng', icon: const Icon(LucideIcons.package), onPressed: _openCatalog),
           if (canCatalog)
             IconButton(
               tooltip: 'Cài đặt giờ chốt & người soạn',
-              icon: const Icon(Icons.settings_outlined),
+              icon: const Icon(LucideIcons.settings),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupplySettingsScreen())),
             ),
         ],
@@ -304,7 +305,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
     return ids.map((id) => deps.where((d) => d.id == id).map((d) => d.name).firstOrNull ?? id).join(', ');
   }
 
-  Widget _banner(String text, {Color color = AppColors.warning, IconData icon = Icons.lock_clock}) => Container(
+  Widget _banner(String text, {Color color = AppColors.warning, IconData icon = LucideIcons.lockKeyhole}) => Container(
         margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
@@ -336,7 +337,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                     onPressed: _openCatalog,
-                    icon: const Icon(Icons.inventory_2_outlined),
+                    icon: const Icon(LucideIcons.package),
                     label: const Text('Thiết lập danh sách hàng'),
                   ),
                 ],
@@ -398,7 +399,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
                 : _banner(
                     pastCutoff ? 'Đã qua giờ chốt ($cutoffText) — bạn là Chủ/Quản lý nên vẫn sửa được.' : 'Chốt đặt hàng lúc $cutoffText.',
                     color: pastCutoff ? AppColors.warning : AppColors.info,
-                    icon: Icons.schedule,
+                    icon: LucideIcons.clock,
                   ),
           Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), children: rows)),
           SafeArea(
@@ -413,7 +414,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
                   onPressed: _saving || pending == 0 || locked ? null : () => _saveOrder(items),
                   icon: _saving
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send_rounded),
+                      : const Icon(LucideIcons.send),
                   label: Text(pending == 0 ? 'Nhập số lượng để đặt' : 'Đặt $pending món cho ${SupplyDateUtils.label(_date)}',
                       style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold)),
                 ),

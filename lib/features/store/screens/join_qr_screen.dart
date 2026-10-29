@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/store_provider.dart';
 import '../providers/user_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class JoinQrScreen extends ConsumerStatefulWidget {
   const JoinQrScreen({super.key});
@@ -104,7 +105,7 @@ class _JoinQrScreenState extends ConsumerState<JoinQrScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.flash_on_rounded),
+            icon: const Icon(LucideIcons.zap),
             onPressed: () => _controller?.toggleTorch(),
             tooltip: 'Đèn flash',
           ),
@@ -141,7 +142,7 @@ class _JoinQrScreenState extends ConsumerState<JoinQrScreen> {
                   const CircularProgressIndicator(color: Colors.white)
                 else
                   const Icon(
-                    Icons.qr_code_scanner_rounded,
+                    LucideIcons.scanQrCode,
                     color: Colors.white54,
                     size: 32,
                   ),

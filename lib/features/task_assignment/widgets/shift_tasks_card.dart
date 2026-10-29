@@ -8,6 +8,7 @@ import '../../attendance/providers/attendance_provider.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/task_provider.dart';
 import '../screens/task_report_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Thẻ hiển thị trên Dashboard ca làm việc:
 /// - Lấy danh sách task của ngày được chọn áp dụng cho user hiện tại (todayUserTasksProvider)
@@ -283,8 +284,8 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                     ),
                     child: Icon(
                       isAllDone
-                          ? Icons.task_alt_rounded
-                          : Icons.assignment_turned_in_rounded,
+                          ? LucideIcons.circleCheckBig
+                          : LucideIcons.clipboardCheck,
                       color: isAllDone ? AppColors.success : AppColors.primary,
                       size: 20,
                     ),
@@ -319,7 +320,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                                   color: AppColors.primary,
                                 ),
                               ),
-                              const Icon(Icons.arrow_drop_down_rounded,
+                              const Icon(LucideIcons.chevronDown,
                                   size: 16, color: AppColors.primary),
                             ],
                           ),
@@ -385,7 +386,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.nightlight_round, size: 13, color: Color(0xFF2563EB)),
+                      Icon(LucideIcons.moon, size: 13, color: Color(0xFF2563EB)),
                       SizedBox(width: 5),
                       Text(
                         'Ca làm việc qua đêm • Việc thuộc ca hiển thị cho đến khi ra ca',
@@ -446,7 +447,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: AppColors.border, width: 0.8),
                           ),
-                          child: const Icon(Icons.chevron_left_rounded,
+                          child: const Icon(LucideIcons.chevronLeft,
                               size: 18, color: AppColors.textSecondary),
                         ),
                       ),
@@ -461,7 +462,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: AppColors.border, width: 0.8),
                           ),
-                          child: const Icon(Icons.chevron_right_rounded,
+                          child: const Icon(LucideIcons.chevronRight,
                               size: 18, color: AppColors.textSecondary),
                         ),
                       ),
@@ -480,7 +481,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.flash_on_rounded, size: 12, color: AppColors.primary),
+                            const Icon(LucideIcons.zap, size: 12, color: AppColors.primary),
                             const SizedBox(width: 3),
                             Text(
                               'Về ca hiện tại (${activeShiftDate != null ? DateFormat('dd/MM').format(activeShiftDate) : ''})',
@@ -571,8 +572,8 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                         children: [
                           Icon(
                             isDone
-                                ? Icons.check_circle_rounded
-                                : Icons.pending_actions_rounded,
+                                ? LucideIcons.circleCheck
+                                : LucideIcons.clipboardClock,
                             color: isDone
                                 ? AppColors.success
                                 : AppColors.warning,
@@ -630,7 +631,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.repeat_rounded,
+                                              Icon(LucideIcons.repeat,
                                                   size: 10,
                                                   color: AppColors.primary),
                                               SizedBox(width: 3),
@@ -658,7 +659,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                                           child: const Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.camera_alt_rounded,
+                                              Icon(LucideIcons.camera,
                                                   size: 10,
                                                   color: Color(0xFFE65100)),
                                               SizedBox(width: 3),
@@ -682,7 +683,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                           ),
                           const SizedBox(width: 6),
                           const Icon(
-                            Icons.chevron_right_rounded,
+                            LucideIcons.chevronRight,
                             size: 18,
                             color: AppColors.textDisabled,
                           ),
@@ -741,7 +742,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
-                  Icons.task_alt_rounded,
+                  LucideIcons.circleCheckBig,
                   color: AppColors.success,
                   size: 20,
                 ),
@@ -776,7 +777,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                               color: AppColors.primary,
                             ),
                           ),
-                          const Icon(Icons.arrow_drop_down_rounded,
+                          const Icon(LucideIcons.chevronDown,
                               size: 16, color: AppColors.primary),
                         ],
                       ),
@@ -797,7 +798,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: AppColors.border, width: 0.8),
                       ),
-                      child: const Icon(Icons.chevron_left_rounded,
+                      child: const Icon(LucideIcons.chevronLeft,
                           size: 18, color: AppColors.textSecondary),
                     ),
                   ),
@@ -812,7 +813,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: AppColors.border, width: 0.8),
                       ),
-                      child: const Icon(Icons.chevron_right_rounded,
+                      child: const Icon(LucideIcons.chevronRight,
                           size: 18, color: AppColors.textSecondary),
                     ),
                   ),

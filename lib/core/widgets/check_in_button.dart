@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../constants/app_colors.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class CheckInButton extends StatefulWidget {
   final bool isCheckedIn;
@@ -72,7 +73,7 @@ class _CheckInButtonState extends State<CheckInButton>
         ? AppColors.checkInButtonGradient
         : AppColors.checkOutButtonGradient;
     final icon =
-        widget.isCheckedIn ? Icons.logout_rounded : Icons.fingerprint_rounded;
+        widget.isCheckedIn ? LucideIcons.logOut : LucideIcons.fingerprint;
     final label =
         widget.isCheckedIn ? 'Chấm ra' : 'CHẤM CÔNG';
 

@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
 import '../utils/version_utils.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AppVersionControlModel {
   final String latestVersion;
@@ -173,7 +174,7 @@ class AppUpdateService {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isForce ? Icons.system_update_rounded : Icons.new_releases_rounded,
+                    isForce ? LucideIcons.smartphone : LucideIcons.badgeAlert,
                     color: Colors.white,
                     size: 28,
                   ),
@@ -225,7 +226,7 @@ class AppUpdateService {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 18),
+                      const Icon(LucideIcons.triangleAlert, color: Color(0xFFDC2626), size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(

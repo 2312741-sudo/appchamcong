@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/loading_overlay.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -126,7 +127,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.person_outline_rounded,
+                      LucideIcons.user,
                       size: 48,
                       color: AppColors.primary,
                     ),
@@ -142,7 +143,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     decoration: const InputDecoration(
                       labelText: AppStrings.fullName,
                       hintText: AppStrings.fullNameHint,
-                      prefixIcon: Icon(Icons.person_outline),
+                      prefixIcon: Icon(LucideIcons.user),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -163,7 +164,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     decoration: const InputDecoration(
                       labelText: AppStrings.phoneNumber,
                       hintText: AppStrings.phoneHint,
-                      prefixIcon: Icon(Icons.phone_outlined),
+                      prefixIcon: Icon(LucideIcons.phone),
                     ),
                     validator: (value) {
                       if (value != null && value.isNotEmpty) {

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../models/supply_order_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../providers/supply_order_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Cài đặt đặt & soạn hàng: giờ chốt đặt hàng, bộ phận soạn hàng khi vào ca. Chủ, QL1, QL2 chỉnh.
 class SupplySettingsScreen extends ConsumerStatefulWidget {
@@ -94,7 +95,7 @@ class _SupplySettingsScreenState extends ConsumerState<SupplySettingsScreen> {
                   ),
                   if (_hasCutoff)
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.schedule),
+                      icon: const Icon(LucideIcons.clock),
                       label: Text('Chốt lúc ${_fmt(_cutoff)} mỗi ngày'),
                       onPressed: canEdit
                           ? () async {

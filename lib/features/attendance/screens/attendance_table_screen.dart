@@ -10,6 +10,7 @@ import '../../../core/auth/app_permissions.dart';
 import '../../../models/member_model.dart';
 import '../../store/providers/store_provider.dart';
 import '../repositories/attendance_repository.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
@@ -55,7 +56,7 @@ class AttendanceTableScreen extends ConsumerWidget {
                     color: AppColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_rounded, size: 40, color: AppColors.primary),
+                  child: const Icon(LucideIcons.lock, size: 40, color: AppColors.primary),
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -105,7 +106,7 @@ class AttendanceTableScreen extends ConsumerWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.download_rounded),
+            icon: const Icon(LucideIcons.download),
             tooltip: 'Xuất Excel Tháng',
             onPressed: () {
               final membersData = membersAsync.valueOrNull;
@@ -204,7 +205,7 @@ class AttendanceTableScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.group_off_rounded,
+                  Icon(LucideIcons.userX,
                       size: 64, color: AppColors.textSecondary),
                   SizedBox(height: 16),
                   Text('Cửa hàng chưa có nhân viên nào',
@@ -228,7 +229,7 @@ class AttendanceTableScreen extends ConsumerWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.touch_app_rounded,
+                    const Icon(LucideIcons.pointer,
                         size: 16, color: AppColors.textSecondary),
                     const SizedBox(width: 6),
                     const Text(
@@ -358,10 +359,10 @@ class _MemberCard extends StatelessWidget {
             ),
 
             // Chevron
-            const Icon(Icons.calendar_month_rounded,
+            const Icon(LucideIcons.calendarDays,
                 color: AppColors.primary, size: 22),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded,
+            const Icon(LucideIcons.chevronRight,
                 color: AppColors.textSecondary),
           ],
         ),

@@ -23,6 +23,7 @@ import '../task_assignment/widgets/shift_tasks_card.dart';
 import '../supply_order/widgets/supply_checklist_card.dart';
 
 import '../../core/services/app_update_service.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ManagerDashboard extends ConsumerStatefulWidget {
   const ManagerDashboard({super.key});
@@ -135,9 +136,9 @@ class _ManagerDashboardState extends ConsumerState<ManagerDashboard> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
             children: [
-              _MgrNavItem(icon: Icons.home_rounded, label: 'Tổng quan', index: 0, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
-              _MgrNavItem(icon: Icons.calendar_month_rounded, label: 'Lịch làm', index: 1, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
-              _MgrNavItem(icon: Icons.person_rounded, label: 'Hồ sơ', index: 2, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _MgrNavItem(icon: LucideIcons.house, label: 'Tổng quan', index: 0, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _MgrNavItem(icon: LucideIcons.calendarDays, label: 'Lịch làm', index: 1, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
+              _MgrNavItem(icon: LucideIcons.user, label: 'Hồ sơ', index: 2, selected: _selectedIndex, onTap: (i) => setState(() => _selectedIndex = i)),
             ],
           ),
         ),
@@ -218,7 +219,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  const Icon(Icons.manage_accounts_rounded, color: Colors.white, size: 22),
+                                  const Icon(LucideIcons.userCog, color: Colors.white, size: 22),
                                   const SizedBox(width: 6),
                                   Flexible(child: Text(roleTitle, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro'))),
                                 ],
@@ -252,10 +253,10 @@ class _ManagerHomeTab extends ConsumerWidget {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.store_rounded, color: Colors.white, size: 17),
+                            const Icon(LucideIcons.store, color: Colors.white, size: 17),
                             const SizedBox(width: 8),
                             Expanded(child: Text(store.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro'))),
-                            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+                            const Icon(LucideIcons.chevronDown, color: Colors.white, size: 18),
                           ],
                         ),
                       ),
@@ -282,7 +283,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.fingerprint_rounded, color: Colors.white, size: 36),
+                    Icon(LucideIcons.fingerprint, color: Colors.white, size: 36),
                     SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -293,7 +294,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18),
+                    Icon(LucideIcons.chevronRight, color: Colors.white70, size: 18),
                   ],
                 ),
               ),
@@ -307,18 +308,18 @@ class _ManagerHomeTab extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Expanded(child: _MgrStatCard(value: workingNow.toString(), label: 'Đang làm', icon: Icons.work_rounded, color: AppColors.success)),
+                Expanded(child: _MgrStatCard(value: workingNow.toString(), label: 'Đang làm', icon: LucideIcons.briefcase, color: AppColors.success)),
                 const SizedBox(width: 10),
-                Expanded(child: _MgrStatCard(value: doneToday.toString(), label: 'Đã ra ca', icon: Icons.check_circle_rounded, color: AppColors.managerAccent)),
+                Expanded(child: _MgrStatCard(value: doneToday.toString(), label: 'Đã ra ca', icon: LucideIcons.circleCheck, color: AppColors.managerAccent)),
                 const SizedBox(width: 10),
-                Expanded(child: _MgrStatCard(value: activeCount.toString(), label: 'Tổng NV', icon: Icons.people_rounded, color: AppColors.managerAccent)),
+                Expanded(child: _MgrStatCard(value: activeCount.toString(), label: 'Tổng NV', icon: LucideIcons.users, color: AppColors.managerAccent)),
                 if (canApproveMembers) ...[
                   const SizedBox(width: 10),
                   Expanded(
                     child: _MgrStatCard(
                       value: pendingCount.toString(),
                       label: 'Chờ duyệt',
-                      icon: Icons.pending_rounded,
+                      icon: LucideIcons.circleEllipsis,
                       color: AppColors.primary,
                       highlight: pendingCount > 0,
                       onTap: () => context.push(AppRoutes.pendingMembers),
@@ -434,7 +435,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.warning_amber_rounded, size: 11, color: Color(0xFFE65100)),
+                                            const Icon(LucideIcons.triangleAlert, size: 11, color: Color(0xFFE65100)),
                                             const SizedBox(width: 3),
                                             Text(
                                               lateWarning,
@@ -479,7 +480,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                 const SizedBox(height: 12),
                 if (canApproveMembers) ...[
                   _MgrToolCard(
-                    icon: Icons.person_add_rounded,
+                    icon: LucideIcons.userPlus,
                     label: 'Duyệt thành viên mới',
                     sub: pendingCount > 0 ? '$pendingCount yêu cầu chờ duyệt' : 'Duyệt nhân viên mới xin vào',
                     color: AppColors.managerAccent,
@@ -488,7 +489,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                   const SizedBox(height: 10),
                 ],
                 _MgrToolCard(
-                  icon: Icons.admin_panel_settings_rounded,
+                  icon: LucideIcons.shieldUser,
                   label: canManageSchedule ? 'Quản lý lịch làm' : 'Xem lịch làm việc',
                   sub: canManageSchedule ? 'Xếp và duyệt lịch làm việc của nhân viên' : 'Xem lịch toàn bộ NV & tick phụ cấp',
                   color: AppColors.managerAccent,
@@ -497,7 +498,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                 if (canViewAllAttendance) ...[
                   const SizedBox(height: 10),
                   _MgrToolCard(
-                    icon: Icons.table_chart_rounded,
+                    icon: LucideIcons.sheet,
                     label: 'Bảng chấm công',
                     sub: 'Xem bảng công hôm nay',
                     color: AppColors.success,
@@ -506,7 +507,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                 ],
                 const SizedBox(height: 10),
                 _MgrToolCard(
-                  icon: Icons.assignment_outlined,
+                  icon: LucideIcons.clipboardList,
                   label: 'Giao việc & Quản lý việc',
                   sub: 'Phân công công việc & theo dõi báo cáo NV',
                   color: AppColors.info,
@@ -589,15 +590,15 @@ class _ManagerProfileTab extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _ProfileMenuItem(icon: Icons.person_outline_rounded, label: 'Chỉnh sửa hồ sơ cá nhân', onTap: () => context.push(AppRoutes.profileSettings)),
+          _ProfileMenuItem(icon: LucideIcons.user, label: 'Chỉnh sửa hồ sơ cá nhân', onTap: () => context.push(AppRoutes.profileSettings)),
           const SizedBox(height: 10),
-          _ProfileMenuItem(icon: Icons.payments_outlined, label: 'Lương & Tiền công của tôi', onTap: () => context.push(AppRoutes.salary)),
+          _ProfileMenuItem(icon: LucideIcons.banknote, label: 'Lương & Tiền công của tôi', onTap: () => context.push(AppRoutes.salary)),
           const SizedBox(height: 10),
-          _ProfileMenuItem(icon: Icons.history_rounded, label: 'Lịch sử chấm công của tôi', onTap: () => context.push(AppRoutes.attendanceHistory)),
+          _ProfileMenuItem(icon: LucideIcons.history, label: 'Lịch sử chấm công của tôi', onTap: () => context.push(AppRoutes.attendanceHistory)),
           const SizedBox(height: 10),
-          _ProfileMenuItem(icon: Icons.store_rounded, label: 'Đổi cửa hàng', onTap: () => Scaffold.of(context).openDrawer()),
+          _ProfileMenuItem(icon: LucideIcons.store, label: 'Đổi cửa hàng', onTap: () => Scaffold.of(context).openDrawer()),
           const SizedBox(height: 10),
-          _ProfileMenuItem(icon: Icons.logout_rounded, label: 'Đăng xuất', color: AppColors.primary, onTap: () async {
+          _ProfileMenuItem(icon: LucideIcons.logOut, label: 'Đăng xuất', color: AppColors.primary, onTap: () async {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (c) => AlertDialog(
@@ -641,7 +642,7 @@ class _ProfileMenuItem extends StatelessWidget {
             Icon(icon, color: color ?? AppColors.neutral, size: 22),
             const SizedBox(width: 14),
             Expanded(child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'BeVietnamPro', color: color ?? AppColors.neutral))),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            Icon(LucideIcons.chevronRight, color: Colors.grey[400]),
           ],
         ),
       ),
@@ -738,7 +739,7 @@ class _MgrToolCard extends StatelessWidget {
               Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', fontSize: 14)),
               if (sub != null) Text(sub!, style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'BeVietnamPro')),
             ])),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            Icon(LucideIcons.chevronRight, color: Colors.grey[400]),
           ],
         ),
       ),
@@ -810,7 +811,7 @@ class _TodayScheduleCard extends ConsumerWidget {
                   color: AppColors.accent.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.event_note_rounded, color: AppColors.accentInk, size: 20),
+                child: const Icon(LucideIcons.calendarClock, color: AppColors.accentInk, size: 20),
               ),
               const SizedBox(width: 10),
               const Text('Ca làm hôm nay của bạn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro', color: AppColors.neutral)),
@@ -859,7 +860,7 @@ class _TodayScheduleCard extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.access_time_rounded, size: 16, color: AppColors.accentInk),
+                          const Icon(LucideIcons.clock, size: 16, color: AppColors.accentInk),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Row(
@@ -913,7 +914,7 @@ class _TodayScheduleCard extends ConsumerWidget {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.local_shipping_rounded, size: 14, color: AppColors.success),
+                                Icon(LucideIcons.truck, size: 14, color: AppColors.success),
                                 SizedBox(width: 4),
                                 Text('Chở hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.success, fontFamily: 'BeVietnamPro')),
                               ],
@@ -931,7 +932,7 @@ class _TodayScheduleCard extends ConsumerWidget {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.delivery_dining_rounded, size: 14, color: AppColors.managerAccent),
+                                Icon(LucideIcons.bike, size: 14, color: AppColors.managerAccent),
                                 SizedBox(width: 4),
                                 Text('Giao hàng', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.managerAccent, fontFamily: 'BeVietnamPro')),
                               ],

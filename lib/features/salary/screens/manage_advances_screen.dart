@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/advance_request_model.dart';
 import '../../store/providers/store_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ManageAdvancesScreen extends ConsumerStatefulWidget {
   const ManageAdvancesScreen({super.key});
@@ -92,7 +93,7 @@ class _ManageAdvancesScreenState extends ConsumerState<ManageAdvancesScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(LucideIcons.chevronLeft),
             onPressed: () => _changeMonth(-1),
           ),
           Text(
@@ -100,7 +101,7 @@ class _ManageAdvancesScreenState extends ConsumerState<ManageAdvancesScreen> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'BeVietnamPro'),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(LucideIcons.chevronRight),
             onPressed: () => _changeMonth(1),
           ),
         ],

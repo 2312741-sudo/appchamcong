@@ -7,6 +7,7 @@ import '../../../core/widgets/avatar_widget.dart';
 import '../../../models/member_model.dart';
 import '../../../models/store_model.dart';
 import '../../store/providers/store_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class MembersListScreen extends ConsumerWidget {
   const MembersListScreen({super.key});
@@ -34,7 +35,7 @@ class MembersListScreen extends ConsumerWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_add_rounded),
+            icon: const Icon(LucideIcons.userPlus),
             tooltip: 'Yêu cầu chờ duyệt',
             onPressed: () {
               context.push(AppRoutes.pendingMembers);
@@ -143,7 +144,7 @@ class MembersListScreen extends ConsumerWidget {
                 index: index,
                 child: const Padding(
                   padding: EdgeInsets.only(right: 12),
-                  child: Icon(Icons.drag_handle_rounded,
+                  child: Icon(LucideIcons.gripHorizontal,
                       color: AppColors.textDisabled, size: 20),
                 ),
               ),
@@ -186,7 +187,7 @@ class MembersListScreen extends ConsumerWidget {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.visibility_off_rounded,
+                              Icon(LucideIcons.eyeOff,
                                   size: 11, color: Color(0xFFD9480F)),
                               SizedBox(width: 3),
                               Text(
@@ -244,7 +245,7 @@ class MembersListScreen extends ConsumerWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.apartment_rounded,
+                                  const Icon(LucideIcons.building,
                                       size: 11, color: Color(0xFF0369A1)),
                                   const SizedBox(width: 3),
                                   Text(
@@ -297,7 +298,7 @@ class MembersListScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
+            const Icon(LucideIcons.chevronRight,
                 color: AppColors.textDisabled),
           ],
         ),

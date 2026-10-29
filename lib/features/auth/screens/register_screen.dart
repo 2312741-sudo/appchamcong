@@ -8,6 +8,7 @@ import '../../../app/router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/loading_overlay.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -108,7 +109,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       appBar: AppBar(
         title: const Text(AppStrings.register),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(LucideIcons.chevronLeft),
           onPressed: () => context.pop(),
         ),
       ),
@@ -146,7 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: const InputDecoration(
                       labelText: AppStrings.fullName,
                       hintText: AppStrings.fullNameHint,
-                      prefixIcon: Icon(Icons.person_outline),
+                      prefixIcon: Icon(LucideIcons.user),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -170,7 +171,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: const InputDecoration(
                       labelText: AppStrings.email,
                       hintText: AppStrings.emailHint,
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: Icon(LucideIcons.mail),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -195,12 +196,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: InputDecoration(
                       labelText: AppStrings.password,
                       hintText: AppStrings.passwordHint,
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(LucideIcons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? LucideIcons.eye
+                              : LucideIcons.eyeOff,
                         ),
                         onPressed: () {
                           setState(
@@ -231,12 +232,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: InputDecoration(
                       labelText: AppStrings.confirmPassword,
                       hintText: AppStrings.confirmPasswordHint,
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(LucideIcons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirmPassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? LucideIcons.eye
+                              : LucideIcons.eyeOff,
                         ),
                         onPressed: () {
                           setState(() =>

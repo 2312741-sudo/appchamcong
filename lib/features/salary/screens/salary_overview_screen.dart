@@ -11,6 +11,7 @@ import '../providers/salary_provider.dart';
 import '../../../models/advance_request_model.dart';
 import '../../../core/utils/excel_export_service.dart';
 import '../../../core/widgets/export_modal.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SalaryOverviewScreen extends ConsumerWidget {
   const SalaryOverviewScreen({super.key});
@@ -131,7 +132,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.download_rounded),
+            icon: const Icon(LucideIcons.download),
             onPressed: () {
               showModalBottomSheet(
                 context: context,
@@ -180,7 +181,7 @@ class SalaryOverviewScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+                      const Icon(LucideIcons.calendar, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Text('Tháng: $monthStr', style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.w600)),
                     ],
