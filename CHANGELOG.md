@@ -2,7 +2,28 @@
 
 **Dự án:** Chấm Công Trạm (`cham_cong_tram` Mobile App & `cham_cong_web` Web Dashboard)  
 **Tác giả:** Nguyễn Thanh Tâm ([nthanhtam.402@gmail.com](mailto:nthanhtam.402@gmail.com))  
-**Phiên bản hiện tại:** `v1.1.9` (Mobile: `1.1.9+29`, Web: `1.1.9`)
+**Phiên bản hiện tại:** `v1.2.0` (Mobile: `1.2.0+30`, Web: `1.2.0`)
+
+---
+
+## 📅 NGÀY 30/10/2026: TÍNH NĂNG ĐẶT & SOẠN HÀNG, BỘ ICON LUCIDE & NÂNG CẤP GIAO DIỆN CHUẨN (v1.2.0)
+
+### 1. [TÍNH NĂNG MỚI] Phân Hệ Đặt & Soạn Hàng (Supply Order & Checklist)
+- **Đặt hàng nguyên vật liệu ngày mai:** Cho phép nhân viên/quản lý trong ca lập danh sách đặt hàng nguyên vật liệu cần chuẩn bị cho ngày tiếp theo.
+- **Danh mục mặt hàng cửa hàng (`supply_items`):** Quản lý danh sách mặt hàng, đơn vị tính (kg, gói, hộp...), phân nhóm và trạng thái kích hoạt linh hoạt.
+- **Quy trình soạn hàng khi vào ca (`supply_orders`):** Nhân sự ca tiếp theo dễ dàng kiểm tra danh sách nguyên vật liệu cần soạn, tích chọn "Đã soạn" theo thời gian thực để bàn giao ca liền mạch.
+- **Cấu hình giờ chốt & nhắc việc tự động (`SupplyReminderService`):** Tùy chỉnh giờ chốt đặt hàng theo từng cơ sở; tự động gửi thông báo nhắc nhở ngoài app trước giờ chốt 30 phút nếu ca trực chưa hoàn tất phiếu đặt hàng.
+- **Xuất dữ liệu & báo cáo:** Hỗ trợ xem lịch sử và tổng hợp chi tiết số lượng nguyên vật liệu.
+
+### 2. [THIẾT KẾ & TRẢI NGHIỆM GIAO DIỆN]
+- **Đồng bộ bộ Icon Lucide toàn diện:** Thay thế toàn bộ Material Icons bằng bộ icon vector Lucide (`lucide_icons_flutter`), đồng bộ 1:1 phong cách thiết kế hiện đại giữa Mobile App và Web Dashboard.
+- **Loại bỏ emoji dạng icon:** Thay thế toàn bộ emoji thô dùng làm biểu tượng trước đây bằng icon chuyên nghiệp chuẩn hệ thống.
+- **Chuẩn hóa thanh tiêu đề (AppBar):** Đồng bộ màu chữ và icon màu trắng trên nền màu thương hiệu tại 26 màn hình, đảm bảo độ tương phản cao và thẩm mỹ.
+- **Bố cục co giãn thông minh:** Tinh chỉnh thẻ công việc và các thành phần giao diện không còn bị tràn viền (overflow) trên các thiết bị màn hình nhỏ.
+
+### 3. [BẢO MẬT & CHẤT LƯỢNG HỆ THỐNG]
+- **Bảo mật phân quyền Firestore Rules:** Kiểm soát nghiêm ngặt quyền đọc/ghi phân hệ đặt & soạn hàng, bổ sung thông báo lỗi quyền trực quan, dễ hiểu.
+- **Kiểm thử tự động toàn diện:** 207/207 Unit & Widget tests tự động đạt **PASS 100%** (bao gồm 13/13 tests cho phân hệ Đặt & soạn hàng). `dart analyze` sạch 0 lỗi.
 
 ---
 

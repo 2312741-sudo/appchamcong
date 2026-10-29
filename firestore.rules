@@ -64,6 +64,10 @@ service cloud.firestore {
       return isSignedIn() && isAnyManagerOrOwner(storeId);
     }
 
+    function getPerformanceSessionData(sessionId) {
+      return get(/databases/$(database)/documents/performance_sessions/$(sessionId)).data;
+    }
+
     // =========================================================================
     // 2. CẤU HÌNH HỆ THỐNG & NGƯỜI DÙNG TOÀN CỤC
     // =========================================================================
@@ -137,10 +141,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
 
       // Bất kỳ user đã đăng nhập đều có thể tạo cửa hàng mới
-      allow create: if isSignedIn();
+      // (deletePassword KHÔNG được nằm trong tài liệu cửa hàng vì ai đăng nhập cũng đọc được)
+      allow create: if isSignedIn() && !('deletePassword' in request.resource.data);
 
-      // Sửa thông tin cửa hàng / memberOrder: Chủ hoặc Quản lý 1
-      allow update: if isOwnerOrManager1(storeId);
+      // Sửa thông tin cửa hàng / memberOrder: Chủ hoặc Quản lý 1.
+      // Không được ghi deletePassword mới vào đây; chỉ được giữ nguyên giá trị cũ hoặc xóa đi.
+      allow update: if isOwnerOrManager1(storeId) && (
+        !('deletePassword' in request.resource.data) ||
+        request.resource.data.deletePassword == resource.data.get('deletePassword', null)
+      );
+
+      // Cài đặt bảo mật riêng (mật khẩu xác nhận xóa dữ liệu): chỉ Chủ hoặc Quản lý 1
+      match /private/{docId} {
+        allow read, write: if isOwnerOrManager1(storeId);
+      }
 
       // Xóa cửa hàng: CHỈ Chủ sở hữu
       allow delete: if isStoreOwner(storeId);
@@ -333,20 +347,53 @@ service cloud.firestore {
     // =========================================================================
     match /performance_sessions/{sessionId} {
       allow read: if isSignedIn() && canAccessPerformance(resource.data.storeId);
-      allow create: if isSignedIn() && canAccessPerformance(request.resource.data.storeId);
-      allow update, delete: if isSignedIn() && canAccessPerformance(resource.data.storeId);
+      allow create: if isSignedIn() &&
+        canAccessPerformance(request.resource.data.storeId) &&
+        request.resource.data.managerId == request.auth.uid &&
+        request.resource.data.id == sessionId &&
+        request.resource.data.status == 'active';
+      allow update: if isSignedIn() &&
+        canAccessPerformance(resource.data.storeId) &&
+        resource.data.managerId == request.auth.uid &&
+        request.resource.data.storeId == resource.data.storeId &&
+        request.resource.data.managerId == resource.data.managerId;
+      allow delete: if isSignedIn() && canAccessPerformance(resource.data.storeId) &&
+        (resource.data.managerId == request.auth.uid || isStoreOwner(resource.data.storeId));
 
       match /measurements/{measurementId} {
-        allow read: if isSignedIn() && canAccessPerformance(resource.data.storeId);
-        allow create: if isSignedIn() && canAccessPerformance(request.resource.data.storeId);
-        allow update, delete: if isSignedIn() && canAccessPerformance(resource.data.storeId);
+        allow read: if isSignedIn() &&
+          canAccessPerformance(getPerformanceSessionData(sessionId).storeId);
+        allow create: if isSignedIn() &&
+          getPerformanceSessionData(sessionId).managerId == request.auth.uid &&
+          request.resource.data.id == measurementId &&
+          request.resource.data.sessionId == sessionId &&
+          request.resource.data.storeId == getPerformanceSessionData(sessionId).storeId &&
+          request.resource.data.userId == request.auth.uid;
+        allow update: if isSignedIn() &&
+          getPerformanceSessionData(sessionId).managerId == request.auth.uid &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.sessionId == resource.data.sessionId &&
+          request.resource.data.storeId == resource.data.storeId &&
+          request.resource.data.userId == resource.data.userId;
+        allow delete: if isSignedIn() &&
+          canAccessPerformance(getPerformanceSessionData(sessionId).storeId) &&
+          (getPerformanceSessionData(sessionId).managerId == request.auth.uid ||
+           isStoreOwner(getPerformanceSessionData(sessionId).storeId));
       }
     }
 
     match /performance_reports/{reportId} {
       allow read: if isSignedIn() && canAccessPerformance(resource.data.storeId);
-      allow create: if isSignedIn() && canAccessPerformance(request.resource.data.storeId);
-      allow update, delete: if isSignedIn() && canAccessPerformance(resource.data.storeId);
+      allow create: if isSignedIn() &&
+        request.resource.data.id == reportId &&
+        request.resource.data.managerId == request.auth.uid &&
+        request.resource.data.sessionId == reportId &&
+        getPerformanceSessionData(request.resource.data.sessionId).managerId == request.auth.uid &&
+        getPerformanceSessionData(request.resource.data.sessionId).storeId == request.resource.data.storeId;
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'viewedAt', 'viewedBy']);
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId);
     }
   }
 }
