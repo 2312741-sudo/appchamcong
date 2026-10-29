@@ -13,18 +13,34 @@ import '../widgets/supply_error_view.dart';
 class SupplyItemsScreen extends ConsumerWidget {
   const SupplyItemsScreen({super.key});
 
-  Future<void> _edit(BuildContext context, WidgetRef ref, {SupplyItem? item, required int count}) async {
+  Future<void> _edit(BuildContext context, WidgetRef ref, {SupplyItem? item, required List<SupplyItem> items}) async {
+    final codeCtrl = TextEditingController(text: item?.code ?? '');
+    String? codeError;
     final nameCtrl = TextEditingController(text: item?.name ?? '');
     final unitCtrl = TextEditingController(text: item?.unit ?? '');
     final groupCtrl = TextEditingController(text: item?.group ?? '');
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(item == null ? 'Thêm mặt hàng' : 'Sửa mặt hàng',
             style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold, fontSize: 17)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, autofocus: true, decoration: const InputDecoration(labelText: 'Tên hàng *', hintText: 'VD: Ly 500ml, Nắp cầu, Ống hút', border: OutlineInputBorder())),
+          TextField(
+            controller: codeCtrl,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: 'Mã hàng',
+              hintText: 'VD: BB001 (không bắt buộc)',
+              errorText: codeError,
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) {
+              if (codeError != null) setLocal(() => codeError = null);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: nameCtrl, autofocus: item == null, decoration: const InputDecoration(labelText: 'Tên hàng *', hintText: 'VD: Ly 500ml, Nắp cầu, Ống hút', border: OutlineInputBorder())),
           const SizedBox(height: 12),
           TextField(controller: unitCtrl, decoration: const InputDecoration(labelText: 'Đơn vị', hintText: 'VD: cái, bịch, thùng, kg', border: OutlineInputBorder())),
           const SizedBox(height: 12),
@@ -34,11 +50,18 @@ class SupplyItemsScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () {
+              final err = validateSupplyCode(codeCtrl.text, items, exceptId: item?.id);
+              if (err != null) {
+                setLocal(() => codeError = err);
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
             child: Text(item == null ? 'Thêm' : 'Lưu'),
           ),
         ],
-      ),
+      )),
     );
     if (ok != true) return;
     final name = nameCtrl.text.trim();
@@ -53,10 +76,11 @@ class SupplyItemsScreen extends ConsumerWidget {
             storeId,
             SupplyItem(
               id: item?.id ?? '',
+              code: normalizeSupplyCode(codeCtrl.text),
               name: name,
               unit: unitCtrl.text.trim(),
               group: groupCtrl.text.trim(),
-              order: item?.order ?? count + 1,
+              order: item?.order ?? items.length + 1,
               active: item?.active ?? true,
             ),
           );
@@ -86,7 +110,7 @@ class SupplyItemsScreen extends ConsumerWidget {
           ? FloatingActionButton(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              onPressed: () => _edit(context, ref, count: itemsAsync.valueOrNull?.length ?? 0),
+              onPressed: () => _edit(context, ref, items: itemsAsync.valueOrNull ?? const []),
               child: const Icon(LucideIcons.plus),
             )
           : null,
@@ -115,8 +139,8 @@ class SupplyItemsScreen extends ConsumerWidget {
                 child: ListTile(
                   title: Text(it.name,
                       style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, color: it.active ? AppColors.textPrimary : AppColors.textDisabled)),
-                  subtitle: Text([if (it.group.isNotEmpty) it.group, if (it.unit.isNotEmpty) 'Đơn vị: ${it.unit}', if (!it.active) 'Đã ẩn'].join(' • ')),
-                  onTap: canEdit ? () => _edit(context, ref, item: it, count: items.length) : null,
+                  subtitle: Text([if (it.code.isNotEmpty) 'Mã: ${it.code}', if (it.group.isNotEmpty) it.group, if (it.unit.isNotEmpty) 'Đơn vị: ${it.unit}', if (!it.active) 'Đã ẩn'].join(' • ')),
+                  onTap: canEdit ? () => _edit(context, ref, item: it, items: items) : null,
                   trailing: canEdit && storeId != null
                       ? Switch(
                           value: it.active,

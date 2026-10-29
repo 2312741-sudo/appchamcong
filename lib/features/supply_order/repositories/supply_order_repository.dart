@@ -96,6 +96,7 @@ class SupplyOrderRepository {
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final line = <String, dynamic>{
+      'code': item.code,
       'name': item.name,
       'unit': item.unit,
       'group': item.group,
@@ -129,6 +130,7 @@ class SupplyOrderRepository {
     final lines = <String, dynamic>{
       for (final e in entries)
         e.key.id: {
+          'code': e.key.code,
           'name': e.key.name,
           'unit': e.key.unit,
           'group': e.key.group,

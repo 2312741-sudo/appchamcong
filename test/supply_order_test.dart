@@ -108,7 +108,7 @@ void main() {
       final o = SupplyOrder.fromJson('2026-10-30', {
         'lines': {
           'ly': {
-            'name': 'Ly 500ml', 'unit': 'cây', 'group': 'Bao bì', 'qty': 3,
+            'code': 'BB001', 'name': 'Ly 500ml', 'unit': 'cây', 'group': 'Bao bì', 'qty': 3,
             'contributors': [{'uid': 'a', 'name': 'An', 'qty': 3, 'at': 1}],
             'prepared': true, 'preparedByName': 'Chi', 'preparedAt': DateTime.utc(2026, 10, 30, 1, 5).millisecondsSinceEpoch,
           },
@@ -116,8 +116,35 @@ void main() {
       });
       final rows = SupplyExport.rows([o]);
       expect(rows.length, 1);
-      expect(rows.first, ['30/10/2026', 'Bao bì', 'Ly 500ml', 'cây', 3.0, 'An', '', 'Đã soạn', 'Chi', '08:05 30/10']);
+      expect(rows.first, ['30/10/2026', 'Bao bì', 'BB001', 'Ly 500ml', 'cây', 3.0, 'An', '', 'Đã soạn', 'Chi', '08:05 30/10']);
       expect(SupplyExport.headers.length, rows.first.length);
+    });
+  });
+
+  group('Mã hàng', () {
+    const items = [
+      SupplyItem(id: 'a', code: 'BB001', name: 'Ly 500ml'),
+      SupplyItem(id: 'b', name: 'Ống hút'),
+    ];
+    test('chuẩn hoá: viết hoa, bỏ khoảng trắng', () {
+      expect(normalizeSupplyCode(' bb 002 '), 'BB002');
+    });
+    test('không bắt buộc; trùng mã (không phân biệt hoa thường) bị chặn', () {
+      expect(validateSupplyCode('', items), isNull);
+      expect(validateSupplyCode('bb001', items), contains('Ly 500ml'));
+      expect(validateSupplyCode('BB001', items, exceptId: 'a'), isNull);
+      expect(validateSupplyCode('BB002', items), isNull);
+    });
+    test('chỉ chữ không dấu, số, - _ . và tối đa 20 ký tự', () {
+      expect(validateSupplyCode('BAO-BÌ', items), isNotNull);
+      expect(validateSupplyCode('NL_01.A', items), isNull);
+      expect(validateSupplyCode('A' * 21, items), isNotNull);
+    });
+    test('đọc/ghi code trên mặt hàng và dòng phiếu (dữ liệu cũ không có code vẫn đọc được)', () {
+      expect(SupplyItem.fromJson({'code': 'NL01', 'name': 'Sữa'}, 'x').toJson()['code'], 'NL01');
+      expect(SupplyItem.fromJson({'name': 'Sữa'}, 'x').code, '');
+      final o = SupplyOrder.fromJson('2026-10-30', {'lines': {'x': {'code': 'NL01', 'name': 'Sữa', 'qty': 2}}});
+      expect(o.lines.single.code, 'NL01');
     });
   });
 }

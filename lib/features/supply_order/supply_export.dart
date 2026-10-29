@@ -12,7 +12,7 @@ class SupplyExport {
   SupplyExport._();
 
   static const headers = [
-    'Ngày nhận', 'Nhóm', 'Mặt hàng', 'Đơn vị', 'Số lượng', 'Người đặt', 'Ghi chú', 'Đã soạn', 'Người soạn', 'Giờ soạn',
+    'Ngày nhận', 'Nhóm', 'Mã hàng', 'Mặt hàng', 'Đơn vị', 'Số lượng', 'Người đặt', 'Ghi chú', 'Đã soạn', 'Người soạn', 'Giờ soạn',
   ];
 
   /// Dòng dữ liệu (thuần, để test): mỗi món của mỗi phiếu một dòng
@@ -29,6 +29,7 @@ class SupplyExport {
           [
             SupplyDateUtils.display(o.date),
             l.group,
+            l.code,
             l.name,
             l.unit,
             l.qty,

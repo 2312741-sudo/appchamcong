@@ -3,7 +3,7 @@
 // Firestore:
 //   stores/{storeId}/supply_items/{itemId}     — danh mục hàng (Chủ, QL1, QL2 sửa)
 //   stores/{storeId}/supply_orders/{yyyy-MM-dd} — MỘT phiếu cho mỗi ngày nhận hàng; nhiều người cùng thêm vào
-//     lines.{itemId} = { name, unit, group, qty, contributors[], prepared, preparedBy, preparedByName, preparedAt, note }
+//     lines.{itemId} = { code, name, unit, group, qty, contributors[], prepared, preparedBy, preparedByName, preparedAt, note }
 //   Cộng dồn số lượng bằng FieldValue.increment + arrayUnion nên nhiều người đặt cùng lúc không ghi đè nhau.
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -24,6 +24,8 @@ double _num(dynamic v) {
 /// Một mặt hàng trong danh mục đặt hàng
 class SupplyItem {
   final String id;
+  /// Mã hàng (VD: BB001) — tuỳ chọn, không trùng trong cửa hàng; dùng để tìm nhanh, xuất Excel và nối kho POS sau này
+  final String code;
   final String name;
   final String unit;
   final String group;
@@ -32,6 +34,7 @@ class SupplyItem {
 
   const SupplyItem({
     required this.id,
+    this.code = '',
     required this.name,
     this.unit = '',
     this.group = '',
@@ -41,6 +44,7 @@ class SupplyItem {
 
   factory SupplyItem.fromJson(Map<String, dynamic> json, String id) => SupplyItem(
         id: id,
+        code: (json['code'] ?? '').toString(),
         name: (json['name'] ?? '').toString(),
         unit: (json['unit'] ?? '').toString(),
         group: (json['group'] ?? '').toString(),
@@ -49,6 +53,7 @@ class SupplyItem {
       );
 
   Map<String, dynamic> toJson() => {
+        'code': code,
         'name': name,
         'unit': unit,
         'group': group,
@@ -79,6 +84,7 @@ class SupplyContribution {
 /// Một dòng hàng trong phiếu ngày
 class SupplyOrderLine {
   final String itemId;
+  final String code;
   final String name;
   final String unit;
   final String group;
@@ -92,6 +98,7 @@ class SupplyOrderLine {
 
   const SupplyOrderLine({
     required this.itemId,
+    this.code = '',
     required this.name,
     this.unit = '',
     this.group = '',
@@ -108,6 +115,7 @@ class SupplyOrderLine {
     final raw = json['contributors'];
     return SupplyOrderLine(
       itemId: itemId,
+      code: (json['code'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       unit: (json['unit'] ?? '').toString(),
       group: (json['group'] ?? '').toString(),
@@ -191,4 +199,19 @@ class SupplySettings {
         'cutoffTime': cutoffTime,
         'preparerDepartmentIds': preparerDepartmentIds,
       };
+}
+
+/// Chuẩn hoá mã hàng: bỏ khoảng trắng thừa, viết hoa (BB 001 → BB001)
+String normalizeSupplyCode(String raw) => raw.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
+
+/// Kiểm tra mã hàng: rỗng là được (không bắt buộc); có thì chỉ chữ, số, - _ . tối đa 20 ký tự và không trùng mặt hàng khác.
+/// Trả về câu báo lỗi, hoặc null nếu hợp lệ.
+String? validateSupplyCode(String code, List<SupplyItem> items, {String? exceptId}) {
+  final c = normalizeSupplyCode(code);
+  if (c.isEmpty) return null;
+  if (c.length > 20) return 'Mã hàng tối đa 20 ký tự';
+  if (!RegExp(r'^[A-Z0-9._-]+$').hasMatch(c)) return 'Mã hàng chỉ gồm chữ không dấu, số và - _ .';
+  final dup = items.where((i) => i.id != exceptId && normalizeSupplyCode(i.code) == c).toList();
+  if (dup.isNotEmpty) return 'Mã "$c" đã dùng cho "${dup.first.name}"';
+  return null;
 }

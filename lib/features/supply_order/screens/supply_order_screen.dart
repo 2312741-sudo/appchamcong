@@ -33,6 +33,8 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
   // Ô nhập số lượng / trọng lượng cho từng mặt hàng ở tab "Đặt hàng"
   final Map<String, TextEditingController> _qtyCtrls = {};
   bool _saving = false;
+  // Lọc danh mục theo tên hoặc mã hàng (hiện ô tìm khi danh mục dài)
+  String _query = '';
 
   @override
   void initState() {
@@ -352,8 +354,31 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
         }
         final ordered = {for (final l in order?.lines ?? const <SupplyOrderLine>[]) l.itemId: l};
         String? lastGroup;
-        final rows = <Widget>[];
-        for (final it in items) {
+        final rows = <Widget>[
+          if (items.length > 8)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextField(
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(LucideIcons.search, size: 18),
+                  hintText: 'Tìm theo tên hoặc mã hàng',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+              ),
+            ),
+        ];
+        final shown = _query.isEmpty
+            ? items
+            : items.where((i) => i.name.toLowerCase().contains(_query) || i.code.toLowerCase().contains(_query)).toList();
+        if (shown.isEmpty) {
+          rows.add(Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('Không có mặt hàng khớp "$_query"', textAlign: TextAlign.center, style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary)),
+          ));
+        }
+        for (final it in shown) {
           if (it.group != lastGroup && it.group.isNotEmpty) {
             rows.add(Padding(
               padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
@@ -371,6 +396,8 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(it.name, style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+                  if (it.code.isNotEmpty)
+                    Text('Mã: ${it.code}', style: GoogleFonts.beVietnamPro(fontSize: 11.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                   if (line != null)
                     Text('Đã đặt: ${SupplyDateUtils.formatQty(line.qty)} ${line.unit} • ${line.contributorNames.join(", ")}',
                         style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
@@ -547,7 +574,9 @@ class _LineTile extends StatelessWidget {
           ),
         ),
         subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (line.group.isNotEmpty) Text(line.group, style: GoogleFonts.beVietnamPro(fontSize: 11, color: AppColors.textSecondary)),
+          if (line.code.isNotEmpty || line.group.isNotEmpty)
+            Text([if (line.code.isNotEmpty) 'Mã: ${line.code}', if (line.group.isNotEmpty) line.group].join(' • '),
+                style: GoogleFonts.beVietnamPro(fontSize: 11, color: AppColors.textSecondary)),
           if (who.isNotEmpty) Text('Đặt bởi: ${who.join(", ")}', style: GoogleFonts.beVietnamPro(fontSize: 12)),
           if (line.note.isNotEmpty) Text('Ghi chú: ${line.note}', style: GoogleFonts.beVietnamPro(fontSize: 12, fontStyle: FontStyle.italic)),
           if (line.prepared)
