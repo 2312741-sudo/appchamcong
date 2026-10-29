@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import '../../core/services/local_notification_scheduler.dart';
+import '../../core/utils/supply_date_utils.dart';
 
-/// Nhắc đặt hàng trước giờ chốt (thông báo cục bộ trên máy):
+/// Nhắc đặt hàng trước giờ chốt — thông báo HỆ THỐNG hẹn giờ trên máy (hiện ngoài app, kể cả khi app đã tắt):
 /// chỉ khi đang trong ca và phiếu NGÀY MAI còn trống. Thêm hàng vào phiếu → hủy nhắc.
 class SupplyReminderService {
   SupplyReminderService._();
@@ -43,12 +46,13 @@ class SupplyReminderService {
         tz.initializeTimeZones();
         _tzReady = true;
       }
-      await _plugin.zonedSchedule(
-        notifId,
-        'Sắp chốt đặt hàng',
-        'Còn $minutesBefore phút nữa chốt đặt hàng ngày mai ($cutoff). Phiếu ngày mai vẫn trống — vào "Đặt & soạn hàng" nếu cần đặt.',
-        tz.TZDateTime.from(at, tz.UTC),
-        const NotificationDetails(
+      await scheduleLocalNotification(
+        _plugin,
+        id: notifId,
+        title: 'Sắp chốt đặt hàng',
+        body: 'Còn $minutesBefore phút nữa chốt đặt hàng ngày mai ($cutoff). Phiếu ngày mai vẫn trống — vào "Đặt & soạn hàng" nếu cần đặt.',
+        at: tz.TZDateTime.from(at, tz.UTC),
+        details: const NotificationDetails(
           android: AndroidNotificationDetails(
             'supply_reminders',
             'Nhắc đặt hàng',
@@ -58,9 +62,11 @@ class SupplyReminderService {
           ),
           iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true, presentBanner: true),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        payload: '/supply-order',
+        // Bấm thông báo → mở phiếu ngày mai (NotificationService đọc routePath)
+        payload: jsonEncode({
+          'routePath': '/supply-order?date=${SupplyDateUtils.tomorrow()}',
+          'type': 'supply_reminder',
+        }),
       );
     } catch (e) {
       debugPrint('SupplyReminderService sync error: $e');
