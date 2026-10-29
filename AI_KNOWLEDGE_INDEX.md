@@ -264,5 +264,6 @@ Hệ thống phân cấp chặt chẽ thành **4 vai trò độc lập** (`AppPe
   - `/stores/{storeId}/supply_orders/{yyyy-MM-dd}` — MỘT phiếu cho mỗi ngày nhận hàng (ngày theo giờ VN). `lines.{itemId}` = `{name, unit, group, qty, note, contributors[{uid,name,qty,at}], prepared, preparedBy, preparedByName, preparedAt}`.
   - Nhiều người cùng đặt một phiếu: số lượng cộng dồn bằng `FieldValue.increment`, người đặt ghi bằng `arrayUnion` → không ghi đè nhau. Thêm hàng vào dòng đã soạn → dòng trở về "chưa soạn".
 - **Phân quyền**: mọi vai trò đặt hàng & tích "Đã soạn"; QL2 ngang Chủ/QL1 ở chức năng này (sửa danh mục, xóa phiếu).
+- **Đặt hàng**: danh sách hàng được thiết lập sẵn (tên món + đơn vị); người đặt chỉ nhập số lượng / trọng lượng (chấp nhận số thập phân `2,5`) ở tab "Đặt hàng" rồi bấm gửi một lần (`addManyToOrder`). Tab "Soạn hàng": tích "Đã soạn" từng món.
 - **Giao diện**: thẻ `SupplyChecklistCard` trên cả 3 dashboard (hôm nay cần soạn X/Y + lối tắt đặt hàng ngày mai), màn `SupplyOrderScreen` (`/supply-order?date=yyyy-MM-dd`), `SupplyItemsScreen` (danh mục), `SupplyHistoryScreen` (lịch sử), mục "Đặt & soạn hàng" trong menu cửa hàng.
 - **Ngày**: `core/utils/supply_date_utils.dart` (UTC+7). Test: `test/supply_order_test.dart`.

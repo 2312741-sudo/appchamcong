@@ -90,6 +90,38 @@ class SupplyOrderRepository {
     }, SetOptions(merge: true));
   }
 
+  /// Đặt nhiều mặt hàng một lần (màn "Đặt hàng": danh sách có sẵn, người đặt chỉ nhập số lượng / trọng lượng).
+  /// Một lần ghi duy nhất; số lượng CỘNG DỒN vào phiếu như [addToOrder].
+  Future<void> addManyToOrder(
+    String storeId,
+    String date, {
+    required Map<SupplyItem, double> quantities,
+    required String uid,
+    required String userName,
+  }) async {
+    final entries = quantities.entries.where((e) => e.value > 0).toList();
+    if (entries.isEmpty) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final lines = <String, dynamic>{
+      for (final e in entries)
+        e.key.id: {
+          'name': e.key.name,
+          'unit': e.key.unit,
+          'group': e.key.group,
+          'qty': FieldValue.increment(e.value),
+          'contributors': FieldValue.arrayUnion([
+            SupplyContribution(uid: uid, name: userName, qty: e.value, at: now).toJson(),
+          ]),
+          'prepared': false,
+        },
+    };
+    await _ordersRef(storeId).doc(date).set({
+      'date': date,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'lines': lines,
+    }, SetOptions(merge: true));
+  }
+
   /// Sửa tổng số lượng / ghi chú của một dòng (người sửa được ghi vào danh sách người đặt)
   Future<void> updateLine(
     String storeId,

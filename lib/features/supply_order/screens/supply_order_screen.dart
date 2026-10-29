@@ -24,13 +24,71 @@ class SupplyOrderScreen extends ConsumerStatefulWidget {
   ConsumerState<SupplyOrderScreen> createState() => _SupplyOrderScreenState();
 }
 
-class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> {
+class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with SingleTickerProviderStateMixin {
   late String _date;
+  late final TabController _tabs;
+  // Ô nhập số lượng / trọng lượng cho từng mặt hàng ở tab "Đặt hàng"
+  final Map<String, TextEditingController> _qtyCtrls = {};
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _date = widget.initialDate ?? SupplyDateUtils.tomorrow();
+    // Mở phiếu hôm nay → vào thẳng tab "Soạn hàng"; ngày khác → "Đặt hàng"
+    _tabs = TabController(length: 2, vsync: this, initialIndex: _date == SupplyDateUtils.today() ? 1 : 0);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    for (final c in _qtyCtrls.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  TextEditingController _ctrlFor(String itemId) => _qtyCtrls.putIfAbsent(itemId, () => TextEditingController());
+
+  int get _pendingCount => _qtyCtrls.values.where((c) => SupplyDateUtils.parseQty(c.text) != null).length;
+
+  /// Lưu mọi số lượng đã nhập ở tab "Đặt hàng" vào phiếu ngày đang xem (cộng dồn)
+  Future<void> _saveOrder(List<SupplyItem> items) async {
+    final quantities = <SupplyItem, double>{};
+    for (final it in items) {
+      final c = _qtyCtrls[it.id];
+      if (c == null || c.text.trim().isEmpty) continue;
+      final q = SupplyDateUtils.parseQty(c.text);
+      if (q == null) {
+        _snack('Số lượng của "${it.name}" không hợp lệ', error: true);
+        return;
+      }
+      quantities[it] = q;
+    }
+    if (quantities.isEmpty) {
+      _snack('Nhập số lượng cho ít nhất một món');
+      return;
+    }
+    final storeId = ref.read(currentStoreIdProvider);
+    if (storeId == null) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(supplyOrderRepositoryProvider).addManyToOrder(
+            storeId,
+            _date,
+            quantities: quantities,
+            uid: _uid,
+            userName: _userName,
+          );
+      for (final c in _qtyCtrls.values) {
+        c.clear();
+      }
+      _snack('Đã đặt ${quantities.length} món cho ${SupplyDateUtils.label(_date)}');
+    } catch (e) {
+      _snack('Không lưu được: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   String get _uid => ref.read(currentUserIdProvider) ?? '';
@@ -95,47 +153,6 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> {
     }
     onNote?.call(noteCtrl.text);
     return q;
-  }
-
-  /// Chọn mặt hàng trong danh mục rồi nhập số lượng → cộng dồn vào phiếu ngày đang xem
-  Future<void> _addItem() async {
-    final items = ref.read(supplyItemsProvider).valueOrNull ?? const <SupplyItem>[];
-    final canCatalog = AppPermissions.canManageSupplyCatalog(ref.read(currentMemberProvider)?.role);
-    if (items.isEmpty) {
-      _snack(canCatalog ? 'Danh mục hàng đang trống — hãy thêm mặt hàng trước' : 'Danh mục hàng đang trống — nhờ Quản lý thêm mặt hàng');
-      if (canCatalog) _openCatalog();
-      return;
-    }
-    final item = await showModalBottomSheet<SupplyItem>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (ctx) => _ItemPickerSheet(items: items),
-    );
-    if (item == null || !mounted) return;
-    var note = '';
-    final qty = await _askQty(
-      title: 'Đặt "${item.name}" cho ${SupplyDateUtils.label(_date)}',
-      unit: item.unit,
-      onNote: (n) => note = n,
-    );
-    if (qty == null) return;
-    final storeId = ref.read(currentStoreIdProvider);
-    if (storeId == null) return;
-    try {
-      await ref.read(supplyOrderRepositoryProvider).addToOrder(
-            storeId,
-            _date,
-            item: item,
-            qty: qty,
-            uid: _uid,
-            userName: _userName,
-            note: note,
-          );
-      _snack('Đã thêm ${SupplyDateUtils.formatQty(qty)} ${item.unit} ${item.name}');
-    } catch (e) {
-      _snack('Không lưu được: $e', error: true);
-    }
   }
 
   Future<void> _editLine(SupplyOrderLine line) async {
@@ -212,8 +229,8 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(children: [
-        chip('Hôm nay (soạn)', today),
-        chip('Ngày mai (đặt)', tomorrow),
+        chip('Hôm nay', today),
+        chip('Ngày mai', tomorrow),
         const Spacer(),
         IconButton(tooltip: 'Chọn ngày', icon: const Icon(Icons.calendar_month_outlined), onPressed: _pickDate),
       ]),
@@ -225,6 +242,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> {
     final member = ref.watch(currentMemberProvider);
     final canCatalog = AppPermissions.canManageSupplyCatalog(member?.role);
     final orderAsync = ref.watch(supplyOrderProvider(_date));
+    final itemsAsync = ref.watch(supplyItemsProvider);
     final isToday = _date == SupplyDateUtils.today();
 
     return Scaffold(
@@ -242,51 +260,161 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> {
           if (canCatalog)
             IconButton(tooltip: 'Danh mục hàng', icon: const Icon(Icons.inventory_2_outlined), onPressed: _openCatalog),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        onPressed: _addItem,
-        icon: const Icon(Icons.add_shopping_cart_rounded),
-        label: Text('Thêm hàng', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold)),
+        bottom: TabBar(
+          controller: _tabs,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+          labelStyle: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold),
+          tabs: const [Tab(text: 'Đặt hàng'), Tab(text: 'Soạn hàng')],
+        ),
       ),
       body: Column(children: [
         _dateBar(),
         Expanded(
-          child: orderAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Lỗi tải phiếu: $e')),
-            data: (order) {
-              if (order.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      'Chưa có hàng nào trong phiếu ${SupplyDateUtils.label(_date)}.\nBấm "Thêm hàng" để đặt.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
-                    ),
-                  ),
-                );
-              }
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                children: [
-                  _ProgressHeader(order: order, isToday: isToday),
-                  const SizedBox(height: 8),
-                  for (final line in order.lines)
-                    _LineTile(
-                      line: line,
-                      onToggle: (v) => _togglePrepared(line, v),
-                      onEdit: () => _editLine(line),
-                      onRemove: () => _removeLine(line),
-                    ),
-                ],
-              );
-            },
-          ),
+          child: TabBarView(controller: _tabs, children: [
+            _orderTab(itemsAsync, orderAsync.valueOrNull, canCatalog),
+            _prepareTab(orderAsync, isToday),
+          ]),
         ),
       ]),
+    );
+  }
+
+  /// Tab "Đặt hàng": danh sách hàng có sẵn (tên + đơn vị), người đặt chỉ nhập số lượng / trọng lượng
+  Widget _orderTab(AsyncValue<List<SupplyItem>> itemsAsync, SupplyOrder? order, bool canCatalog) {
+    return itemsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Lỗi tải danh mục: $e')),
+      data: (items) {
+        if (items.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  canCatalog ? 'Chưa có danh sách hàng. Hãy thiết lập tên món và đơn vị trước.' : 'Chưa có danh sách hàng — nhờ Quản lý thiết lập.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
+                ),
+                if (canCatalog) ...[
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                    onPressed: _openCatalog,
+                    icon: const Icon(Icons.inventory_2_outlined),
+                    label: const Text('Thiết lập danh sách hàng'),
+                  ),
+                ],
+              ]),
+            ),
+          );
+        }
+        final ordered = {for (final l in order?.lines ?? const <SupplyOrderLine>[]) l.itemId: l};
+        String? lastGroup;
+        final rows = <Widget>[];
+        for (final it in items) {
+          if (it.group != lastGroup && it.group.isNotEmpty) {
+            rows.add(Padding(
+              padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
+              child: Text(it.group.toUpperCase(),
+                  style: GoogleFonts.beVietnamPro(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+            ));
+          }
+          lastGroup = it.group;
+          final line = ordered[it.id];
+          rows.add(Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(it.name, style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700)),
+                  if (line != null)
+                    Text('Đã đặt: ${SupplyDateUtils.formatQty(line.qty)} ${line.unit} • ${line.contributorNames.join(", ")}',
+                        style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
+                ]),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 110,
+                child: TextField(
+                  controller: _ctrlFor(it.id),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.right,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: line == null ? 'SL' : '+ thêm',
+                    suffixText: it.unit,
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ]),
+          ));
+        }
+        final pending = _pendingCount;
+        return Column(children: [
+          Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), children: rows)),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  onPressed: _saving || pending == 0 ? null : () => _saveOrder(items),
+                  icon: _saving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send_rounded),
+                  label: Text(pending == 0 ? 'Nhập số lượng để đặt' : 'Đặt $pending món cho ${SupplyDateUtils.label(_date)}',
+                      style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+          ),
+        ]);
+      },
+    );
+  }
+
+  /// Tab "Soạn hàng": người vào ca kiểm từng món đã đặt và tích "Đã soạn"
+  Widget _prepareTab(AsyncValue<SupplyOrder> orderAsync, bool isToday) {
+    return orderAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Lỗi tải phiếu: $e')),
+      data: (order) {
+        if (order.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Text(
+                'Chưa có hàng nào được đặt cho ${SupplyDateUtils.label(_date)}.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
+              ),
+            ),
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            _ProgressHeader(order: order, isToday: isToday),
+            const SizedBox(height: 8),
+            for (final line in order.lines)
+              _LineTile(
+                line: line,
+                onToggle: (v) => _togglePrepared(line, v),
+                onEdit: () => _editLine(line),
+                onRemove: () => _removeLine(line),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -375,53 +503,6 @@ class _LineTile extends StatelessWidget {
             PopupMenuItem(value: 'remove', child: Text('Xóa khỏi phiếu')),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ItemPickerSheet extends StatefulWidget {
-  final List<SupplyItem> items;
-  const _ItemPickerSheet({required this.items});
-
-  @override
-  State<_ItemPickerSheet> createState() => _ItemPickerSheetState();
-}
-
-class _ItemPickerSheetState extends State<_ItemPickerSheet> {
-  String _q = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final q = _q.trim().toLowerCase();
-    final list = widget.items.where((i) => q.isEmpty || i.name.toLowerCase().contains(q) || i.group.toLowerCase().contains(q)).toList();
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.75,
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: TextField(
-              autofocus: true,
-              decoration: const InputDecoration(hintText: 'Tìm mặt hàng...', prefixIcon: Icon(Icons.search), border: OutlineInputBorder(), isDense: true),
-              onChanged: (v) => setState(() => _q = v),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: list.length,
-              itemBuilder: (_, i) {
-                final it = list[i];
-                return ListTile(
-                  title: Text(it.name, style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600)),
-                  subtitle: Text([if (it.group.isNotEmpty) it.group, if (it.unit.isNotEmpty) 'Đơn vị: ${it.unit}'].join(' • ')),
-                  trailing: const Icon(Icons.add_circle_outline, color: AppColors.primary),
-                  onTap: () => Navigator.pop(context, it),
-                );
-              },
-            ),
-          ),
-        ]),
       ),
     );
   }
