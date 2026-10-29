@@ -253,3 +253,16 @@ Hệ thống phân cấp chặt chẽ thành **4 vai trò độc lập** (`AppPe
 
 ---
 *Tài liệu được cập nhật tự động và đồng bộ định kỳ theo tiến trình phát triển hệ thống Chấm Công Trạm.*
+
+---
+
+## 8. ĐẶT HÀNG NGÀY MAI & SOẠN HÀNG KHI VÀO CA (`supply_order`)
+
+- **Mục đích**: hôm trước đặt hàng hóa / bao bì cho ngày hôm sau; hôm sau người vào ca kiểm từng món và tích **"Đã soạn"**.
+- **Firestore**:
+  - `/stores/{storeId}/supply_items/{itemId}` — danh mục hàng (`name`, `unit`, `group`, `order`, `active`). Sửa: Chủ, QL1, QL2.
+  - `/stores/{storeId}/supply_orders/{yyyy-MM-dd}` — MỘT phiếu cho mỗi ngày nhận hàng (ngày theo giờ VN). `lines.{itemId}` = `{name, unit, group, qty, note, contributors[{uid,name,qty,at}], prepared, preparedBy, preparedByName, preparedAt}`.
+  - Nhiều người cùng đặt một phiếu: số lượng cộng dồn bằng `FieldValue.increment`, người đặt ghi bằng `arrayUnion` → không ghi đè nhau. Thêm hàng vào dòng đã soạn → dòng trở về "chưa soạn".
+- **Phân quyền**: mọi vai trò đặt hàng & tích "Đã soạn"; QL2 ngang Chủ/QL1 ở chức năng này (sửa danh mục, xóa phiếu).
+- **Giao diện**: thẻ `SupplyChecklistCard` trên cả 3 dashboard (hôm nay cần soạn X/Y + lối tắt đặt hàng ngày mai), màn `SupplyOrderScreen` (`/supply-order?date=yyyy-MM-dd`), `SupplyItemsScreen` (danh mục), `SupplyHistoryScreen` (lịch sử), mục "Đặt & soạn hàng" trong menu cửa hàng.
+- **Ngày**: `core/utils/supply_date_utils.dart` (UTC+7). Test: `test/supply_order_test.dart`.

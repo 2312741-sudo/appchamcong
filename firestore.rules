@@ -285,6 +285,22 @@ service cloud.firestore {
             (isActiveMember(storeId) && resource.data.userId == request.auth.uid);
         }
       }
+
+      // 4.9. Đặt hàng ngày mai & soạn hàng khi vào ca
+      // Danh mục hàng: mọi thành viên đọc; Chủ, QL1, QL2 sửa.
+      match /supply_items/{itemId} {
+        allow read: if isActiveMember(storeId);
+        allow create, update, delete: if isAnyManagerOrOwner(storeId);
+      }
+      // Phiếu theo ngày (mã = yyyy-MM-dd): MỌI thành viên active đặt hàng & tích "Đã soạn" (nhiều người cùng một phiếu).
+      // Chỉ Chủ / QL1 / QL2 xóa cả phiếu.
+      match /supply_orders/{date} {
+        allow read: if isActiveMember(storeId);
+        allow create, update: if isActiveMember(storeId) &&
+          request.resource.data.date == date &&
+          request.resource.data.keys().hasOnly(['date', 'updatedAt', 'lines']);
+        allow delete: if isAnyManagerOrOwner(storeId);
+      }
     }
 
     // =========================================================================

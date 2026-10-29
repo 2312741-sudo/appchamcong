@@ -94,6 +94,18 @@ class AppPermissions {
     return role == UserRole.owner;
   }
 
+  /// Quyền sửa DANH MỤC hàng đặt (bao bì, NVL…): Chủ, Quản lý 1, Quản lý 2 (và Quản lý cũ)
+  static bool canManageSupplyCatalog(UserRole? role) {
+    if (role == null) return false;
+    return role == UserRole.owner ||
+        role == UserRole.manager1 ||
+        role == UserRole.manager2 ||
+        role == UserRole.legacyManager;
+  }
+
+  /// Đặt hàng ngày mai & tích "Đã soạn": mọi vai trò đang hoạt động trong cửa hàng
+  static bool canOrderSupplies(UserRole? role) => role != null;
+
   /// Kiểm tra có phải cấp Quản lý trở lên hay không
   static bool isManagerOrAbove(UserRole? role) {
     if (role == null) return false;
