@@ -266,4 +266,7 @@ Hệ thống phân cấp chặt chẽ thành **4 vai trò độc lập** (`AppPe
 - **Phân quyền**: mọi vai trò đặt hàng & tích "Đã soạn"; QL2 ngang Chủ/QL1 ở chức năng này (sửa danh mục, xóa phiếu).
 - **Đặt hàng**: danh sách hàng được thiết lập sẵn (tên món + đơn vị); người đặt chỉ nhập số lượng / trọng lượng (chấp nhận số thập phân `2,5`) ở tab "Đặt hàng" rồi bấm gửi một lần (`addManyToOrder`). Tab "Soạn hàng": tích "Đã soạn" từng món.
 - **Giao diện**: thẻ `SupplyChecklistCard` trên cả 3 dashboard (hôm nay cần soạn X/Y + lối tắt đặt hàng ngày mai), màn `SupplyOrderScreen` (`/supply-order?date=yyyy-MM-dd`), `SupplyItemsScreen` (danh mục), `SupplyHistoryScreen` (lịch sử), mục "Đặt & soạn hàng" trong menu cửa hàng.
-- **Ngày**: `core/utils/supply_date_utils.dart` (UTC+7). Test: `test/supply_order_test.dart`.
+- **Cài đặt** (`/stores/{storeId}/supply_settings/config`, Chủ/QL1/QL2 sửa — màn `SupplySettingsScreen`):
+  - `cutoffTime` "HH:mm": giờ chốt đặt hàng; phiếu ngày D khóa từ giờ này của ngày D−1 (giờ VN). Sau chốt chỉ Chủ/QL1/QL2 thêm/sửa (khóa ở giao diện).
+  - `preparerDepartmentIds`: bộ phận (vd. "Phục vụ lobby") — người được xếp lịch ở bộ phận này trong ngày là NGƯỜI SOẠN HÀNG: thẻ nhắc trên dashboard, hỏi "Soạn hàng ngay?" sau khi chấm công vào (`promptSupplyPrepAfterCheckIn`), được tích "Đã soạn". Rỗng = ai cũng soạn được.
+- **Ngày**: `core/utils/supply_date_utils.dart` (UTC+7, `cutoffDeadline` / `isOrderLocked`). Test: `test/supply_order_test.dart`.

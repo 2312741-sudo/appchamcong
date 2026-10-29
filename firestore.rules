@@ -292,6 +292,11 @@ service cloud.firestore {
         allow read: if isActiveMember(storeId);
         allow create, update, delete: if isAnyManagerOrOwner(storeId);
       }
+      // Cài đặt đặt & soạn hàng (giờ chốt, bộ phận soạn hàng): mọi thành viên đọc; Chủ, QL1, QL2 sửa.
+      match /supply_settings/{docId} {
+        allow read: if isActiveMember(storeId);
+        allow write: if isAnyManagerOrOwner(storeId);
+      }
       // Phiếu theo ngày (mã = yyyy-MM-dd): MỌI thành viên active đặt hàng & tích "Đã soạn" (nhiều người cùng một phiếu).
       // Chỉ Chủ / QL1 / QL2 xóa cả phiếu.
       match /supply_orders/{date} {

@@ -165,3 +165,30 @@ class SupplyOrder {
   bool get isEmpty => lines.isEmpty;
   bool get isAllPrepared => lines.isNotEmpty && preparedCount == lines.length;
 }
+
+/// Cài đặt đặt & soạn hàng của cửa hàng: stores/{storeId}/supply_settings/config (Chủ, QL1, QL2 sửa)
+class SupplySettings {
+  /// Giờ chốt đặt hàng "HH:mm" cho phiếu NGÀY HÔM SAU (vd. "21:00" → phiếu ngày 30 khóa lúc 21:00 ngày 29).
+  /// null = không chốt.
+  final String? cutoffTime;
+
+  /// Bộ phận (id trong store.departments) được xếp lịch hôm nay sẽ là người soạn hàng.
+  /// Rỗng = mọi người trong ca đều soạn được.
+  final List<String> preparerDepartmentIds;
+
+  const SupplySettings({this.cutoffTime, this.preparerDepartmentIds = const []});
+
+  factory SupplySettings.fromJson(Map<String, dynamic>? json) {
+    final cut = (json?['cutoffTime'] ?? '').toString().trim();
+    final deps = json?['preparerDepartmentIds'];
+    return SupplySettings(
+      cutoffTime: RegExp(r'^\d{1,2}:\d{2}$').hasMatch(cut) ? cut : null,
+      preparerDepartmentIds: deps is List ? deps.map((e) => e.toString()).where((e) => e.isNotEmpty).toList() : const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'cutoffTime': cutoffTime,
+        'preparerDepartmentIds': preparerDepartmentIds,
+      };
+}

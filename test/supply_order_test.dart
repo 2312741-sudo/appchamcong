@@ -61,4 +61,32 @@ void main() {
       expect(o.isAllPrepared, isFalse);
     });
   });
+
+  group('Giờ chốt đặt hàng', () {
+    test('phiếu ngày 30 chốt lúc 21:00 ngày 29 (giờ VN)', () {
+      final d = SupplyDateUtils.cutoffDeadline('2026-10-30', '21:00')!;
+      expect(d, DateTime.utc(2026, 10, 29, 14, 0)); // 21:00 VN = 14:00 UTC
+      expect(SupplyDateUtils.isOrderLocked('2026-10-30', '21:00', DateTime.utc(2026, 10, 29, 13, 59)), isFalse);
+      expect(SupplyDateUtils.isOrderLocked('2026-10-30', '21:00', DateTime.utc(2026, 10, 29, 14, 0)), isTrue);
+      expect(SupplyDateUtils.cutoffLabel('2026-10-30', '21:00'), '21:00 ngày 29/10/2026');
+    });
+    test('không có giờ chốt / sai định dạng → không khóa', () {
+      expect(SupplyDateUtils.isOrderLocked('2026-10-30', null), isFalse);
+      expect(SupplyDateUtils.isOrderLocked('2026-10-30', '25:00'), isFalse);
+      expect(SupplyDateUtils.cutoffLabel('2026-10-30', ''), isNull);
+    });
+    test('đầu tháng: chốt rơi vào ngày cuối tháng trước', () {
+      expect(SupplyDateUtils.cutoffDeadline('2026-11-01', '22:30'), DateTime.utc(2026, 10, 31, 15, 30));
+    });
+  });
+
+  group('SupplySettings.fromJson', () {
+    test('đọc giờ chốt và bộ phận soạn hàng', () {
+      final s = SupplySettings.fromJson({'cutoffTime': '21:00', 'preparerDepartmentIds': ['lobby', '']});
+      expect(s.cutoffTime, '21:00');
+      expect(s.preparerDepartmentIds, ['lobby']);
+      expect(SupplySettings.fromJson(null).cutoffTime, isNull);
+      expect(SupplySettings.fromJson({'cutoffTime': 'abc'}).cutoffTime, isNull);
+    });
+  });
 }

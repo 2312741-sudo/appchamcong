@@ -44,6 +44,19 @@ class SupplyOrderRepository {
   Future<void> setItemActive(String storeId, String itemId, bool active) =>
       _itemsRef(storeId).doc(itemId).update({'active': active, 'updatedAt': FieldValue.serverTimestamp()});
 
+  // ==================== CÀI ĐẶT ====================
+
+  DocumentReference<Map<String, dynamic>> _settingsRef(String storeId) =>
+      _firestore.collection('stores').doc(storeId).collection('supply_settings').doc('config');
+
+  Stream<SupplySettings> watchSettings(String storeId) =>
+      _settingsRef(storeId).snapshots().map((d) => SupplySettings.fromJson(d.data()));
+
+  Future<void> saveSettings(String storeId, SupplySettings settings) => _settingsRef(storeId).set({
+        ...settings.toJson(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
   // ==================== PHIẾU THEO NGÀY ====================
 
   Stream<SupplyOrder> watchOrder(String storeId, String date) {

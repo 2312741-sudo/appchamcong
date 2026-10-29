@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/supply_date_utils.dart';
+import '../../../core/utils/department_utils.dart';
+import '../../schedule/providers/schedule_provider.dart';
+import '../../store/providers/store_provider.dart';
 import '../providers/supply_order_provider.dart';
+import '../repositories/supply_order_repository.dart';
 import '../screens/supply_order_screen.dart';
 
 /// Thẻ trên Dashboard: hàng cần soạn hôm nay (tích "Đã soạn") + lối tắt đặt hàng ngày mai.
@@ -23,6 +27,8 @@ class SupplyChecklistCard extends ConsumerWidget {
     final done = todayOrder?.preparedCount ?? 0;
     final allDone = todayOrder?.isAllPrepared ?? false;
     final tomorrowCount = tomorrowOrder?.lines.length ?? 0;
+    final settings = ref.watch(supplySettingsProvider).valueOrNull;
+    final assigned = (settings?.preparerDepartmentIds.isNotEmpty ?? false) && ref.watch(isSupplyPreparerProvider(today));
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -37,6 +43,16 @@ class SupplyChecklistCard extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(child: Text('Đặt & soạn hàng', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 15))),
         ]),
+        if (assigned && total > 0 && !allDone) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+            child: Text('🧺 Bạn được phân công soạn hàng hôm nay',
+                style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 13)),
+          ),
+        ],
         const SizedBox(height: 10),
         InkWell(
           onTap: () => open(today),
@@ -81,5 +97,44 @@ class SupplyChecklistCard extends ConsumerWidget {
         ),
       ]),
     );
+  }
+}
+
+/// Sau khi chấm công VÀO: nếu người này là người soạn hàng hôm nay (theo bộ phận trong lịch làm)
+/// và phiếu hôm nay còn món chưa soạn → hỏi "Soạn hàng ngay?".
+Future<void> promptSupplyPrepAfterCheckIn(BuildContext context, WidgetRef ref) async {
+  final storeId = ref.read(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return;
+  final today = SupplyDateUtils.today();
+  try {
+    final SupplyOrderRepository repo = ref.read(supplyOrderRepositoryProvider);
+    final order = await repo.watchOrder(storeId, today).first;
+    if (order.isEmpty || order.isAllPrepared) return;
+    // Chờ cài đặt và lịch tuần tải xong rồi mới xét bộ phận soạn hàng
+    await ref.read(supplySettingsProvider.future);
+    await ref.read(weekScheduleProvider(DepartmentUtils.getMondayOfWeek(today)).future);
+    if (!ref.read(isSupplyPreparerProvider(today))) return;
+    if (!context.mounted) return;
+    final remaining = order.lines.length - order.preparedCount;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Soạn hàng hôm nay'),
+        content: Text('Bạn được phân công soạn hàng. Còn $remaining/${order.lines.length} món chưa soạn. Soạn ngay?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Để sau')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Soạn ngay'),
+          ),
+        ],
+      ),
+    );
+    if (go == true && context.mounted) {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => SupplyOrderScreen(initialDate: today)));
+    }
+  } catch (_) {
+    // Không chặn chấm công nếu tải phiếu lỗi
   }
 }

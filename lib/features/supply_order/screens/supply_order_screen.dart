@@ -11,6 +11,7 @@ import '../../store/providers/store_provider.dart';
 import '../providers/supply_order_provider.dart';
 import 'supply_items_screen.dart';
 import 'supply_history_screen.dart';
+import 'supply_settings_screen.dart';
 
 /// Đặt hàng (bao bì, hàng hóa) cho một ngày và tích "Đã soạn" khi vào ca.
 /// Mọi vai trò đều đặt và tích được; nhiều người cùng đặt vào MỘT phiếu của ngày.
@@ -244,6 +245,14 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
     final orderAsync = ref.watch(supplyOrderProvider(_date));
     final itemsAsync = ref.watch(supplyItemsProvider);
     final isToday = _date == SupplyDateUtils.today();
+    final settings = ref.watch(supplySettingsProvider).valueOrNull ?? const SupplySettings();
+    // Qua giờ chốt: chỉ Chủ / QL1 / QL2 còn thêm, sửa hàng
+    final pastCutoff = SupplyDateUtils.isOrderLocked(_date, settings.cutoffTime);
+    final orderLocked = pastCutoff && !canCatalog;
+    final cutoffText = SupplyDateUtils.cutoffLabel(_date, settings.cutoffTime);
+    // Soạn hàng: người được xếp lịch ở bộ phận soạn hàng trong ngày (hoặc Chủ / QL)
+    final canPrepare = canCatalog || ref.watch(isSupplyPreparerProvider(_date));
+    final prepDeptNames = _deptNames(settings.preparerDepartmentIds);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -259,6 +268,12 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
           ),
           if (canCatalog)
             IconButton(tooltip: 'Danh mục hàng', icon: const Icon(Icons.inventory_2_outlined), onPressed: _openCatalog),
+          if (canCatalog)
+            IconButton(
+              tooltip: 'Cài đặt giờ chốt & người soạn',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SupplySettingsScreen())),
+            ),
         ],
         bottom: TabBar(
           controller: _tabs,
@@ -273,8 +288,8 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
         _dateBar(),
         Expanded(
           child: TabBarView(controller: _tabs, children: [
-            _orderTab(itemsAsync, orderAsync.valueOrNull, canCatalog),
-            _prepareTab(orderAsync, isToday),
+            _orderTab(itemsAsync, orderAsync.valueOrNull, canCatalog, locked: orderLocked, pastCutoff: pastCutoff, cutoffText: cutoffText),
+            _prepareTab(orderAsync, isToday, canPrepare: canPrepare, canEditLines: !orderLocked, prepDeptNames: prepDeptNames),
           ]),
         ),
       ]),
@@ -282,7 +297,26 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
   }
 
   /// Tab "Đặt hàng": danh sách hàng có sẵn (tên + đơn vị), người đặt chỉ nhập số lượng / trọng lượng
-  Widget _orderTab(AsyncValue<List<SupplyItem>> itemsAsync, SupplyOrder? order, bool canCatalog) {
+  /// Tên các bộ phận soạn hàng (để hiện trong thông báo)
+  String _deptNames(List<String> ids) {
+    if (ids.isEmpty) return '';
+    final deps = ref.read(currentStoreProvider).valueOrNull?.departments ?? const [];
+    return ids.map((id) => deps.where((d) => d.id == id).map((d) => d.name).firstOrNull ?? id).join(', ');
+  }
+
+  Widget _banner(String text, {Color color = AppColors.warning, IconData icon = Icons.lock_clock}) => Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: GoogleFonts.beVietnamPro(fontSize: 13, fontWeight: FontWeight.w600))),
+        ]),
+      );
+
+  Widget _orderTab(AsyncValue<List<SupplyItem>> itemsAsync, SupplyOrder? order, bool canCatalog,
+      {required bool locked, required bool pastCutoff, String? cutoffText}) {
     return itemsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Lỗi tải danh mục: $e')),
@@ -341,6 +375,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
                 width: 110,
                 child: TextField(
                   controller: _ctrlFor(it.id),
+                  enabled: !locked,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.right,
                   onChanged: (_) => setState(() {}),
@@ -357,6 +392,14 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
         }
         final pending = _pendingCount;
         return Column(children: [
+          if (cutoffText != null)
+            locked
+                ? _banner('Đã chốt đặt hàng lúc $cutoffText. Cần thêm hàng, hãy báo Chủ hoặc Quản lý.')
+                : _banner(
+                    pastCutoff ? 'Đã qua giờ chốt ($cutoffText) — bạn là Chủ/Quản lý nên vẫn sửa được.' : 'Chốt đặt hàng lúc $cutoffText.',
+                    color: pastCutoff ? AppColors.warning : AppColors.info,
+                    icon: Icons.schedule,
+                  ),
           Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 16), children: rows)),
           SafeArea(
             top: false,
@@ -367,7 +410,7 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
                 height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                  onPressed: _saving || pending == 0 ? null : () => _saveOrder(items),
+                  onPressed: _saving || pending == 0 || locked ? null : () => _saveOrder(items),
                   icon: _saving
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.send_rounded),
@@ -383,7 +426,8 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
   }
 
   /// Tab "Soạn hàng": người vào ca kiểm từng món đã đặt và tích "Đã soạn"
-  Widget _prepareTab(AsyncValue<SupplyOrder> orderAsync, bool isToday) {
+  Widget _prepareTab(AsyncValue<SupplyOrder> orderAsync, bool isToday,
+      {required bool canPrepare, required bool canEditLines, required String prepDeptNames}) {
     return orderAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Lỗi tải phiếu: $e')),
@@ -404,13 +448,21 @@ class _SupplyOrderScreenState extends ConsumerState<SupplyOrderScreen> with Sing
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             _ProgressHeader(order: order, isToday: isToday),
+            if (!canPrepare)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Chỉ người được xếp lịch ở bộ phận ${prepDeptNames.isEmpty ? "soạn hàng" : prepDeptNames} trong ngày này mới tích "Đã soạn".',
+                  style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                ),
+              ),
             const SizedBox(height: 8),
             for (final line in order.lines)
               _LineTile(
                 line: line,
-                onToggle: (v) => _togglePrepared(line, v),
-                onEdit: () => _editLine(line),
-                onRemove: () => _removeLine(line),
+                onToggle: canPrepare ? (v) => _togglePrepared(line, v) : null,
+                onEdit: canEditLines ? () => _editLine(line) : null,
+                onRemove: canEditLines ? () => _removeLine(line) : null,
               ),
           ],
         );
@@ -460,11 +512,11 @@ class _ProgressHeader extends StatelessWidget {
 
 class _LineTile extends StatelessWidget {
   final SupplyOrderLine line;
-  final ValueChanged<bool> onToggle;
-  final VoidCallback onEdit;
-  final VoidCallback onRemove;
+  final ValueChanged<bool>? onToggle;
+  final VoidCallback? onEdit;
+  final VoidCallback? onRemove;
 
-  const _LineTile({required this.line, required this.onToggle, required this.onEdit, required this.onRemove});
+  const _LineTile({required this.line, this.onToggle, this.onEdit, this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -480,7 +532,7 @@ class _LineTile extends StatelessWidget {
         value: line.prepared,
         activeColor: AppColors.success,
         controlAffinity: ListTileControlAffinity.leading,
-        onChanged: (v) => onToggle(v ?? false),
+        onChanged: onToggle == null ? null : (v) => onToggle!(v ?? false),
         title: Text(
           '${line.name} — ${SupplyDateUtils.formatQty(line.qty)} ${line.unit}',
           style: GoogleFonts.beVietnamPro(
@@ -496,8 +548,10 @@ class _LineTile extends StatelessWidget {
             Text('Đã soạn bởi ${line.preparedByName.isEmpty ? line.preparedBy : line.preparedByName}${preparedAt.isEmpty ? "" : " lúc $preparedAt"}',
                 style: GoogleFonts.beVietnamPro(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
         ]),
-        secondary: PopupMenuButton<String>(
-          onSelected: (v) => v == 'edit' ? onEdit() : onRemove(),
+        secondary: onEdit == null && onRemove == null
+            ? null
+            : PopupMenuButton<String>(
+          onSelected: (v) => v == 'edit' ? onEdit?.call() : onRemove?.call(),
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'edit', child: Text('Sửa số lượng / ghi chú')),
             PopupMenuItem(value: 'remove', child: Text('Xóa khỏi phiếu')),

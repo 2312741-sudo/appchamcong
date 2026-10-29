@@ -43,5 +43,31 @@ class SupplyDateUtils {
     return v;
   }
 
+  /// Hạn chốt đặt hàng (mốc UTC) cho phiếu ngày [date]: [cutoff] "HH:mm" của NGÀY HÔM TRƯỚC, giờ Việt Nam.
+  /// [cutoff] null / sai định dạng → null (không chốt).
+  static DateTime? cutoffDeadline(String date, String? cutoff) {
+    final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch((cutoff ?? '').trim());
+    if (m == null) return null;
+    final h = int.parse(m.group(1)!);
+    final mi = int.parse(m.group(2)!);
+    if (h > 23 || mi > 59) return null;
+    final p = date.split('-').map(int.parse).toList();
+    // Ngày hôm trước lúc h:mi giờ VN = (… − 7 giờ) theo UTC
+    return DateTime.utc(p[0], p[1], p[2] - 1, h, mi).subtract(const Duration(hours: 7));
+  }
+
+  /// Phiếu ngày [date] đã khóa đặt hàng chưa (qua giờ chốt). Không có giờ chốt → không khóa.
+  static bool isOrderLocked(String date, String? cutoff, [DateTime? now]) {
+    final d = cutoffDeadline(date, cutoff);
+    if (d == null) return false;
+    return !(now ?? DateTime.now()).toUtc().isBefore(d);
+  }
+
+  /// Mô tả giờ chốt để hiển thị: "21:00 ngày 29/10/2026"
+  static String? cutoffLabel(String date, String? cutoff) {
+    if (cutoffDeadline(date, cutoff) == null) return null;
+    return '${cutoff!.trim()} ngày ${display(addDays(date, -1))}';
+  }
+
   static String formatQty(double q) => q == q.roundToDouble() ? q.toInt().toString() : q.toString();
 }
