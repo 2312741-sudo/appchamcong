@@ -384,7 +384,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                                       ),
                                       child: Text(
                                         hasUnit
-                                            ? '🏷️ ${task.unitLabel}'
+                                            ? task.unitLabel
                                             : '✓ Checklist',
                                         style: TextStyle(
                                           fontFamily: 'BeVietnamPro',
@@ -550,7 +550,7 @@ class _ProductionTasksScreenState extends ConsumerState<ProductionTasksScreen> {
                                       ),
                                       child: Text(
                                         hasUnit
-                                            ? '🏷️ ${task.unitLabel}'
+                                            ? task.unitLabel
                                             : '✓ Checklist',
                                         style: TextStyle(
                                           fontFamily: 'BeVietnamPro',

@@ -162,7 +162,7 @@ class ShiftReminderService {
 
           items.add(ShiftReminderItem(
             notifId: notifId,
-            title: '⏰ Nhắc nhở ca làm việc',
+            title: 'Nhắc nhở ca làm việc',
             body: 'Bạn có $shiftDisplayName tại $storeName bắt đầu lúc $timeStr (còn $minutesBefore phút). Chuẩn bị sẵn sàng nhé!',
             shiftStart: shiftStart,
             reminderTime: reminderTime,

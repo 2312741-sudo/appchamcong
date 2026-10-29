@@ -323,9 +323,9 @@ class NotificationRepository {
               AppNotificationModel(
                 id: '',
                 storeId: storeId,
-                title: '🎂 Hôm nay là sinh nhật của ${member.name}!',
+                title: 'Hôm nay là sinh nhật của ${member.name}!',
                 body:
-                    'Cả cửa hàng hãy cùng gửi những lời chúc mừng tốt đẹp nhất đến ${member.name} (${member.role.label}) nhân ngày sinh nhật hôm nay nhé! 🎉🎈',
+                    'Cả cửa hàng hãy cùng gửi những lời chúc mừng tốt đẹp nhất đến ${member.name} (${member.role.label}) nhân ngày sinh nhật hôm nay nhé!',
                 type: AppNotificationType.birthday,
                 createdAt: DateTime.now(),
                 targetRoles: null,

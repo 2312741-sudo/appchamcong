@@ -231,7 +231,7 @@ class _ScheduleRegisterScreenState
                                 );
                               }),
                               CheckboxListTile(
-                                title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
+                                title: Text('Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                                 value: hasDelivery,
                                 onChanged: (val) {
                                   setModalState(() {
@@ -241,7 +241,7 @@ class _ScheduleRegisterScreenState
                                 }
                               ),
                               CheckboxListTile(
-                                title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
+                                title: Text('Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                                 value: hasGiaoHang,
                                 onChanged: (val) {
                                   setModalState(() {

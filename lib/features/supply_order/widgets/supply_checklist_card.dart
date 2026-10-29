@@ -66,7 +66,7 @@ class SupplyChecklistCard extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-            child: Text('🧺 Bạn được phân công soạn hàng hôm nay',
+            child: Text('Bạn được phân công soạn hàng hôm nay',
                 style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700, fontSize: 13)),
           ),
         ],

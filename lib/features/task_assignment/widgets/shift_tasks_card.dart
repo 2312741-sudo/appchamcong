@@ -128,7 +128,7 @@ class _ShiftTasksCardState extends ConsumerState<ShiftTasksCard> {
 
     if (isSelectedActiveShift) {
       if (isOvernightShift) {
-        return 'Ca hiện tại (${DateFormat('dd/MM').format(dt)}) 🌙';
+        return 'Ca hiện tại (${DateFormat('dd/MM').format(dt)})';
       }
       return 'Ca hiện tại (${DateFormat('dd/MM').format(dt)})';
     }

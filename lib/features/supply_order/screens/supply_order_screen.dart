@@ -489,7 +489,7 @@ class _ProgressHeader extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
-          order.isAllPrepared ? '✅ Đã soạn đủ $total/$total món' : '📦 Đã soạn $done/$total món',
+          order.isAllPrepared ? 'Đã soạn đủ $total/$total món' : 'Đã soạn $done/$total món',
           style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w800, fontSize: 15),
         ),
         const SizedBox(height: 8),

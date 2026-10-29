@@ -274,7 +274,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
                 if (store != null && store.departments.isEmpty) ...[
                   const SizedBox(height: 6),
                   const Text(
-                    '⚠️ Cửa hàng chưa có danh sách bộ phận. Vào Cài đặt cửa hàng để thiết lập (Pha chế, Thu ngân, Bếp...).',
+                    'Cửa hàng chưa có danh sách bộ phận. Vào Cài đặt cửa hàng để thiết lập (Pha chế, Thu ngân, Bếp...).',
                     style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 12, color: AppColors.warning),
                   ),
                 ],
@@ -489,7 +489,7 @@ class _MemberDetailScreenState extends ConsumerState<MemberDetailScreen> {
               ),
               SizedBox(height: 4),
               Text(
-                '• Xem lịch làm việc của cả cửa hàng (Chỉ xem)\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• ❌ KHÔNG được tạo/sửa/xoá ca làm việc của nhân viên\n• ❌ KHÔNG được duyệt thành viên mới xin vào\n• ❌ KHÔNG được xem/sửa bảng chấm công của nhân viên khác',
+                '• Xem lịch làm việc của cả cửa hàng (Chỉ xem)\n• Xếp / Tick chọn Chở hàng và Giao hàng\n• KHÔNG được tạo/sửa/xoá ca làm việc của nhân viên\n• KHÔNG được duyệt thành viên mới xin vào\n• KHÔNG được xem/sửa bảng chấm công của nhân viên khác',
                 style: TextStyle(fontFamily: 'BeVietnamPro', fontSize: 11.5, color: Color(0xFF004D40), height: 1.4),
               ),
             ],

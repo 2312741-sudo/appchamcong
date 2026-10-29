@@ -228,7 +228,7 @@ class _ScheduleManagerScreenState
                   }),
                   if (canTick || isOwner || canManageSchedule) ...[
                     CheckboxListTile(
-                      title: Text('📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
+                      title: Text('Chở hàng (+${store.deliveryAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                       value: hasDelivery,
                       onChanged: (val) {
                         setModalState(() {
@@ -238,7 +238,7 @@ class _ScheduleManagerScreenState
                       }
                     ),
                     CheckboxListTile(
-                      title: Text('🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
+                      title: Text('Giao hàng (+${store.giaoHangAllowance ?? 0}đ)', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, color: _palette.accent)),
                       value: hasGiaoHang,
                       onChanged: (val) {
                         setModalState(() {
@@ -539,7 +539,7 @@ class _ScheduleManagerScreenState
                             dense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                             title: Text(
-                              '📦 Chở hàng (+${store.deliveryAllowance ?? 0}đ)',
+                              'Chở hàng (+${store.deliveryAllowance ?? 0}đ)',
                               style: GoogleFonts.beVietnamPro(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
@@ -563,7 +563,7 @@ class _ScheduleManagerScreenState
                             dense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                             title: Text(
-                              '🛵 Giao hàng (+${store.giaoHangAllowance ?? 0}đ)',
+                              'Giao hàng (+${store.giaoHangAllowance ?? 0}đ)',
                               style: GoogleFonts.beVietnamPro(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
@@ -1163,7 +1163,7 @@ class _ScheduleManagerScreenState
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Text('📦', style: TextStyle(fontSize: 9)),
+                                      const Icon(Icons.inventory_2_outlined, size: 10, color: Color(0xFFD9480F)),
                                       const SizedBox(width: 2.5),
                                       Text(
                                         '$totalDeliveryCount ca',

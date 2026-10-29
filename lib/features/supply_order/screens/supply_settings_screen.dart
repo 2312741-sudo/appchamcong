@@ -82,7 +82,7 @@ class _SupplySettingsScreenState extends ConsumerState<SupplySettingsScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: card(),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('⏰ Giờ chốt đặt hàng', style: title),
+                  Text('Giờ chốt đặt hàng', style: title),
                   const SizedBox(height: 4),
                   Text('Phiếu của ngày hôm sau khóa từ giờ này của hôm trước. Sau giờ chốt chỉ Chủ, Quản lý 1, Quản lý 2 còn thêm / sửa được.', style: hint),
                   SwitchListTile(
@@ -110,7 +110,7 @@ class _SupplySettingsScreenState extends ConsumerState<SupplySettingsScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: card(),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('🧺 Bộ phận soạn hàng khi vào ca', style: title),
+                  Text('Bộ phận soạn hàng khi vào ca', style: title),
                   const SizedBox(height: 4),
                   Text('Người được xếp lịch ở bộ phận này trong ngày sẽ là người soạn hàng: thấy thẻ nhắc, được hỏi "Soạn hàng ngay?" khi chấm công vào và được tích "Đã soạn". Không chọn bộ phận nào = ai trong ca cũng soạn được.', style: hint),
                   const SizedBox(height: 6),

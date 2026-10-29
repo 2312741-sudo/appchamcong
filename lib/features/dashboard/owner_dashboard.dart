@@ -205,7 +205,7 @@ class _OwnerHomeTab extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${_getGreeting(now.hour)}, $firstName 👋',
+                            '${_getGreeting(now.hour)}, $firstName',
                             style: const TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'BeVietnamPro'),
                           ),
                           const SizedBox(height: 4),

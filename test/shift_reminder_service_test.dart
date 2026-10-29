@@ -60,7 +60,7 @@ void main() {
       final item = items.first;
       expect(item.shiftStart, DateTime(2030, 1, 7, 6, 0));
       expect(item.reminderTime, DateTime(2030, 1, 7, 5, 45));
-      expect(item.title, '⏰ Nhắc nhở ca làm việc');
+      expect(item.title, 'Nhắc nhở ca làm việc');
       expect(item.body, contains('Trạm Chanh 1'));
       expect(item.body, contains('06:00'));
       expect(item.body, contains('15 phút'));

@@ -150,8 +150,8 @@ void main() {
       final birthdayNotif = AppNotificationModel(
         id: 'birthday_u1_2026_8_17',
         storeId: 'store_1',
-        title: '🎂 Hôm nay là sinh nhật của Nguyễn Văn A!',
-        body: 'Cả cửa hàng hãy cùng gửi những lời chúc mừng tốt đẹp nhất đến Nguyễn Văn A nhân ngày sinh nhật hôm nay nhé! 🎉🎈',
+        title: 'Hôm nay là sinh nhật của Nguyễn Văn A!',
+        body: 'Cả cửa hàng hãy cùng gửi những lời chúc mừng tốt đẹp nhất đến Nguyễn Văn A nhân ngày sinh nhật hôm nay nhé!',
         type: AppNotificationType.birthday,
         createdAt: DateTime(2026, 8, 17),
         targetUserId: null,
