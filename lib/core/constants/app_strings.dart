@@ -4,7 +4,7 @@ class AppStrings {
   // ── App Info ──────────────────────────────────────────────────────────────
   static const String appName = 'Chấm Công Trạm';
   static const String appTagline = 'Luôn tươi ngon vì sức khoẻ';
-  static const String appVersion = 'Phiên bản 1.2.0';
+  static const String appVersion = 'Phiên bản 1.2.1';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   static const String login = 'Đăng nhập';
