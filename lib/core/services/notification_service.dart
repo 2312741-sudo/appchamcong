@@ -88,7 +88,8 @@ class NotificationService {
         if (AppPermissions.canManageSchedule(role)) AppRoutes.scheduleManager,
         if (AppPermissions.canApproveMembers(role)) AppRoutes.pendingMembers,
         if (AppPermissions.canViewAllAttendance(role)) AppRoutes.attendanceTable,
-        if (role == UserRole.owner) AppRoutes.manageAdvances};
+        if (role == UserRole.owner) AppRoutes.manageAdvances,
+        if (AppPermissions.canOpenCashDrawer(role)) AppRoutes.cashDrawer};
       if (!permitted.contains(destination)) destination = AppRoutes.notifications;
       String? sourcePath;
       if (details['weekStart'] is String && data['type'] == 'schedule_changed') sourcePath = 'schedules/${details['weekStart']}';

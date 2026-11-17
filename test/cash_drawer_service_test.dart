@@ -4,24 +4,32 @@ import 'package:cham_cong_tram/core/auth/app_permissions.dart';
 import 'package:cham_cong_tram/models/member_model.dart';
 
 void main() {
-  group('Mở két tiền', () {
-    test('băm PIN khớp web (sha256 "tram-mo-ket|store|uid|pin")', () {
-      expect(CashDrawerService.pinHash('S1', 'U1', '1234'),
-          'e8db9b8fd89f06fd5c5661ea3ae2b2a96c402e347107bd20b3bc60b4dd1f0939');
+  group('Mở két tiền — mã dùng 1 lần', () {
+    test('mã 6 số khớp phần mềm laptop và web (HMAC-SHA256)', () {
+      // Cùng mẫu đã đối chiếu với web (lib/cashDrawer.ts otpFor) và thuật toán Get-Otp của laptop
+      expect(CashDrawerService.otpFor('secret-abc', 'REQ123abc.1793606400000'), '910788');
     });
 
-    test('kiểm tra PIN: đúng / sai / chưa đặt / sai định dạng', () {
-      final cfg = CashDrawerConfig.fromMap({
-        'token': 't',
-        'pins': {'U1': CashDrawerService.pinHash('S1', 'U1', '1234')},
-      });
-      expect(CashDrawerService.checkPin(cfg, 'S1', 'U1', '1234'), isTrue);
-      expect(CashDrawerService.checkPin(cfg, 'S1', 'U1', '4321'), isFalse);
-      expect(CashDrawerService.checkPin(cfg, 'S2', 'U1', '1234'), isFalse); // PIN gắn với cửa hàng
-      expect(CashDrawerService.checkPin(cfg, 'S1', 'U2', '1234'), isFalse); // chưa đặt PIN
-      expect(CashDrawerService.isValidPin('12a4'), isFalse);
-      expect(CashDrawerService.isValidPin('123'), isFalse);
-      expect(CashDrawerService.isValidPin('123456'), isTrue);
+    test('mã khác nhau theo yêu cầu và theo khóa; luôn đủ 6 số', () {
+      final a = CashDrawerService.otpFor('k1', 'A1b2.1793606400000');
+      final b = CashDrawerService.otpFor('k1', 'A1b2.1793606400001');
+      final c = CashDrawerService.otpFor('k2', 'A1b2.1793606400000');
+      expect(a == b && a == c, isFalse);
+      for (var i = 0; i < 200; i++) {
+        expect(CashDrawerService.isValidOtp(CashDrawerService.otpFor('k$i', 'R$i.1793606400000')), isTrue);
+      }
+      expect(CashDrawerService.isValidOtp('12345'), isFalse);
+      expect(CashDrawerService.isValidOtp('12a456'), isFalse);
+    });
+
+    test('yêu cầu còn hạn 15 phút, chỉ khi đang chờ', () {
+      const t0 = 1793606400000;
+      const r = CashDrawerRequest(id: 'x', uid: 'u', name: 'A', reason: 'r', nonce: 'x.$t0', createdAtMs: t0, status: 'pending');
+      expect(r.isAlive(t0 + 14 * 60000), isTrue);
+      expect(r.minutesLeft(t0 + 14 * 60000), 1);
+      expect(r.isAlive(t0 + 15 * 60000), isFalse);
+      const done = CashDrawerRequest(id: 'x', uid: 'u', name: 'A', reason: 'r', nonce: 'x.$t0', createdAtMs: t0, status: 'opened');
+      expect(done.isAlive(t0), isFalse);
     });
 
     test('đọc cấu hình: IP dạng chuỗi hoặc mảng, cổng mặc định 8787', () {
@@ -39,7 +47,7 @@ void main() {
       expect(CashDrawerService.fullReason('Khác', 'Rút về ngân hàng'), 'Rút về ngân hàng');
     });
 
-    test('chỉ Chủ / Quản lý 1 mở két', () {
+    test('chỉ Chủ / Quản lý 1 dùng được két', () {
       expect(AppPermissions.canOpenCashDrawer(UserRole.owner), isTrue);
       expect(AppPermissions.canOpenCashDrawer(UserRole.manager1), isTrue);
       expect(AppPermissions.canOpenCashDrawer(UserRole.legacyManager), isTrue);

@@ -42,6 +42,7 @@ import '../features/task_assignment/screens/task_detail_screen.dart';
 import '../models/task_assignment_model.dart';
 import '../models/member_model.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../core/widgets/cash_drawer_button.dart';
 
 // Route path constants
 class AppRoutes {
@@ -87,6 +88,7 @@ class AppRoutes {
   static const String taskManagement = '/task-management';
   static const String taskDetail = '/task-detail';
   static const String supplyOrder = '/supply-order';
+  static const String cashDrawer = '/cash-drawer';
 }
 
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -225,6 +227,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.activeStaff,
         name: 'active-staff',
         builder: (context, state) => const ActiveStaffScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.cashDrawer,
+        name: 'cash-drawer',
+        builder: (context, state) => const CashDrawerScreen(),
       ),
       GoRoute(
         path: AppRoutes.attendanceHistory,

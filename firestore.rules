@@ -156,8 +156,27 @@ service cloud.firestore {
         allow read, write: if isOwnerOrManager1(storeId);
       }
 
+      // Khóa bí mật tạo MÃ MỞ KÉT DÙNG 1 LẦN: CHỈ CHỦ đọc / ghi (quản lý không tự tạo được mã)
+      match /owner_private/{docId} {
+        allow read, write: if isStoreOwner(storeId);
+      }
+
+      // Yêu cầu mở két (quản lý xin → Chủ gửi mã). Tạo: Chủ / QL1, đúng tên mình, trạng thái chờ.
+      // Sửa: chỉ trạng thái (đã mở / hủy) — người gửi với yêu cầu của mình, Chủ với mọi yêu cầu. Không xóa.
+      match /cash_drawer_requests/{reqId} {
+        allow read: if isOwnerOrManager1(storeId);
+        allow create: if isOwnerOrManager1(storeId) &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.status == 'pending';
+        allow update: if isOwnerOrManager1(storeId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'openedAt']) &&
+          request.resource.data.status in ['opened', 'cancelled'] &&
+          (resource.data.uid == request.auth.uid || isStoreOwner(storeId));
+        allow delete: if false;
+      }
+
       // Nhật ký MỞ KÉT TIỀN (web + app, phần mềm Trạm Mở Két): Chủ / Quản lý 1 ghi lần mở của CHÍNH MÌNH và xem.
-      // Không ai sửa / xóa được (giữ nguyên dấu vết). Cấu hình két + PIN nằm ở private/cash_drawer (luật ở trên).
+      // Không ai sửa / xóa được (giữ nguyên dấu vết). Cấu hình két (mã ghép nối, IP) nằm ở private/cash_drawer.
       match /cash_drawer_logs/{logId} {
         allow read: if isOwnerOrManager1(storeId);
         allow create: if isOwnerOrManager1(storeId) &&
