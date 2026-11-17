@@ -151,9 +151,11 @@ service cloud.firestore {
         request.resource.data.deletePassword == resource.data.get('deletePassword', null)
       );
 
-      // Cài đặt bảo mật riêng (mật khẩu xác nhận xóa dữ liệu): chỉ Chủ hoặc Quản lý 1
+      // Cài đặt bảo mật riêng (mật khẩu xác nhận xóa dữ liệu): chỉ Chủ / QL1 đọc và ghi.
+      // Riêng cấu hình kết nối két tiền (private/cash_drawer): Quản lý 2 cũng được phép đọc (ghi vẫn chỉ Chủ / QL1).
       match /private/{docId} {
-        allow read, write: if isOwnerOrManager1(storeId);
+        allow read: if isOwnerOrManager1(storeId) || (docId == 'cash_drawer' && isAnyManagerOrOwner(storeId));
+        allow write: if isOwnerOrManager1(storeId);
       }
 
       // Khóa bí mật tạo MÃ MỞ KÉT DÙNG 1 LẦN: CHỈ CHỦ đọc / ghi (quản lý không tự tạo được mã)
@@ -161,25 +163,25 @@ service cloud.firestore {
         allow read, write: if isStoreOwner(storeId);
       }
 
-      // Yêu cầu mở két (quản lý xin → Chủ gửi mã). Tạo: Chủ / QL1, đúng tên mình, trạng thái chờ.
+      // Yêu cầu mở két (quản lý xin → Chủ gửi mã). Tạo: Chủ / QL1 / QL2, đúng tên mình, trạng thái chờ.
       // Sửa: chỉ trạng thái (đã mở / hủy) — người gửi với yêu cầu của mình, Chủ với mọi yêu cầu. Không xóa.
       match /cash_drawer_requests/{reqId} {
-        allow read: if isOwnerOrManager1(storeId);
-        allow create: if isOwnerOrManager1(storeId) &&
+        allow read: if isAnyManagerOrOwner(storeId);
+        allow create: if isAnyManagerOrOwner(storeId) &&
           request.resource.data.uid == request.auth.uid &&
           request.resource.data.status == 'pending';
-        allow update: if isOwnerOrManager1(storeId) &&
+        allow update: if isAnyManagerOrOwner(storeId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'openedAt']) &&
           request.resource.data.status in ['opened', 'cancelled'] &&
           (resource.data.uid == request.auth.uid || isStoreOwner(storeId));
         allow delete: if false;
       }
 
-      // Nhật ký MỞ KÉT TIỀN (web + app, phần mềm Trạm Mở Két): Chủ / Quản lý 1 ghi lần mở của CHÍNH MÌNH và xem.
+      // Nhật ký MỞ KÉT TIỀN (web + app, phần mềm Trạm Mở Két): Chủ / QL1 / QL2 ghi lần mở của CHÍNH MÌNH và xem.
       // Không ai sửa / xóa được (giữ nguyên dấu vết). Cấu hình két (mã ghép nối, IP) nằm ở private/cash_drawer.
       match /cash_drawer_logs/{logId} {
-        allow read: if isOwnerOrManager1(storeId);
-        allow create: if isOwnerOrManager1(storeId) &&
+        allow read: if isAnyManagerOrOwner(storeId);
+        allow create: if isAnyManagerOrOwner(storeId) &&
           request.resource.data.uid == request.auth.uid &&
           request.resource.data.source in ['web', 'app'];
         allow update, delete: if false;
@@ -294,17 +296,20 @@ service cloud.firestore {
       // 4.6. Thông báo nội bộ cửa hàng
       // Đọc: mọi thành viên active (QL2, NV cũng nhận thông báo broadcast, sinh nhật, lịch, v.v.)
       // Lọc theo scope/role được thực hiện ở client (Flutter) — không cần chặn tại Firestore.
+      // Tạo: mọi thành viên active (QL2 tạo thông báo xin mở két; nhân viên tạo thông báo chấm công / đăng ký lịch).
       // Update readBy: mọi thành viên active có thể tự đánh dấu đã đọc (chỉ field readBy, chỉ arrayUnion chính mình).
-      // Tạo/sửa nội dung/xóa: chỉ Chủ + QL1.
+      // Xóa: chỉ Chủ + QL1.
       match /notifications/{notificationId} {
         allow read: if isActiveMember(storeId);
+        // Cho phép mọi thành viên active tạo thông báo (xin mở két từ QL2, chấm công, đăng ký lịch, v.v.)
+        allow create: if isActiveMember(storeId);
         // Cho phép bất kỳ thành viên active nào tự thêm uid mình vào readBy (mark as read)
         allow update: if isActiveMember(storeId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) &&
           request.resource.data.readBy.hasAll(resource.data.readBy) &&
           request.resource.data.readBy.removeAll(resource.data.readBy).hasOnly([request.auth.uid]);
-        // Tạo/xóa và sửa nội dung: chỉ Chủ + QL1
-        allow create, delete: if isOwnerOrManager1(storeId);
+        // Xóa: chỉ Chủ + QL1
+        allow delete: if isOwnerOrManager1(storeId);
       }
 
       // 4.7. Nhật ký kế thừa / chuyển nhượng (audit_logs)

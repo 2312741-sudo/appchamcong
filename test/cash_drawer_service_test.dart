@@ -47,11 +47,11 @@ void main() {
       expect(CashDrawerService.fullReason('Khác', 'Rút về ngân hàng'), 'Rút về ngân hàng');
     });
 
-    test('chỉ Chủ / Quản lý 1 dùng được két', () {
+    test('chỉ Chủ / Quản lý (QL1, QL2, Quản lý cũ) dùng được két', () {
       expect(AppPermissions.canOpenCashDrawer(UserRole.owner), isTrue);
       expect(AppPermissions.canOpenCashDrawer(UserRole.manager1), isTrue);
+      expect(AppPermissions.canOpenCashDrawer(UserRole.manager2), isTrue);
       expect(AppPermissions.canOpenCashDrawer(UserRole.legacyManager), isTrue);
-      expect(AppPermissions.canOpenCashDrawer(UserRole.manager2), isFalse);
       expect(AppPermissions.canOpenCashDrawer(UserRole.employee), isFalse);
       expect(AppPermissions.canOpenCashDrawer(null), isFalse);
     });

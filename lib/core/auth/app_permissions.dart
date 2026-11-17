@@ -17,12 +17,13 @@ import '../../models/member_model.dart';
 class AppPermissions {
   const AppPermissions._();
 
-  /// Quyền MỞ KÉT TIỀN qua máy in (phần mềm Trạm Mở Két trên laptop): Chủ, Quản lý 1, Quản lý cũ.
-  /// Khớp luật Firestore (stores/{id}/private/cash_drawer chỉ Chủ / Quản lý 1 đọc được) và canOpenCashDrawer (web).
+  /// Quyền MỞ KÉT TIỀN qua máy in (phần mềm Trạm Mở Két trên laptop): Chủ, Quản lý 1, Quản lý 2, Quản lý cũ.
+  /// Khớp luật Firestore (stores/{id}/private/cash_drawer cho phép Chủ / QL1 / QL2 đọc) và canOpenCashDrawer (web).
   static bool canOpenCashDrawer(UserRole? role) {
     if (role == null) return false;
     return role == UserRole.owner ||
         role == UserRole.manager1 ||
+        role == UserRole.manager2 ||
         role == UserRole.legacyManager;
   }
 

@@ -17,7 +17,7 @@ final cashDrawerRequestsProvider = StreamProvider.autoDispose.family<List<CashDr
   (ref, storeId) => CashDrawerService().watchRequests(storeId),
 );
 
-/// Nút MỞ KÉT trên đầu trang chủ (Chủ / Quản lý 1). Chủ: chấm đỏ khi có yêu cầu đang chờ mã.
+/// Nút MỞ KÉT trên đầu trang chủ (Chủ / Quản lý). Chủ: chấm đỏ khi có yêu cầu đang chờ mã.
 class CashDrawerButton extends ConsumerWidget {
   final Color iconColor;
   final Color? backgroundColor;
@@ -107,7 +107,7 @@ class CashDrawerScreen extends StatelessWidget {
 
 /// Nội dung mở két:
 ///  - Chủ: mã 6 số của các yêu cầu đang chờ (gửi cho quản lý) + tự mở ngay.
-///  - Quản lý 1: gửi yêu cầu cho Chủ → nhập mã Chủ gửi → két bật.
+///  - Quản lý (QL1 / QL2): gửi yêu cầu cho Chủ → nhập mã Chủ gửi → két bật.
 class CashDrawerPanel extends ConsumerStatefulWidget {
   final bool closeOnSuccess;
   final bool showTitle;
@@ -380,7 +380,7 @@ class _CashDrawerPanelState extends ConsumerState<CashDrawerPanel> {
     }
 
     if (member == null || !AppPermissions.canOpenCashDrawer(member.role)) {
-      children.add(const Text('Chỉ Chủ và Quản lý 1 dùng được tính năng két tiền.'));
+      children.add(const Text('Chỉ Chủ và Quản lý dùng được tính năng két tiền.'));
     } else if (_loadError != null) {
       children.add(Text(_loadError!, style: const TextStyle(color: AppColors.danger)));
     } else if (cfg == null) {

@@ -3,7 +3,7 @@
 // Laptop chạy phần mềm "Trạm Mở Két" (repo webquanlychamcong: tools/tram-mo-ket) ở cổng 8787. App gọi
 // http://<IP LAN laptop>:8787/open (điện thoại CÙNG wifi với laptop).
 // Quy trình:
-//  - Quản lý 1 tạo YÊU CẦU (stores/{id}/cash_drawer_requests, nonce = "<id>.<thời điểm ms>") → thông báo cho Chủ.
+//  - Quản lý (QL1 / QL2) tạo YÊU CẦU (stores/{id}/cash_drawer_requests, nonce = "<id>.<thời điểm ms>") → thông báo cho Chủ.
 //  - Chủ thấy MÃ 6 SỐ = HMAC-SHA256(khóa bí mật của Chủ, nonce) trên app / web → gửi quản lý → quản lý nhập mã.
 //  - Laptop tự kiểm tra mã (biết khóa bí mật), mỗi mã mở 1 lần, hết hạn 15 phút. Chủ tự mở không cần nhập mã.
 // Khóa bí mật: stores/{id}/owner_private/cash_drawer (chỉ Chủ đọc). Cấu hình chung: stores/{id}/private/cash_drawer.
