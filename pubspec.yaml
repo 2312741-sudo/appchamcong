@@ -1,6 +1,6 @@
 name: cham_cong_tram
 description: Ứng dụng chấm công thông minh cho doanh nghiệp Việt Nam
-version: 1.2.1+31
+version: 1.2.2+32
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -50,6 +50,7 @@ dependencies:
   google_sign_in: ^6.2.1
   sign_in_with_apple: ^6.1.3
   crypto: ^3.0.7
+  http: ^1.6.0
   lucide_icons_flutter: ^3.1.25
 
 dev_dependencies:

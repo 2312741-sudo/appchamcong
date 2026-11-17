@@ -156,6 +156,16 @@ service cloud.firestore {
         allow read, write: if isOwnerOrManager1(storeId);
       }
 
+      // Nhật ký MỞ KÉT TIỀN (web + app, phần mềm Trạm Mở Két): Chủ / Quản lý 1 ghi lần mở của CHÍNH MÌNH và xem.
+      // Không ai sửa / xóa được (giữ nguyên dấu vết). Cấu hình két + PIN nằm ở private/cash_drawer (luật ở trên).
+      match /cash_drawer_logs/{logId} {
+        allow read: if isOwnerOrManager1(storeId);
+        allow create: if isOwnerOrManager1(storeId) &&
+          request.resource.data.uid == request.auth.uid &&
+          request.resource.data.source in ['web', 'app'];
+        allow update, delete: if false;
+      }
+
       // Xóa cửa hàng: CHỈ Chủ sở hữu
       allow delete: if isStoreOwner(storeId);
 

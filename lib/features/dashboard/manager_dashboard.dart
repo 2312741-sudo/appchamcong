@@ -13,6 +13,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/auth_notifier.dart';
 import '../../core/widgets/store_drawer.dart';
 import '../../core/widgets/notification_bell_icon.dart';
+import '../../core/widgets/cash_drawer_button.dart';
 import '../../core/widgets/avatar_widget.dart';
 import '../../core/utils/attendance_utils.dart';
 import '../../features/attendance/providers/attendance_provider.dart';
@@ -230,6 +231,7 @@ class _ManagerHomeTab extends ConsumerWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            const CashDrawerButton(backgroundColor: Color(0x26FFFFFF)),
                             const NotificationBellIcon(
                               iconColor: Colors.white,
                               backgroundColor: Color(0x26FFFFFF),

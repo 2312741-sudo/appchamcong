@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mở két tiền: app gọi phần mềm "Trạm Mở Két" trên laptop trong wifi quán bằng http://<IP LAN>:8787
+  (mạng nội bộ không có HTTPS). Android không cho cấu hình theo dải IP nên cho phép HTTP thường;
+  mọi dịch vụ Internet của app (Firebase, Google) vẫn dùng HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

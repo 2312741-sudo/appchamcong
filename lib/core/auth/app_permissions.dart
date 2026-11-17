@@ -17,6 +17,15 @@ import '../../models/member_model.dart';
 class AppPermissions {
   const AppPermissions._();
 
+  /// Quyền MỞ KÉT TIỀN qua máy in (phần mềm Trạm Mở Két trên laptop): Chủ, Quản lý 1, Quản lý cũ.
+  /// Khớp luật Firestore (stores/{id}/private/cash_drawer chỉ Chủ / Quản lý 1 đọc được) và canOpenCashDrawer (web).
+  static bool canOpenCashDrawer(UserRole? role) {
+    if (role == null) return false;
+    return role == UserRole.owner ||
+        role == UserRole.manager1 ||
+        role == UserRole.legacyManager;
+  }
+
   /// Quyền Chỉnh sửa / thêm mới giờ công (vào/ra) cho nhân viên khác
   /// Áp dụng cho: Chủ, Quản lý 1, và Quản lý cũ (tạm thời)
   /// Quản lý 2 và Nhân viên: KHÔNG có quyền (false)
