@@ -78,9 +78,16 @@ class CashDrawerButton extends ConsumerWidget {
             isScrollControlled: true,
             useSafeArea: true,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-            builder: (_) => Padding(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
-              child: const SingleChildScrollView(child: CashDrawerPanel(closeOnSuccess: true)),
+            // Dùng context CỦA bảng (sheetCtx) để biết bàn phím đang mở → đẩy ô nhập mã lên trên bàn phím.
+            // (Trước đây dùng context của màn phía sau nên bàn phím che mất ô nhập.)
+            builder: (sheetCtx) => AnimatedPadding(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheetCtx).bottom),
+              child: const SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: CashDrawerPanel(closeOnSuccess: true),
+              ),
             ),
           ),
           child: Tooltip(message: 'Mở két tiền', child: Padding(padding: const EdgeInsets.all(8), child: icon)),
