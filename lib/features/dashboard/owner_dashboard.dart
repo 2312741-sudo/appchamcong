@@ -93,7 +93,8 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
       }
     });
 
-    return Scaffold(
+    // Chủ nhận thông báo kèm MÃ MỞ KÉT khi quản lý gửi yêu cầu (tính trên máy Chủ)
+    return CashDrawerOwnerAlerts(child: Scaffold(
       drawer: const StoreDrawer(),
       backgroundColor: AppColors.surface,
       body: IndexedStack(
@@ -121,7 +122,7 @@ class _OwnerDashboardState extends ConsumerState<OwnerDashboard> {
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
-    );
+    ));
   }
 
   Widget _buildBottomNav() {

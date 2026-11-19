@@ -32,6 +32,21 @@ void main() {
       expect(done.isAlive(t0), isFalse);
     });
 
+    test('báo mã cho Chủ: chỉ yêu cầu mới, còn hạn, của người khác, chưa báo', () {
+      const t0 = 1793606400000;
+      CashDrawerRequest req(String id, String uid, {int at = t0, String status = 'pending'}) =>
+          CashDrawerRequest(id: id, uid: uid, name: uid, reason: 'r', nonce: '$id.$at', createdAtMs: at, status: status);
+      final list = [
+        req('a', 'ql1'),
+        req('b', 'owner'), // Chủ tự mở → không báo
+        req('c', 'ql2', at: t0 - 20 * 60000), // hết hạn
+        req('d', 'ql1', status: 'opened'), // đã dùng
+        req('e', 'ql2'), // đã báo rồi
+      ];
+      final got = CashDrawerService.newRequestsToAlert(list, myUid: 'owner', notified: {'e'}, nowMs: t0 + 60000);
+      expect(got.map((r) => r.id), ['a']);
+    });
+
     test('đọc cấu hình: IP dạng chuỗi hoặc mảng, cổng mặc định 8787', () {
       final a = CashDrawerConfig.fromMap({'token': 'x', 'lanIps': '192.168.1.5'});
       expect(CashDrawerService.agentUrls(a), ['http://192.168.1.5:8787']);

@@ -231,6 +231,23 @@ class NotificationService {
     pendingRoute = null;
     pendingRouteExtra = null;
   }
+  /// Thông báo hiện ngay trên máy (không qua máy chủ) — vd mã mở két cho Chủ (tự tính trên máy Chủ).
+  /// Android: riêng tư (màn hình khóa ẩn nội dung). Bấm → mở [payload]['routePath'].
+  Future<void> showLocalAlert({required int id, required String title, required String body, Map<String, dynamic>? payload}) async {
+    await initialize();
+    await _localNotifications?.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails('cham_cong_notifications', 'Thông báo Chấm Công',
+            importance: Importance.max, priority: Priority.high, visibility: NotificationVisibility.private),
+        iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: false, presentSound: true),
+      ),
+      payload: payload == null ? null : jsonEncode(payload),
+    );
+  }
+
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final id = message.data['notificationId'];
     if (id == null || _displayed.contains(id) || message.data['targetUserId'] != FirebaseAuth.instance.currentUser?.uid) return;

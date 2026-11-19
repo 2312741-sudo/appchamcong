@@ -111,6 +111,15 @@ class CashDrawerService {
 
   static bool isValidOtp(String otp) => RegExp(r'^\d{6}$').hasMatch(otp);
 
+  /// Yêu cầu MỚI cần báo mã cho Chủ: còn hạn, không phải của chính Chủ, chưa báo lần nào (theo [notified])
+  static List<CashDrawerRequest> newRequestsToAlert(
+    List<CashDrawerRequest> requests, {
+    required String? myUid,
+    required Set<String> notified,
+    int? nowMs,
+  }) =>
+      [for (final r in requests) if (r.isAlive(nowMs) && r.uid != myUid && !notified.contains(r.id)) r];
+
   /// Địa chỉ phần mềm trên laptop theo IP LAN đã ghép nối
   static List<String> agentUrls(CashDrawerConfig cfg) =>
       {for (final ip in cfg.lanIps) 'http://$ip:${cfg.port}'}.toList();

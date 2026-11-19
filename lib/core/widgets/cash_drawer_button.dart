@@ -11,6 +11,7 @@ import '../../models/member_model.dart';
 import '../auth/app_permissions.dart';
 import '../constants/app_colors.dart';
 import '../services/cash_drawer_service.dart';
+import '../services/notification_service.dart';
 
 /// Yêu cầu mở két của cửa hàng (dùng chung cho nút trên dashboard)
 final cashDrawerRequestsProvider = StreamProvider.autoDispose.family<List<CashDrawerRequest>, String>(
@@ -485,5 +486,60 @@ class _CashDrawerPanelState extends ConsumerState<CashDrawerPanel> {
     }
 
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+  }
+}
+
+
+/// CHỦ: có yêu cầu mở két mới → app tự tính mã (khóa bí mật chỉ máy Chủ có) và hiện THÔNG BÁO KÈM MÃ ngay trên máy Chủ.
+/// Mã không đi qua máy chủ / thông báo chung của cửa hàng (nhân viên không đọc được). Hoạt động khi app đang mở hoặc
+/// vừa chạy nền; app đã tắt hẳn thì Chủ nhận thông báo "Yêu cầu mở két" thường, mở app là thấy mã.
+class CashDrawerOwnerAlerts extends ConsumerStatefulWidget {
+  final Widget child;
+  const CashDrawerOwnerAlerts({super.key, required this.child});
+
+  @override
+  ConsumerState<CashDrawerOwnerAlerts> createState() => _CashDrawerOwnerAlertsState();
+}
+
+class _CashDrawerOwnerAlertsState extends ConsumerState<CashDrawerOwnerAlerts> {
+  // Đã báo trong phiên app (không báo lại cùng một yêu cầu)
+  static final Set<String> _notified = <String>{};
+  String? _secret;
+  String? _secretStore;
+
+  Future<void> _alert(String storeId, List<CashDrawerRequest> list) async {
+    final uid = ref.read(currentUserIdProvider);
+    final fresh = CashDrawerService.newRequestsToAlert(list, myUid: uid, notified: _notified);
+    if (fresh.isEmpty) return;
+    _notified.addAll(fresh.map((r) => r.id));
+    if (_secretStore != storeId || _secret == null) {
+      _secret = await CashDrawerService().loadOwnerSecret(storeId);
+      _secretStore = storeId;
+    }
+    final secret = _secret;
+    for (final r in fresh) {
+      final code = secret == null ? null : CashDrawerService.otpFor(secret, r.nonce);
+      await NotificationService().showLocalAlert(
+        id: r.id.hashCode & 0x7fffffff,
+        title: code == null ? 'Yêu cầu mở két' : 'Mã mở két: $code',
+        body: code == null
+            ? '${r.name} xin mở két: ${r.reason}. Ghép nối laptop trên web để có mã.'
+            : '${r.name} xin mở két: ${r.reason}. Gửi mã cho ${r.name} — dùng 1 lần, hết hạn sau ${r.minutesLeft()} phút.',
+        payload: {'routePath': '/cash-drawer', 'requestId': r.id},
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final member = ref.watch(currentMemberProvider);
+    final storeId = ref.watch(currentStoreIdProvider);
+    if (member?.role == UserRole.owner && storeId != null && storeId.isNotEmpty) {
+      ref.listen<AsyncValue<List<CashDrawerRequest>>>(cashDrawerRequestsProvider(storeId), (_, next) {
+        final list = next.valueOrNull;
+        if (list != null) unawaited(_alert(storeId, list).catchError((_) {}));
+      });
+    }
+    return widget.child;
   }
 }
